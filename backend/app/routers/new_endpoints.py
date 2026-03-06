@@ -1,6 +1,6 @@
 """New endpoints: activity effort, activity feed, manual strength logging, food & nutrition."""
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, field_validator
@@ -58,6 +58,7 @@ class FoodItemLog(BaseModel):
 
 # ---------------------------------------------------------------------------
 # 1. PATCH /api/activities/{id}/effort
+# effort + effort_manually_set columns added via main.py lifespan ALTER TABLE
 # ---------------------------------------------------------------------------
 @router.patch("/activities/{id}/effort")
 async def update_effort(id: int, body: EffortUpdate, db: AsyncSession = Depends(get_db)):
@@ -79,20 +80,40 @@ async def update_effort(id: int, body: EffortUpdate, db: AsyncSession = Depends(
 
 # ---------------------------------------------------------------------------
 # 2. GET /api/activities/feed
+# Actual DB columns: id, activity_date, activity_type, duration_mins, avg_hr
+# effort / effort_manually_set added via ALTER TABLE in main.py lifespan
+# Use (:days * INTERVAL '1 day') to avoid asyncpg integer type inference issue
 # ---------------------------------------------------------------------------
 @router.get("/activities/feed")
 async def activities_feed(days: int = Query(default=14), db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         text("""
-            SELECT id, type, name, date, start_time, duration_minutes,
-                   avg_bpm, effort, effort_manually_set
+            SELECT id,
+                   activity_type                          AS type,
+                   activity_date                          AS date,
+                   duration_mins                          AS duration_minutes,
+                   avg_hr                                 AS avg_bpm,
+                   COALESCE(effort, 'basic')              AS effort,
+                   COALESCE(effort_manually_set, false)   AS effort_manually_set
             FROM activity_logs
-            WHERE date >= CURRENT_DATE - :days
-            ORDER BY date DESC, start_time DESC
+            WHERE activity_date >= CURRENT_DATE - (:days * INTERVAL '1 day')
+            ORDER BY activity_date DESC
         """),
         {"days": days},
     )
-    return [dict(r) for r in result.mappings().all()]
+    rows = result.mappings().all()
+    return [
+        {
+            "id": r["id"],
+            "type": r["type"],
+            "date": r["date"].isoformat() if r["date"] else None,
+            "duration_minutes": r["duration_minutes"],
+            "avg_bpm": r["avg_bpm"],
+            "effort": r["effort"],
+            "effort_manually_set": r["effort_manually_set"],
+        }
+        for r in rows
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -104,14 +125,27 @@ async def get_habits_history(days: int = Query(default=14), db: AsyncSession = D
         text("""
             SELECT id, habit_date, did_breathing, did_devotions, notes
             FROM daily_habits
-            WHERE habit_date >= CURRENT_DATE - :days
+            WHERE habit_date >= CURRENT_DATE - (:days * INTERVAL '1 day')
             ORDER BY habit_date DESC
         """),
         {"days": days},
     )
-    return [dict(r) for r in result.mappings().all()]
+    rows = result.mappings().all()
+    return [
+        {
+            "id": r["id"],
+            "habit_date": r["habit_date"].isoformat() if r["habit_date"] else None,
+            "did_breathing": r["did_breathing"],
+            "did_devotions": r["did_devotions"],
+            "notes": r["notes"],
+        }
+        for r in rows
+    ]
+
+
 # ---------------------------------------------------------------------------
 # 3. POST /api/log/strength/save
+# manual_strength_logs table created via main.py lifespan
 # ---------------------------------------------------------------------------
 @router.post("/log/strength/save")
 async def save_strength_log(body: StrengthLogCreate, db: AsyncSession = Depends(get_db)):
@@ -136,27 +170,10 @@ async def save_strength_log(body: StrengthLogCreate, db: AsyncSession = Depends(
     )
     inserted = result.mappings().first()
     log_id = inserted["id"]
-    log_start = inserted["start_time"]
 
-    # Try to match an activity_logs row within ±30 min
     matched_activity_id = None
     match_confirmed = False
 
-    match_result = await db.execute(
-        text("""
-            SELECT id FROM activity_logs
-            WHERE type = 'strength'
-              AND start_time BETWEEN :low AND :high
-            ORDER BY ABS(EXTRACT(EPOCH FROM (start_time - :ref::timestamp)))
-            LIMIT 1
-        """),
-        {
-            "low": body.start_time,  # will be cast by PG
-            "high": body.start_time,
-            "ref": body.start_time,
-        },
-    )
-    # Recalculate bounds properly
     from dateutil.parser import parse as dtparse
 
     try:
@@ -170,7 +187,7 @@ async def save_strength_log(body: StrengthLogCreate, db: AsyncSession = Depends(
     match_result = await db.execute(
         text("""
             SELECT id FROM activity_logs
-            WHERE type = 'strength'
+            WHERE activity_type = 'strength'
               AND start_time BETWEEN :low AND :high
             ORDER BY ABS(EXTRACT(EPOCH FROM (start_time - :ref::timestamp)))
             LIMIT 1
@@ -205,10 +222,10 @@ async def save_strength_log(body: StrengthLogCreate, db: AsyncSession = Depends(
 async def last_strength_log(split: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         text("""
-            SELECT date, exercises
+            SELECT log_date AS date, exercises
             FROM manual_strength_logs
             WHERE workout_split = :split
-            ORDER BY date DESC, start_time DESC
+            ORDER BY log_date DESC, start_time DESC
             LIMIT 1
         """),
         {"split": split},
@@ -247,30 +264,31 @@ async def relink_strength(id: int, body: RelinkBody, db: AsyncSession = Depends(
 async def linkable_activities(days: int = Query(default=14), db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         text("""
-            SELECT id, type, name, date, start_time, duration_minutes
+            SELECT id,
+                   activity_type AS type,
+                   activity_date AS date,
+                   duration_mins AS duration_minutes
             FROM activity_logs
-            WHERE date >= CURRENT_DATE - :days
-            ORDER BY date DESC, start_time DESC
+            WHERE activity_date >= CURRENT_DATE - (:days * INTERVAL '1 day')
+            ORDER BY activity_date DESC
         """),
         {"days": days},
     )
-    return [dict(r) for r in result.mappings().all()]
+    rows = result.mappings().all()
+    return [
+        {
+            "id": r["id"],
+            "type": r["type"],
+            "date": r["date"].isoformat() if r["date"] else None,
+            "duration_minutes": r["duration_minutes"],
+        }
+        for r in rows
+    ]
 
 
 # ---------------------------------------------------------------------------
 # Food & Nutrition
-#
-# Migration SQL — run once in Railway console:
-#
-#   CREATE TABLE saved_meals (
-#     id            SERIAL PRIMARY KEY,
-#     name          TEXT NOT NULL,
-#     calories_kcal INT NOT NULL,
-#     protein_g     NUMERIC(6,1) NOT NULL DEFAULT 0,
-#     carbs_g       NUMERIC(6,1) NOT NULL DEFAULT 0,
-#     fat_g         NUMERIC(6,1) NOT NULL DEFAULT 0,
-#     created_at    TIMESTAMPTZ DEFAULT NOW()
-#   );
+# saved_meals created via main.py lifespan (CREATE TABLE IF NOT EXISTS)
 # ---------------------------------------------------------------------------
 
 
@@ -279,7 +297,10 @@ async def linkable_activities(days: int = Query(default=14), db: AsyncSession = 
 async def list_saved_meals(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         text("""
-            SELECT id, name, calories_kcal, protein_g, carbs_g, fat_g
+            SELECT id, name, calories_kcal,
+                   protein_g::float AS protein_g,
+                   carbs_g::float   AS carbs_g,
+                   fat_g::float     AS fat_g
             FROM saved_meals
             ORDER BY created_at ASC
         """)
@@ -294,7 +315,10 @@ async def create_saved_meal(body: SavedMealCreate, db: AsyncSession = Depends(ge
         text("""
             INSERT INTO saved_meals (name, calories_kcal, protein_g, carbs_g, fat_g)
             VALUES (:name, :calories_kcal, :protein_g, :carbs_g, :fat_g)
-            RETURNING id, name, calories_kcal, protein_g, carbs_g, fat_g
+            RETURNING id, name, calories_kcal,
+                      protein_g::float AS protein_g,
+                      carbs_g::float   AS carbs_g,
+                      fat_g::float     AS fat_g
         """),
         {
             "name": body.name,
@@ -324,18 +348,17 @@ async def delete_saved_meal(id: int, db: AsyncSession = Depends(get_db)):
 
 
 # 11. POST /api/log/food/item  — direct log, macros already known (no AI)
+# meal_label='snack' satisfies CHECK ('breakfast','lunch','dinner','snack','post-workout')
 @router.post("/log/food/item")
 async def log_food_item(body: FoodItemLog, db: AsyncSession = Depends(get_db)):
-    import json
-
     result = await db.execute(
         text("""
             INSERT INTO food_logs
                 (description_raw, meal_label, log_date,
-                 protein_g, carbs_g, fat_g, calories_kcal, confidence, items)
+                 protein_g, carbs_g, fat_g, calories_kcal, confidence, source)
             VALUES
-                (:name, 'item', CURRENT_DATE,
-                 :protein_g, :carbs_g, :fat_g, :calories_kcal, 'high', :items)
+                (:name, 'snack', CURRENT_DATE,
+                 :protein_g, :carbs_g, :fat_g, :calories_kcal, 'high', 'manual')
             RETURNING id, description_raw, log_date, calories_kcal,
                       protein_g, carbs_g, fat_g
         """),
@@ -345,18 +368,20 @@ async def log_food_item(body: FoodItemLog, db: AsyncSession = Depends(get_db)):
             "carbs_g": body.carbs_g,
             "fat_g": body.fat_g,
             "calories_kcal": body.calories_kcal,
-            "items": json.dumps([{
-                "name": body.name,
-                "calories_kcal": body.calories_kcal,
-                "protein_g": body.protein_g,
-                "carbs_g": body.carbs_g,
-                "fat_g": body.fat_g,
-            }]),
         },
     )
     row = result.mappings().first()
     await db.commit()
-    return dict(row)
+    r = dict(row)
+    return {
+        "id": r["id"],
+        "description_raw": r["description_raw"],
+        "log_date": r["log_date"].isoformat() if r["log_date"] else None,
+        "calories_kcal": r["calories_kcal"],
+        "protein_g": float(r["protein_g"]) if r["protein_g"] is not None else 0.0,
+        "carbs_g": float(r["carbs_g"]) if r["carbs_g"] is not None else 0.0,
+        "fat_g": float(r["fat_g"]) if r["fat_g"] is not None else 0.0,
+    }
 
 
 # 12. DELETE /api/log/food/item/{id}

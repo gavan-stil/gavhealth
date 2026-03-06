@@ -24,6 +24,37 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE sync_state ADD COLUMN IF NOT EXISTS refresh_token TEXT",
             "ALTER TABLE sync_state ADD COLUMN IF NOT EXISTS token_expires_at TIMESTAMPTZ",
             "ALTER TABLE sync_state ADD COLUMN IF NOT EXISTS token_status VARCHAR(20)",
+            "ALTER TABLE strength_sessions ADD COLUMN IF NOT EXISTS activity_log_id INTEGER",
+            # activity_logs: add effort tracking columns
+            "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS effort VARCHAR(20)",
+            "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS effort_manually_set BOOLEAN DEFAULT false",
+            # saved_meals: food library
+            """
+            CREATE TABLE IF NOT EXISTS saved_meals (
+                id            SERIAL PRIMARY KEY,
+                name          TEXT NOT NULL,
+                calories_kcal INTEGER NOT NULL,
+                protein_g     NUMERIC(6,1) NOT NULL DEFAULT 0,
+                carbs_g       NUMERIC(6,1) NOT NULL DEFAULT 0,
+                fat_g         NUMERIC(6,1) NOT NULL DEFAULT 0,
+                created_at    TIMESTAMPTZ DEFAULT NOW()
+            )
+            """,
+            # manual_strength_logs: strength workouts logged via app
+            """
+            CREATE TABLE IF NOT EXISTS manual_strength_logs (
+                id                  SERIAL PRIMARY KEY,
+                workout_split       TEXT NOT NULL,
+                exercises           JSONB NOT NULL DEFAULT '[]',
+                start_time          TIMESTAMPTZ,
+                duration_minutes    INTEGER,
+                notes               TEXT,
+                log_date            DATE DEFAULT CURRENT_DATE,
+                matched_activity_id INTEGER,
+                match_confirmed     BOOLEAN DEFAULT false,
+                created_at          TIMESTAMPTZ DEFAULT NOW()
+            )
+            """,
         ]:
             await conn.execute(text(stmt))
     yield
