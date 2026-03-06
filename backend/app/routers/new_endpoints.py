@@ -205,25 +205,26 @@ async def save_strength_log(body: StrengthLogCreate, db: AsyncSession = Depends(
 
     from dateutil.parser import parse as dtparse
 
+    ref_date = body.start_time[:10]  # fallback: first 10 chars of "YYYY-MM-DDTHH:MM:SS"
     try:
-        ref_dt = dtparse(body.start_time)
-        low = (ref_dt - timedelta(minutes=30)).isoformat()
-        high = (ref_dt + timedelta(minutes=30)).isoformat()
+        ref_date = dtparse(body.start_time).date().isoformat()
     except Exception:
-        low = body.start_time
-        high = body.start_time
+        pass
 
-    match_result = await db.execute(
-        text("""
-            SELECT id FROM activity_logs
-            WHERE activity_type = 'strength'
-              AND start_time BETWEEN :low AND :high
-            ORDER BY ABS(EXTRACT(EPOCH FROM (start_time - :ref::timestamp)))
-            LIMIT 1
-        """),
-        {"low": low, "high": high, "ref": body.start_time},
-    )
-    match_row = match_result.mappings().first()
+    try:
+        match_result = await db.execute(
+            text("""
+                SELECT id FROM activity_logs
+                WHERE activity_type = 'workout'
+                  AND activity_date = :ref_date
+                ORDER BY id DESC
+                LIMIT 1
+            """),
+            {"ref_date": ref_date},
+        )
+        match_row = match_result.mappings().first()
+    except Exception:
+        match_row = None
 
     if match_row:
         matched_activity_id = match_row["id"]
@@ -287,7 +288,38 @@ async def relink_strength(id: int, body: RelinkBody, db: AsyncSession = Depends(
 
 
 # ---------------------------------------------------------------------------
-# 6. GET /api/activities/linkable
+# 6. GET /api/log/strength/sessions
+# ---------------------------------------------------------------------------
+@router.get("/log/strength/sessions")
+async def list_strength_sessions(days: int = Query(default=14), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        text("""
+            SELECT id, log_date, workout_split, duration_minutes,
+                   jsonb_array_length(exercises) AS exercise_count,
+                   matched_activity_id, match_confirmed
+            FROM manual_strength_logs
+            WHERE log_date >= CURRENT_DATE - (:days * INTERVAL '1 day')
+            ORDER BY log_date DESC, created_at DESC
+        """),
+        {"days": days},
+    )
+    rows = result.mappings().all()
+    return [
+        {
+            "id": r["id"],
+            "log_date": r["log_date"].isoformat() if r["log_date"] else None,
+            "workout_split": r["workout_split"],
+            "duration_minutes": r["duration_minutes"],
+            "exercise_count": r["exercise_count"],
+            "matched_activity_id": r["matched_activity_id"],
+            "match_confirmed": r["match_confirmed"],
+        }
+        for r in rows
+    ]
+
+
+# ---------------------------------------------------------------------------
+# 7. GET /api/activities/linkable
 # ---------------------------------------------------------------------------
 @router.get("/activities/linkable")
 async def linkable_activities(days: int = Query(default=14), db: AsyncSession = Depends(get_db)):

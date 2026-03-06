@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Dumbbell } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import StrengthCard from './StrengthCard';
 
@@ -14,6 +14,15 @@ interface FeedItem {
   avg_bpm: number | null;
   effort: EffortLevel;
   effort_manually_set: boolean;
+}
+
+interface StrengthSession {
+  id: number;
+  log_date: string;
+  workout_split: string;
+  duration_minutes: number;
+  exercise_count: number;
+  matched_activity_id: number | null;
 }
 
 const TYPE_COLOURS: Record<string, string> = {
@@ -70,6 +79,21 @@ export default function ActivityFeed() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [strengthSheetActivityId, setStrengthSheetActivityId] = useState<number | null>(null);
 
+  // Strength session state
+  const [strengthSessions, setStrengthSessions] = useState<StrengthSession[]>([]);
+  const [linkingActivityId, setLinkingActivityId] = useState<number | null>(null);
+  const [linkingSessionId, setLinkingSessionId] = useState<number | null>(null);
+  const [linkDoneFor, setLinkDoneFor] = useState<number | null>(null); // activity id that just got linked
+
+  const fetchStrengthSessions = useCallback(async () => {
+    try {
+      const data = await apiFetch<StrengthSession[]>('/api/log/strength/sessions?days=14');
+      setStrengthSessions(data);
+    } catch {
+      // silently ignore — non-critical
+    }
+  }, []);
+
   const fetchFeed = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -83,7 +107,19 @@ export default function ActivityFeed() {
     }
   }, []);
 
-  useEffect(() => { fetchFeed(); }, [fetchFeed]);
+  useEffect(() => {
+    fetchFeed();
+    fetchStrengthSessions();
+  }, [fetchFeed, fetchStrengthSessions]);
+
+  // Build lookup: activityId → linked session
+  const linkedByActivityId: Record<number, StrengthSession> = {};
+  for (const s of strengthSessions) {
+    if (s.matched_activity_id !== null) {
+      linkedByActivityId[s.matched_activity_id] = s;
+    }
+  }
+  const unlinkedSessions = strengthSessions.filter(s => s.matched_activity_id === null);
 
   const updateEffort = async (id: number, effort: EffortLevel) => {
     const prev = items.find(i => i.id === id)?.effort;
@@ -97,8 +133,26 @@ export default function ActivityFeed() {
       });
     } catch {
       setItems(curr => curr.map(i =>
-        i.id === id ? { ...i, effort: prev!, effort_manually_set: false } : i
+        i.id === id ? { ...i, effort: prev ?? i.effort, effort_manually_set: false } : i
       ));
+    }
+  };
+
+  const handleLink = async (sessionId: number, activityId: number) => {
+    setLinkingSessionId(sessionId);
+    try {
+      await apiFetch(`/api/log/strength/${sessionId}/relink`, {
+        method: 'PATCH',
+        body: JSON.stringify({ activity_id: activityId }),
+      });
+      await fetchStrengthSessions();
+      setLinkingActivityId(null);
+      setLinkDoneFor(activityId);
+      setTimeout(() => setLinkDoneFor(null), 3000);
+    } catch {
+      // ignore
+    } finally {
+      setLinkingSessionId(null);
     }
   };
 
@@ -164,6 +218,7 @@ export default function ActivityFeed() {
               overflow: 'hidden',
             }}
           >
+            {/* Activity row */}
             <div
               onClick={() => setExpandedId(prev => prev === item.id ? null : item.id)}
               style={{
@@ -197,15 +252,32 @@ export default function ActivityFeed() {
                 {' · '}{formatDuration(item.duration_minutes)}
                 {item.avg_bpm ? ` · ${item.avg_bpm}bpm` : ''}
               </div>
+
+              {/* Row 3: linked strength session pill (workouts only) */}
+              {isWorkout(item.type) && linkedByActivityId[item.id] && (
+                <div style={{
+                  paddingLeft: 'calc(10px + var(--space-sm))',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}>
+                  <Dumbbell size={11} color="var(--rust)" />
+                  <span style={{
+                    font: '600 11px/1 Inter, sans-serif', color: 'var(--rust)',
+                    textTransform: 'capitalize',
+                  }}>
+                    {linkedByActivityId[item.id].workout_split} · {linkedByActivityId[item.id].exercise_count} exercises
+                  </span>
+                </div>
+              )}
             </div>
 
-            {/* Expanded panel: effort buttons + log strength session for workouts */}
+            {/* Expanded panel */}
             {expandedId === item.id && (
               <div style={{
                 display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)',
                 padding: 'var(--space-sm) var(--space-lg) var(--space-md)',
                 borderTop: '1px solid var(--border-default)',
               }}>
+                {/* Effort buttons */}
                 <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
                   {(['basic', 'mid', 'lets_go'] as const).map(level => (
                     <button
@@ -225,21 +297,148 @@ export default function ActivityFeed() {
                     </button>
                   ))}
                 </div>
+
+                {/* Strength section (workouts only) */}
                 {isWorkout(item.type) && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setStrengthSheetActivityId(item.id); }}
-                    style={{
-                      width: '100%', padding: '8px',
-                      background: 'transparent',
-                      border: '1px solid var(--rust)',
-                      borderRadius: 'var(--radius-md)',
-                      color: 'var(--rust)',
-                      font: '600 12px/1 Inter, sans-serif',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Log strength session
-                  </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                    {linkedByActivityId[item.id] ? (
+                      /* Already has a linked session */
+                      <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: 'var(--space-sm) var(--space-md)',
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--border-default)',
+                        borderLeft: '3px solid var(--rust)',
+                        borderRadius: 'var(--radius-md)',
+                      }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          <span style={{
+                            font: '600 13px/1 Inter, sans-serif', color: 'var(--text-primary)',
+                            textTransform: 'capitalize',
+                          }}>
+                            {linkedByActivityId[item.id].workout_split} session logged
+                          </span>
+                          <span style={{ font: '400 12px/1 Inter, sans-serif', color: 'var(--text-muted)' }}>
+                            {linkedByActivityId[item.id].exercise_count} exercises · {linkedByActivityId[item.id].duration_minutes}min
+                          </span>
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setStrengthSheetActivityId(item.id); }}
+                          style={{
+                            background: 'transparent', border: '1px solid var(--rust)',
+                            borderRadius: 'var(--radius-md)',
+                            padding: '5px 10px',
+                            font: '600 11px/1 Inter, sans-serif', color: 'var(--rust)',
+                            cursor: 'pointer', whiteSpace: 'nowrap' as const,
+                          }}
+                        >
+                          Re-log
+                        </button>
+                      </div>
+                    ) : linkDoneFor === item.id ? (
+                      /* Just linked */
+                      <div style={{
+                        padding: 'var(--space-sm) var(--space-md)',
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--border-default)',
+                        borderRadius: 'var(--radius-md)',
+                        font: '600 13px/1 Inter, sans-serif',
+                        color: 'var(--signal-good)',
+                      }}>
+                        Session linked ✓
+                      </div>
+                    ) : (
+                      /* No session linked yet */
+                      <>
+                        <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setStrengthSheetActivityId(item.id); }}
+                            style={{
+                              flex: 1, padding: '8px',
+                              background: 'transparent',
+                              border: '1px solid var(--rust)',
+                              borderRadius: 'var(--radius-md)',
+                              color: 'var(--rust)',
+                              font: '600 12px/1 Inter, sans-serif',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Log strength session
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLinkingActivityId(prev => prev === item.id ? null : item.id);
+                            }}
+                            style={{
+                              flex: 1, padding: '8px',
+                              background: linkingActivityId === item.id ? 'var(--bg-elevated)' : 'transparent',
+                              border: '1px solid var(--border-default)',
+                              borderRadius: 'var(--radius-md)',
+                              color: 'var(--text-secondary)',
+                              font: '600 12px/1 Inter, sans-serif',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Link existing
+                          </button>
+                        </div>
+
+                        {/* Inline link picker */}
+                        {linkingActivityId === item.id && (
+                          <div style={{
+                            display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)',
+                          }}>
+                            {unlinkedSessions.length === 0 ? (
+                              <span style={{ font: '400 12px/1.4 Inter, sans-serif', color: 'var(--text-muted)', padding: 'var(--space-xs) 0' }}>
+                                No unlinked sessions in the last 14 days
+                              </span>
+                            ) : (
+                              unlinkedSessions.map(session => (
+                                <div
+                                  key={session.id}
+                                  style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    padding: 'var(--space-sm) var(--space-md)',
+                                    background: 'var(--bg-elevated)',
+                                    border: '1px solid var(--border-default)',
+                                    borderRadius: 'var(--radius-md)',
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                    <span style={{
+                                      font: '600 13px/1 Inter, sans-serif',
+                                      color: 'var(--text-primary)',
+                                      textTransform: 'capitalize',
+                                    }}>
+                                      {session.workout_split}
+                                    </span>
+                                    <span style={{ font: '400 11px/1 JetBrains Mono, monospace', color: 'var(--text-muted)', letterSpacing: '-0.3px' }}>
+                                      {session.log_date} · {session.exercise_count} exercises · {session.duration_minutes}min
+                                    </span>
+                                  </div>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleLink(session.id, item.id); }}
+                                    disabled={linkingSessionId === session.id}
+                                    style={{
+                                      padding: '4px 12px',
+                                      background: 'var(--rust)', color: 'var(--bg-base)',
+                                      border: 'none', borderRadius: 'var(--radius-pill)',
+                                      font: '600 11px/1 Inter, sans-serif',
+                                      cursor: 'pointer',
+                                      opacity: linkingSessionId === session.id ? 0.5 : 1,
+                                    }}
+                                  >
+                                    {linkingSessionId === session.id ? '…' : 'Link'}
+                                  </button>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
             )}
@@ -275,7 +474,10 @@ export default function ActivityFeed() {
               open={true}
               onToggle={() => setStrengthSheetActivityId(null)}
               activityId={strengthSheetActivityId}
-              onConfirmed={() => setStrengthSheetActivityId(null)}
+              onConfirmed={() => {
+                setStrengthSheetActivityId(null);
+                fetchStrengthSessions();
+              }}
             />
           </div>
         </>
