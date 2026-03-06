@@ -1,5 +1,29 @@
 # Changelog
 
+---
+
+## 2026-03-07 — Task 10 complete: Water, Mood/Energy, Nutrition + Dashboard Revamp
+
+**Log page — 3 new cards:**
+- `WaterCard` — quick-add pills (250/500/750/1000ml), animated vessel fill visual, daily total vs 3,000ml target, entry log list; `POST /api/log/water` + `GET /api/water?days=1`
+- `MoodEnergyCard` — 2-col emoji scale (😞→😄 mood, 🪫→💥 energy), save/confirmed states, loads today's existing entry on mount; `POST /api/log/mood` + `GET /api/mood?days=1`
+- `NutritionCard` — calorie total vs 2,358 target, calorie progress bar, 3 macro bars (protein/carbs/fat); reads `GET /api/food?date=today`
+- All 3 added to `LogCards.tsx` accordion
+
+**Backend endpoints added to `new_endpoints.py`:**
+- `POST /api/log/water` + `GET /api/water`
+- `POST /api/log/mood` + `GET /api/mood`
+- Pydantic validators enforce mood/energy 1–5
+
+**Dashboard revamp:**
+- `useDashboardV2` hook — parallel fetches for activities (14d), mood (30d), water (14d), food (14d); derives `todayStats`
+- `QuickStatsRow` — 2×2 grid: Mood, Energy, Water, Calories; taps navigate to `/log`
+- `ActivityChart` — 14-day stacked bar chart by activity type (Run/Strength/Ride/Sauna), recharts
+- `MoodEnergyChart` — 30-day dual line chart (Mood ochre, Energy gold), recharts
+- `WaterNutritionChart` — 14-day composed chart (Water bars dawn, Calories line ochre), recharts
+- `DashboardPage` revamped: QuickStatsRow → ReadinessCard → 3 charts → `<details>` collapsed section (VitalsCard + StreaksCard)
+- Build passes clean, zero TypeScript errors
+
 All feature and spec changes, dated. AI updates this file when specs change.
 
 ---

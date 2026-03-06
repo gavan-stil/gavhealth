@@ -14,9 +14,7 @@ All 9 tasks shipped. App is live, logging flows work end-to-end.
 
 ## Active Task
 
-**T10 — Water, Mood/Energy, Nutrition + Dashboard Revamp** (`tasks/active/10-water-mood-nutrition-dashboard.md`)
-
-Adding 4 new log tracking features (water, mood, energy, nutrition summary) and revamping the dashboard with trend charts.
+None
 
 ---
 
@@ -24,6 +22,7 @@ Adding 4 new log tracking features (water, mood, energy, nutrition summary) and 
 
 | Task | Date | Summary |
 |------|------|---------|
+| T10 | 2026-03-07 | Water + Mood/Energy + Nutrition log cards; Dashboard revamp with QuickStatsRow + 3 trend charts |
 | T11 | 2026-03-07 | Strength Trends frontend — WorkoutVolumeChart + ExerciseProgressSection on Trends page |
 | T09 | 2026-03-06 | Manual Withings sync button (Calendar + Dashboard) |
 | T08 | 2026-03-06 | Habits history view |
@@ -36,8 +35,7 @@ Full history: `tasks/done/` + `CHANGELOG.md`
 
 ## Backlog (top priority first)
 
-1. T10 Water/Mood/Dashboard — WaterCard + MoodEnergyCard (needs backend endpoints) + Dashboard revamp
-2. Sleep dashboard — stage bars, consistency %, debt tracker (ref: `archive/gavhealth[original-design].html`)
+1. Sleep dashboard — stage bars, consistency %, debt tracker (ref: `archive/gavhealth[original-design].html`)
 3. Goal rings — 4 SVG rings (Sleep, Activity, Nutrition, Recovery) as dashboard hero
 4. Visual polish pass — card textures, micro-animations, Strava-style tabs
 5. PWA manifest — `manifest.json` + service worker (install as home screen app)

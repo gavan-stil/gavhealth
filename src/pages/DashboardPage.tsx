@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback } from "react";
 import { Loader2 } from "lucide-react";
 import useDashboard from "@/hooks/useDashboard";
+import useDashboardV2 from "@/hooks/useDashboardV2";
 import ReadinessCard from "@/components/dashboard/ReadinessCard";
 import VitalsCard from "@/components/dashboard/VitalsCard";
 import StreaksCard from "@/components/dashboard/StreaksCard";
@@ -8,11 +9,16 @@ import CardSkeleton from "@/components/dashboard/CardSkeleton";
 import CardError from "@/components/dashboard/CardError";
 import CardEmpty from "@/components/dashboard/CardEmpty";
 import SyncButton from "@/components/SyncButton";
+import QuickStatsRow from "@/components/dashboard/QuickStatsRow";
+import ActivityChart from "@/components/dashboard/ActivityChart";
+import MoodEnergyChart from "@/components/dashboard/MoodEnergyChart";
+import WaterNutritionChart from "@/components/dashboard/WaterNutritionChart";
 
 const PULL_THRESHOLD = 60;
 
 export default function DashboardPage() {
   const { readiness, vitals, streaks } = useDashboard();
+  const v2 = useDashboardV2();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const startY = useRef(0);
@@ -23,7 +29,8 @@ export default function DashboardPage() {
     readiness.refetch();
     vitals.refetch();
     streaks.refetch();
-  }, [readiness, vitals, streaks]);
+    v2.refetch();
+  }, [readiness, vitals, streaks, v2]);
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     const el = containerRef.current;
@@ -57,6 +64,8 @@ export default function DashboardPage() {
       setPullDistance(0);
     }
   }, [pullDistance, refreshing, refetchAll]);
+
+  const chartsLoading = v2.activities.loading || v2.mood.loading || v2.water.loading || v2.food.loading;
 
   return (
     <div
@@ -98,6 +107,9 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Quick stats */}
+      <QuickStatsRow stats={v2.todayStats} />
+
       {/* Readiness */}
       {readiness.loading ? (
         <CardSkeleton variant="readiness" />
@@ -109,33 +121,61 @@ export default function DashboardPage() {
         <CardEmpty section="readiness" />
       )}
 
-      {/* Vitals */}
-      {vitals.loading ? (
-        <CardSkeleton variant="vitals" />
-      ) : vitals.error ? (
-        <CardError section="vitals" onRetry={vitals.refetch} />
-      ) : vitals.data ? (
-        <VitalsCard data={vitals.data} />
-      ) : (
-        <CardEmpty section="vitals" />
-      )}
+      {/* Activity chart */}
+      <ActivityChart data={v2.activities.data} loading={v2.activities.loading} />
 
-      {/* Streaks */}
-      {streaks.loading ? (
-        <CardSkeleton variant="streaks" />
-      ) : streaks.error ? (
-        <CardError section="streaks" onRetry={streaks.refetch} />
-      ) : streaks.data ? (
-        <StreaksCard data={streaks.data} />
-      ) : (
-        <CardEmpty section="streaks" />
-      )}
+      {/* Mood & Energy chart */}
+      <MoodEnergyChart data={v2.mood.data} loading={v2.mood.loading} />
+
+      {/* Water & Nutrition chart */}
+      <WaterNutritionChart
+        waterData={v2.water.data}
+        foodData={v2.food.data}
+        loading={chartsLoading}
+      />
+
+      {/* Collapsed: Vitals + Streaks */}
+      <details style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+        <summary style={{
+          padding: 'var(--space-md) var(--space-lg)',
+          cursor: 'pointer',
+          listStyle: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <span className="label-text" style={{ color: 'var(--text-muted)' }}>MORE STATS</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>▼</span>
+        </summary>
+        <div style={{ padding: 'var(--space-md) var(--space-lg) var(--space-lg)', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+          {vitals.loading ? (
+            <CardSkeleton variant="vitals" />
+          ) : vitals.error ? (
+            <CardError section="vitals" onRetry={vitals.refetch} />
+          ) : vitals.data ? (
+            <VitalsCard data={vitals.data} />
+          ) : (
+            <CardEmpty section="vitals" />
+          )}
+
+          {streaks.loading ? (
+            <CardSkeleton variant="streaks" />
+          ) : streaks.error ? (
+            <CardError section="streaks" onRetry={streaks.refetch} />
+          ) : streaks.data ? (
+            <StreaksCard data={streaks.data} />
+          ) : (
+            <CardEmpty section="streaks" />
+          )}
+        </div>
+      </details>
 
       <style>{`
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
+        details > summary::-webkit-details-marker { display: none; }
       `}</style>
     </div>
   );
