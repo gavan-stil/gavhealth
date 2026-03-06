@@ -1,4 +1,4 @@
-"""New endpoints: activity effort, activity feed, manual strength logging."""
+"""New endpoints: activity effort, activity feed, manual strength logging, food & nutrition."""
 
 from datetime import datetime, timedelta
 
@@ -37,6 +37,23 @@ class StrengthLogCreate(BaseModel):
 
 class RelinkBody(BaseModel):
     activity_id: int
+
+
+class SavedMealCreate(BaseModel):
+    name: str
+    calories_kcal: int
+    protein_g: float
+    carbs_g: float
+    fat_g: float
+
+
+class FoodItemLog(BaseModel):
+    name: str
+    calories_kcal: int
+    protein_g: float
+    carbs_g: float
+    fat_g: float
+    logged_at: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -238,3 +255,119 @@ async def linkable_activities(days: int = Query(default=14), db: AsyncSession = 
         {"days": days},
     )
     return [dict(r) for r in result.mappings().all()]
+
+
+# ---------------------------------------------------------------------------
+# Food & Nutrition
+#
+# Migration SQL — run once in Railway console:
+#
+#   CREATE TABLE saved_meals (
+#     id            SERIAL PRIMARY KEY,
+#     name          TEXT NOT NULL,
+#     calories_kcal INT NOT NULL,
+#     protein_g     NUMERIC(6,1) NOT NULL DEFAULT 0,
+#     carbs_g       NUMERIC(6,1) NOT NULL DEFAULT 0,
+#     fat_g         NUMERIC(6,1) NOT NULL DEFAULT 0,
+#     created_at    TIMESTAMPTZ DEFAULT NOW()
+#   );
+# ---------------------------------------------------------------------------
+
+
+# 8. GET /api/saved-meals
+@router.get("/saved-meals")
+async def list_saved_meals(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        text("""
+            SELECT id, name, calories_kcal, protein_g, carbs_g, fat_g
+            FROM saved_meals
+            ORDER BY created_at ASC
+        """)
+    )
+    return [dict(r) for r in result.mappings().all()]
+
+
+# 9. POST /api/saved-meals
+@router.post("/saved-meals")
+async def create_saved_meal(body: SavedMealCreate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        text("""
+            INSERT INTO saved_meals (name, calories_kcal, protein_g, carbs_g, fat_g)
+            VALUES (:name, :calories_kcal, :protein_g, :carbs_g, :fat_g)
+            RETURNING id, name, calories_kcal, protein_g, carbs_g, fat_g
+        """),
+        {
+            "name": body.name,
+            "calories_kcal": body.calories_kcal,
+            "protein_g": body.protein_g,
+            "carbs_g": body.carbs_g,
+            "fat_g": body.fat_g,
+        },
+    )
+    row = result.mappings().first()
+    await db.commit()
+    return dict(row)
+
+
+# 10. DELETE /api/saved-meals/{id}
+@router.delete("/saved-meals/{id}")
+async def delete_saved_meal(id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        text("DELETE FROM saved_meals WHERE id = :id RETURNING id"),
+        {"id": id},
+    )
+    row = result.mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Saved meal not found")
+    await db.commit()
+    return {"ok": True}
+
+
+# 11. POST /api/log/food/item  — direct log, macros already known (no AI)
+@router.post("/log/food/item")
+async def log_food_item(body: FoodItemLog, db: AsyncSession = Depends(get_db)):
+    import json
+
+    result = await db.execute(
+        text("""
+            INSERT INTO food_logs
+                (description_raw, meal_label, log_date,
+                 protein_g, carbs_g, fat_g, calories_kcal, confidence, items)
+            VALUES
+                (:name, 'item', CURRENT_DATE,
+                 :protein_g, :carbs_g, :fat_g, :calories_kcal, 'high', :items)
+            RETURNING id, description_raw, log_date, calories_kcal,
+                      protein_g, carbs_g, fat_g
+        """),
+        {
+            "name": body.name,
+            "protein_g": body.protein_g,
+            "carbs_g": body.carbs_g,
+            "fat_g": body.fat_g,
+            "calories_kcal": body.calories_kcal,
+            "items": json.dumps([{
+                "name": body.name,
+                "calories_kcal": body.calories_kcal,
+                "protein_g": body.protein_g,
+                "carbs_g": body.carbs_g,
+                "fat_g": body.fat_g,
+            }]),
+        },
+    )
+    row = result.mappings().first()
+    await db.commit()
+    return dict(row)
+
+
+# 12. DELETE /api/log/food/item/{id}
+@router.delete("/log/food/item/{id}")
+async def delete_food_log_item(id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        text("DELETE FROM food_logs WHERE id = :id RETURNING id"),
+        {"id": id},
+    )
+    row = result.mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Food log entry not found")
+    await db.commit()
+    return {"ok": True}

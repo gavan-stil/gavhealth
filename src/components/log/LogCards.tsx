@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import FoodCard from './FoodCard';
+import FoodNutritionCard from './FoodNutritionCard';
 import StrengthCard from './StrengthCard';
 import SaunaCard from './SaunaCard';
 import HabitsCard from './HabitsCard';
@@ -19,7 +19,7 @@ export default function LogCards() {
       gap: 'var(--space-md)',
       padding: 'var(--space-lg)',
     }}>
-      <FoodCard open={openCard === 'food'} onToggle={() => toggle('food')} />
+      <FoodNutritionCard open={openCard === 'food'} onToggle={() => toggle('food')} />
       <StrengthCard open={openCard === 'strength'} onToggle={() => toggle('strength')} />
       <SaunaCard open={openCard === 'sauna'} onToggle={() => toggle('sauna')} />
       <HabitsCard open={openCard === 'habits'} onToggle={() => toggle('habits')} />
