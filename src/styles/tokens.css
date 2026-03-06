@@ -1,0 +1,158 @@
+/* GOE Health — Design Tokens */
+
+:root {
+  /* Backgrounds */
+  --bg-base: #0d0d0a;
+  --bg-card: #14130f;
+  --bg-card-hover: #1c1b15;
+  --bg-elevated: #1e1d18;
+
+  /* Borders */
+  --border-default: #222018;
+  --border-subtle: #1a1914;
+
+  /* Text */
+  --text-primary: #f0ece4;
+  --text-secondary: #b0a890;
+  --text-tertiary: #9a9080;
+  --text-muted: #7a7060;
+
+  /* Brand */
+  --ochre: #d4a04a;
+  --ochre-light: #e8c47a;
+  --ochre-dim: #a07830;
+  --sand: #b8a878;
+  --clay: #c4856a;
+  --rust: #b47050;
+  --gold: #e8c47a;
+  --dawn: #7FAABC;
+  --blush: #d4a890;
+  --ember: #c45a4a;
+
+  /* Signals */
+  --signal-good: #e8c47a;
+  --signal-caution: #d4a04a;
+  --signal-poor: #c47a6a;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 14px;
+  --space-lg: 20px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 100px;
+
+  /* Motion */
+  --ease-settle: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-drift: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --duration-fast: 120ms;
+  --duration-normal: 200ms;
+  --duration-slow: 400ms;
+}
+
+/* Reset */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-secondary);
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography classes */
+.hero-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 52px;
+  font-weight: 800;
+  letter-spacing: -3px;
+  color: var(--text-primary);
+}
+
+.card-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -2px;
+  color: var(--text-primary);
+}
+
+.stat-number {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  color: var(--text-primary);
+}
+
+.small-number {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+
+.page-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  color: var(--text-primary);
+}
+
+.section-head {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text-primary);
+}
+
+.body-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.label-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+/* Route transitions */
+.route-enter {
+  animation: route-fade-in var(--duration-normal) var(--ease-drift) both;
+}
+
+@keyframes route-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Skeleton loading animation */
+@keyframes skeleton-pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
