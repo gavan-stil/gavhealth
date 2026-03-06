@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 400" width="1920" height="400">
+  <defs>
+    <!-- Warm atmospheric gradient inspired by Dune desert haze -->
+    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a0f08"/>
+      <stop offset="25%" stop-color="#2d1810"/>
+      <stop offset="50%" stop-color="#5c3018"/>
+      <stop offset="70%" stop-color="#8b4a1a"/>
+      <stop offset="85%" stop-color="#c4692a"/>
+      <stop offset="100%" stop-color="#d4893a"/>
+    </linearGradient>
+
+    <!-- Subtle haze overlay to push back distant dunes -->
+    <linearGradient id="hazeGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#d4893a" stop-opacity="0.15"/>
+      <stop offset="40%" stop-color="#d4893a" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#d4893a" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Dune fill gradients — darker at base, lit at ridgeline -->
+    <linearGradient id="dune1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#c4692a" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#1a0f08" stop-opacity="0.2"/>
+    </linearGradient>
+    <linearGradient id="dune2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#d4893a" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#2d1810" stop-opacity="0.25"/>
+    </linearGradient>
+    <linearGradient id="dune3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e8a050" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#3a1c0e" stop-opacity="0.3"/>
+    </linearGradient>
+    <linearGradient id="dune4" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#d4a04a" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#2d1810" stop-opacity="0.4"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Base gradient sky -->
+  <rect width="1920" height="400" fill="url(#skyGrad)"/>
+
+  <!-- Atmospheric haze layer -->
+  <rect width="1920" height="400" fill="url(#hazeGrad)"/>
+
+  <!-- Dune layer 1 — far distance, faintest, highest on canvas -->
+  <path d="M 0,220 C 200,200 400,195 650,208 C 900,221 1050,195 1300,205 C 1550,215 1750,198 1920,210 L 1920,400 L 0,400 Z"
+        fill="url(#dune1)"/>
+  <path d="M 0,220 C 200,200 400,195 650,208 C 900,221 1050,195 1300,205 C 1550,215 1750,198 1920,210"
+        fill="none" stroke="#d4a04a" stroke-width="0.6" opacity="0.2"/>
+
+  <!-- Dune layer 2 — mid distance -->
+  <path d="M 0,260 C 280,235 520,225 780,245 C 1040,265 1200,230 1480,242 C 1700,250 1840,238 1920,248 L 1920,400 L 0,400 Z"
+        fill="url(#dune2)"/>
+  <path d="M 0,260 C 280,235 520,225 780,245 C 1040,265 1200,230 1480,242 C 1700,250 1840,238 1920,248"
+        fill="none" stroke="#e8a050" stroke-width="0.8" opacity="0.25"/>
+
+  <!-- Dune layer 3 — mid-foreground -->
+  <path d="M 0,300 C 350,275 600,265 900,285 C 1200,305 1380,268 1620,280 C 1800,288 1880,278 1920,285 L 1920,400 L 0,400 Z"
+        fill="url(#dune3)"/>
+  <path d="M 0,300 C 350,275 600,265 900,285 C 1200,305 1380,268 1620,280 C 1800,288 1880,278 1920,285"
+        fill="none" stroke="#e8c47a" stroke-width="1" opacity="0.3"/>
+
+  <!-- Dune layer 4 — foreground, most visible -->
+  <path d="M 0,345 C 250,325 480,315 750,332 C 1020,349 1250,318 1500,330 C 1720,340 1850,325 1920,335 L 1920,400 L 0,400 Z"
+        fill="url(#dune4)"/>
+  <path d="M 0,345 C 250,325 480,315 750,332 C 1020,349 1250,318 1500,330 C 1720,340 1850,325 1920,335"
+        fill="none" stroke="#e8c47a" stroke-width="1.2" opacity="0.4"/>
+</svg>

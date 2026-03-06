@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- Sauna: Heat/steam — three rising wave lines -->
+  <path d="M 7 20 Q 7 16 7 14 Q 7 11 9 9 Q 7 7 7 4" fill="none" stroke="#c45a4a" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M 12 20 Q 12 16 12 14 Q 12 11 14 9 Q 12 7 12 4" fill="none" stroke="#c45a4a" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M 17 20 Q 17 16 17 14 Q 17 11 19 9 Q 17 7 17 4" fill="none" stroke="#c45a4a" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

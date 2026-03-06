@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+  <!-- GOE Monogram Mark — Concentric circles monogram -->
+  <!-- All strokes #e8c47a, round caps, no fills. Centered at 40,40 -->
+
+  <!-- Outer circle r=34 -->
+  <circle cx="40" cy="40" r="34"
+          fill="none" stroke="#e8c47a" stroke-width="1.5"/>
+
+  <!-- Inner arc r=20 representing G — gap at 2 o'clock (~330° to 30° clockwise gap) -->
+  <!-- Arc from 30° to 330° (leaving gap at top-right) -->
+  <path d="M 57.32,30 A 20,20 0 1,1 50,22.68"
+        fill="none" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round"
+        transform="translate(40,40) translate(-40,-40)"/>
+
+  <!-- Horizontal crossbar from center to right -->
+  <line x1="40" y1="40" x2="60" y2="40"
+        stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- E dot at r=26 on the right side -->
+  <circle cx="66" cy="40" r="1.8" fill="#e8c47a"/>
+</svg>

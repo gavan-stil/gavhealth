@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>GOE Health — Mockup v2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root {
+      --bg-base: #0d0d0a;
+      --bg-card: #14130f;
+      --bg-card-hover: #1c1b15;
+      --bg-elevated: #1e1d18;
+      --border-default: #222018;
+      --border-subtle: #1a1914;
+      --text-primary: #f0ece4;
+      --text-secondary: #b0a890;
+      --text-tertiary: #9a9080;
+      --text-muted: #7a7060;
+      --ochre: #d4a04a;
+      --ochre-light: #e8c47a;
+      --gold: #e8c47a;
+      --sand: #b8a878;
+      --rust: #b47050;
+      --ember: #c45a4a;
+      --dawn: #7faabc;
+      --blush: #d4a890;
+      --signal-good: #e8c47a;
+      --signal-caution: #d4a04a;
+      --signal-poor: #c47a6a;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-pill: 100px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-base);
+      color: var(--text-secondary);
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+
+    /* ── Layout helpers ── */
+    .page { max-width: 375px; margin: 0 auto; padding: 0 0 80px; }
+    .page-section { padding: 20px 0 0; }
+    .section-label {
+      font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+      color: var(--text-muted); padding: 32px 16px 12px; border-top: 1px solid var(--border-subtle);
+    }
+    .section-label:first-child { border-top: none; padding-top: 16px; }
+
+    /* ── Navigation tabs (mockup chrome) ── */
+    .nav-tabs {
+      display: flex; background: var(--bg-card); border-bottom: 1px solid var(--border-default);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .nav-tab {
+      flex: 1; padding: 12px 8px; text-align: center; font-size: 12px; font-weight: 600;
+      color: var(--text-muted); cursor: pointer; transition: color 0.15s; border-bottom: 2px solid transparent;
+    }
+    .nav-tab.active { color: var(--text-primary); border-bottom-color: var(--ochre); }
+
+    /* ── Cards ── */
+    .card {
+      margin: 0 12px 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .card-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 16px 16px 14px;
+      cursor: pointer;
+    }
+    .card-header-icon {
+      width: 32px; height: 32px; border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .card-title { font-size: 15px; font-weight: 700; color: var(--text-primary); flex: 1; letter-spacing: -0.3px; }
+    .card-chevron { color: var(--text-muted); font-size: 12px; transition: transform 0.2s; }
+    .card-body { padding: 0 16px 16px; }
+
+    /* ── Typography ── */
+    .stat-number {
+      font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 800;
+      letter-spacing: -1.5px; color: var(--text-primary);
+    }
+    .small-number {
+      font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600;
+      letter-spacing: -0.5px;
+    }
+    .label-text {
+      font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      background: var(--ochre); color: #1a1200; font-weight: 700; font-size: 14px;
+      border: none; border-radius: var(--radius-sm); padding: 10px 20px; cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.85; }
+    .btn-ghost {
+      background: transparent; color: var(--text-secondary); font-weight: 600; font-size: 13px;
+      border: 1px solid var(--border-default); border-radius: var(--radius-sm);
+      padding: 8px 14px; cursor: pointer; transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-ghost:hover { border-color: var(--ochre); color: var(--text-primary); }
+    .btn-pill {
+      background: var(--bg-elevated); color: var(--dawn); font-weight: 600; font-size: 13px;
+      border: 1px solid var(--border-default); border-radius: var(--radius-pill);
+      padding: 7px 14px; cursor: pointer; transition: all 0.15s;
+    }
+    .btn-pill:hover { border-color: var(--dawn); color: var(--text-primary); }
+
+    /* ── Progress bars ── */
+    .progress-track {
+      width: 100%; height: 8px; background: var(--bg-elevated);
+      border-radius: var(--radius-pill); overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; border-radius: var(--radius-pill);
+      background: linear-gradient(90deg, var(--signal-good), var(--ochre));
+      transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* ── Divider ── */
+    .divider { border: none; border-top: 1px solid var(--border-subtle); margin: 12px 0; }
+
+    /* ── Screen toggle ── */
+    .screen { display: none; }
+    .screen.active { display: block; }
+    .screen-toggle {
+      display: flex; gap: 8px; padding: 12px; background: var(--bg-card);
+      border-bottom: 1px solid var(--border-default); position: sticky; top: 0; z-index: 20;
+    }
+    .screen-btn {
+      flex: 1; padding: 8px; text-align: center; font-size: 12px; font-weight: 700;
+      border-radius: var(--radius-sm); border: 1px solid var(--border-default);
+      background: var(--bg-elevated); color: var(--text-muted); cursor: pointer;
+      text-transform: uppercase; letter-spacing: 1px; transition: all 0.15s;
+    }
+    .screen-btn.active { background: var(--ochre); color: #1a1200; border-color: var(--ochre); }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SCREEN TOGGLE
+════════════════════════════════════════════════════════════ -->
+<div class="screen-toggle">
+  <button class="screen-btn active" onclick="showScreen('log')">A — Log Cards</button>
+  <button class="screen-btn" onclick="showScreen('dashboard')">B — Dashboard</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SCREEN A: NEW LOG CARDS
+════════════════════════════════════════════════════════════ -->
+<div id="screen-log" class="screen active">
+  <div class="page">
+
+    <div class="section-label">NEW LOG CARDS — Log Page additions</div>
+
+    <!-- ── Mood & Energy Card ── -->
+    <div class="card" id="card-mood">
+      <div class="card-header" onclick="toggleCard('mood')">
+        <div class="card-header-icon" style="background: rgba(212,160,74,0.12);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d4a04a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+          </svg>
+        </div>
+        <span class="card-title">Mood & Energy</span>
+        <span class="card-chevron" id="chevron-mood">▼</span>
+      </div>
+      <div class="card-body" id="body-mood">
+        <!-- Mood row — face icons (how are you feeling?) -->
+        <div style="margin-bottom: 14px;">
+          <div class="label-text" style="margin-bottom: 10px;">How are you feeling?</div>
+          <div style="display: flex; gap: 8px;">
+            <!-- mood-1: frown, ember -->
+            <button class="icon-btn" data-group="mood" data-val="1" onclick="selectScale(this)" title="Low">
+              <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="10" fill="none" stroke="#c45a4a" stroke-width="1.5"/><circle cx="8.5" cy="9.5" r="1" fill="#c45a4a"/><circle cx="15.5" cy="9.5" r="1" fill="#c45a4a"/><path d="M7.5 17Q12 13 16.5 17" fill="none" stroke="#c45a4a" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </button>
+            <!-- mood-2: slight frown, rust -->
+            <button class="icon-btn" data-group="mood" data-val="2" onclick="selectScale(this)" title="Below average">
+              <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="10" fill="none" stroke="#b47050" stroke-width="1.5"/><circle cx="8.5" cy="9.5" r="1" fill="#b47050"/><circle cx="15.5" cy="9.5" r="1" fill="#b47050"/><path d="M8 16.5Q12 14.5 16 16.5" fill="none" stroke="#b47050" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </button>
+            <!-- mood-3: flat, sand -->
+            <button class="icon-btn active" data-group="mood" data-val="3" onclick="selectScale(this)" title="OK">
+              <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="10" fill="none" stroke="#b8a878" stroke-width="1.5"/><circle cx="8.5" cy="9.5" r="1" fill="#b8a878"/><circle cx="15.5" cy="9.5" r="1" fill="#b8a878"/><line x1="8" y1="15.5" x2="16" y2="15.5" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </button>
+            <!-- mood-4: slight smile, ochre -->
+            <button class="icon-btn" data-group="mood" data-val="4" onclick="selectScale(this)" title="Good">
+              <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="10" fill="none" stroke="#d4a04a" stroke-width="1.5"/><circle cx="8.5" cy="9.5" r="1" fill="#d4a04a"/><circle cx="15.5" cy="9.5" r="1" fill="#d4a04a"/><path d="M8 14.5Q12 17 16 14.5" fill="none" stroke="#d4a04a" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </button>
+            <!-- mood-5: big smile, gold -->
+            <button class="icon-btn" data-group="mood" data-val="5" onclick="selectScale(this)" title="Great">
+              <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="10" fill="none" stroke="#e8c47a" stroke-width="1.5"/><circle cx="8.5" cy="9.5" r="1" fill="#e8c47a"/><circle cx="15.5" cy="9.5" r="1" fill="#e8c47a"/><path d="M7.5 14Q12 19 16.5 14" fill="none" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Energy row — moon/sun/bolt/pin icons -->
+        <div>
+          <div class="label-text" style="margin-bottom: 10px;">Energy level</div>
+          <div style="display: flex; gap: 8px;">
+            <!-- 1: Moon — drained/low -->
+            <button class="icon-btn active" data-group="energy" data-val="1" onclick="selectScale(this)" title="Drained">
+              <svg viewBox="0 0 24 24" width="22" height="22"><path d="M15 4A8 8 0 1 0 15 20A6 6 0 0 1 15 4" fill="none" stroke="#7faabc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <!-- 2: Dim sun (4 rays) — low -->
+            <button class="icon-btn" data-group="energy" data-val="2" onclick="selectScale(this)" title="Low">
+              <svg viewBox="0 0 24 24" width="22" height="22">
+                <circle cx="12" cy="12" r="3.5" fill="none" stroke="#b47050" stroke-width="1.5"/>
+                <line x1="12" y1="5" x2="12" y2="7.5" stroke="#b47050" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="12" y1="16.5" x2="12" y2="19" stroke="#b47050" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="5" y1="12" x2="7.5" y2="12" stroke="#b47050" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="16.5" y1="12" x2="19" y2="12" stroke="#b47050" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </button>
+            <!-- 3: Full sun (8 rays) — ok -->
+            <button class="icon-btn" data-group="energy" data-val="3" onclick="selectScale(this)" title="OK">
+              <svg viewBox="0 0 24 24" width="22" height="22">
+                <circle cx="12" cy="12" r="4" fill="none" stroke="#b8a878" stroke-width="1.5"/>
+                <line x1="12" y1="2" x2="12" y2="5" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="12" y1="19" x2="12" y2="22" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="2" y1="12" x2="5" y2="12" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="19" y1="12" x2="22" y2="12" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="4.93" y1="4.93" x2="6.76" y2="6.76" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="17.24" y1="17.24" x2="19.07" y2="19.07" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="4.93" y1="19.07" x2="6.76" y2="17.24" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="17.24" y1="6.76" x2="19.07" y2="4.93" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </button>
+            <!-- 4: Bolt — high energy -->
+            <button class="icon-btn" data-group="energy" data-val="4" onclick="selectScale(this)" title="High">
+              <svg viewBox="0 0 24 24" width="22" height="22"><polyline points="13,2 7,13 12,13 11,22 17,11 12,11 13,2" fill="none" stroke="#d4a04a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <!-- 5: Location pin — peak/maxed -->
+            <button class="icon-btn" data-group="energy" data-val="5" onclick="selectScale(this)" title="Peak">
+              <svg viewBox="0 0 24 24" width="22" height="22">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="none" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="12" cy="9" r="2" fill="none" stroke="#e8c47a" stroke-width="1.5"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div style="margin-top: 16px; display: flex; align-items: center; justify-content: space-between;">
+          <div style="font-size: 12px; color: var(--text-muted);" id="mood-today-label">Today: mood 3 · energy 4</div>
+          <button class="btn-primary" style="padding: 8px 18px; font-size: 13px;" onclick="saveMood()">Save</button>
+        </div>
+        <!-- confirmed state -->
+        <div id="mood-confirmed" style="display:none; margin-top: 12px; padding: 10px 14px; background: rgba(232,196,122,0.08); border: 1px solid rgba(232,196,122,0.2); border-radius: var(--radius-sm); align-items: center; gap: 8px;">
+          <span style="color: var(--signal-good); font-family: 'JetBrains Mono', monospace; font-size: 13px;">✓</span>
+          <span style="font-size: 13px; color: var(--text-secondary);" id="mood-confirmed-text">Saved — mood 3 · energy 4</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Food & Nutrition Card ── -->
+    <div class="card" id="card-nutrition">
+      <div class="card-header" onclick="toggleCard('nutrition')">
+        <div class="card-header-icon" style="background: rgba(232,196,122,0.1);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e8c47a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
+          </svg>
+        </div>
+        <span class="card-title">Food & Nutrition</span>
+        <span class="card-chevron" id="chevron-nutrition">▼</span>
+      </div>
+      <div class="card-body" id="body-nutrition">
+
+        <!-- ① SAVED MEALS — tap = instant add, no AI needed -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div class="label-text">Saved meals</div>
+          <span style="font-size:11px; color:var(--text-muted);">tap to add instantly</span>
+        </div>
+        <div id="meal-chips-row" style="display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; margin-bottom:14px; -webkit-overflow-scrolling:touch;"></div>
+
+        <!-- ② BRAIN DUMP — for anything new/unknown -->
+        <div class="label-text" style="margin-bottom:6px;">New food</div>
+        <textarea id="food-input" rows="3"
+          placeholder="Anything new you ate today... e.g. banana, flat white, handful of almonds"
+          style="width:100%; background:var(--bg-elevated); border:1px solid var(--border-default); border-radius:var(--radius-sm); padding:10px 12px; color:var(--text-primary); font-family:'Inter',sans-serif; font-size:13px; line-height:1.5; resize:vertical; outline:none; min-height:72px; box-sizing:border-box;"
+          onfocus="this.style.borderColor='var(--ochre)'" onblur="this.style.borderColor='var(--border-default)'"></textarea>
+        <div style="display:flex; gap:8px; margin-top:8px; align-items:center;">
+          <button class="btn-primary" style="font-size:13px; padding:9px 16px;" onclick="processFood()">Process with AI</button>
+          <button class="btn-ghost" style="font-size:12px; padding:8px 12px;" onclick="document.getElementById('food-input').value=''">Clear</button>
+          <div id="food-spinner" style="display:none; margin-left:auto;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d4a04a" stroke-width="2.5" style="animation:spin 0.7s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          </div>
+        </div>
+
+        <!-- ③ PARSED RESULTS — per-item [+ Add] and [★ Save] -->
+        <div id="food-parsed" style="display:none; margin-top:14px;">
+          <hr class="divider" style="margin-top:0;"/>
+          <div class="label-text" style="margin-bottom:8px;">Parsed — add &amp; save</div>
+          <div id="parsed-items" style="display:flex; flex-direction:column; gap:6px;"></div>
+        </div>
+
+        <!-- ④ TODAY'S LOG — running list -->
+        <hr class="divider"/>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div class="label-text">Today's log</div>
+          <span id="log-count" style="font-size:11px; color:var(--text-muted);">0 items</span>
+        </div>
+        <div id="today-log-list" style="display:flex; flex-direction:column; gap:4px; margin-bottom:12px;">
+          <div id="log-empty" style="font-size:12px; color:var(--text-muted); padding:6px 0;">Nothing logged yet</div>
+        </div>
+
+        <!-- ⑤ TODAY'S TOTALS -->
+        <div style="display:flex; align-items:baseline; gap:8px; margin-bottom:8px;">
+          <span class="stat-number" style="color:var(--ochre);" id="total-kcal">0</span>
+          <span style="font-size:13px; color:var(--text-muted);">of 2,358 kcal</span>
+        </div>
+        <div class="progress-track" style="margin-bottom:12px;"><div class="progress-fill" id="kcal-bar" style="width:0%;"></div></div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+              <span class="label-text">Protein</span>
+              <span class="small-number" style="color:var(--text-secondary);" id="total-protein">0g</span>
+            </div>
+            <div class="progress-track" style="height:5px;"><div class="progress-fill" id="protein-bar" style="width:0%; background:linear-gradient(90deg, var(--dawn), #a0ccdc);"></div></div>
+          </div>
+          <div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+              <span class="label-text">Carbs</span>
+              <span class="small-number" style="color:var(--text-secondary);" id="total-carbs">0g</span>
+            </div>
+            <div class="progress-track" style="height:5px;"><div class="progress-fill" id="carbs-bar" style="width:0%; background:linear-gradient(90deg, var(--ochre), var(--gold));"></div></div>
+          </div>
+          <div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+              <span class="label-text">Fat</span>
+              <span class="small-number" style="color:var(--text-secondary);" id="total-fat">0g</span>
+            </div>
+            <div class="progress-track" style="height:5px;"><div class="progress-fill" id="fat-bar" style="width:0%; background:linear-gradient(90deg, var(--rust), var(--sand));"></div></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Water Intake Card ── -->
+    <div class="card" id="card-water">
+      <div class="card-header" onclick="toggleCard('water')">
+        <div class="card-header-icon" style="background: rgba(127,170,188,0.12);">
+          <!-- Water drop SVG -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7faabc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+          </svg>
+        </div>
+        <span class="card-title">Water Intake</span>
+        <span class="small-number" style="color: var(--dawn); margin-right: 8px;" id="water-header-total">1,250 ml</span>
+        <span class="card-chevron" id="chevron-water">▼</span>
+      </div>
+      <div class="card-body" id="body-water">
+        <div style="display: flex; gap: 16px; align-items: flex-start;">
+          <!-- Vessel -->
+          <div style="flex-shrink: 0;">
+            <div id="water-vessel" style="width: 48px; height: 80px; border: 2px solid var(--dawn); border-radius: 4px 4px 8px 8px; background: var(--bg-base); position: relative; overflow: hidden;">
+              <div id="water-fill" style="position: absolute; bottom: 0; left: 0; right: 0; height: 42%; background: linear-gradient(180deg, rgba(127,170,188,0.4) 0%, rgba(127,170,188,0.8) 100%); transition: height 0.5s cubic-bezier(0.16,1,0.3,1);"></div>
+            </div>
+            <div style="text-align: center; margin-top: 4px;">
+              <div class="label-text" style="color: var(--dawn);">42%</div>
+            </div>
+          </div>
+          <!-- Right side -->
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: baseline; gap: 6px; margin-bottom: 2px;">
+              <span class="stat-number" style="font-size: 24px; color: var(--ochre);" id="water-total">1,250</span>
+              <span style="font-size: 13px; color: var(--text-muted);">ml</span>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">of 3,000 ml goal</div>
+            <!-- Quick add pills -->
+            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+              <button class="btn-pill" onclick="addWater(250)">+250</button>
+              <button class="btn-pill" onclick="addWater(500)">+500</button>
+              <button class="btn-pill" onclick="addWater(750)">+750</button>
+              <button class="btn-pill" onclick="addWater(1000)">+1L</button>
+            </div>
+          </div>
+        </div>
+        <!-- Log list -->
+        <hr class="divider" />
+        <div id="water-log-list" style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 12px; color: var(--text-muted);">7:45 am</span>
+            <span class="small-number" style="color: var(--text-secondary);">500 ml</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 12px; color: var(--text-muted);">11:30 am</span>
+            <span class="small-number" style="color: var(--text-secondary);">500 ml</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 12px; color: var(--text-muted);">1:15 pm</span>
+            <span class="small-number" style="color: var(--text-secondary);">250 ml</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height: 24px;"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SCREEN B: DASHBOARD REVAMP
+════════════════════════════════════════════════════════════ -->
+<div id="screen-dashboard" class="screen">
+  <div class="page">
+
+    <div class="section-label">DASHBOARD — Revamped layout</div>
+
+    <!-- ── Quick Stats Row ── -->
+    <div style="margin: 0 12px 12px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <!-- Mood -->
+        <div style="background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 14px;">
+          <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d4a04a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+            </svg>
+            <span class="label-text">Mood</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <svg viewBox="0 0 24 24" width="28" height="28"><circle cx="12" cy="12" r="10" fill="none" stroke="#d4a04a" stroke-width="1.5"/><circle cx="8.5" cy="9.5" r="1" fill="#d4a04a"/><circle cx="15.5" cy="9.5" r="1" fill="#d4a04a"/><path d="M 8 14.5 Q 12 17 16 14.5" fill="none" stroke="#d4a04a" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span class="small-number" style="color: var(--text-muted);">4/5</span>
+          </div>
+        </div>
+        <!-- Energy -->
+        <div style="background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 14px;">
+          <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e8c47a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+            <span class="label-text">Energy</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <svg viewBox="0 0 24 24" width="28" height="28"><rect x="3" y="6" width="16" height="12" rx="2" fill="none" stroke="#d4a04a" stroke-width="1.5"/><path d="M19 10L21 10L21 14L19 14" fill="none" stroke="#d4a04a" stroke-width="1.5" stroke-linecap="round"/><rect x="5" y="8.5" width="11.5" height="7" rx="0.5" fill="#d4a04a" opacity="0.85"/></svg>
+            <span class="small-number" style="color: var(--text-muted);">4/5</span>
+          </div>
+        </div>
+        <!-- Water -->
+        <div style="background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 14px;">
+          <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7faabc" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+            </svg>
+            <span class="label-text">Water</span>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 4px;">
+            <span class="small-number" style="color: var(--dawn); font-size: 18px;">1,250</span>
+            <span style="font-size: 10px; color: var(--text-muted);">/ 3000 ml</span>
+          </div>
+        </div>
+        <!-- Calories -->
+        <div style="background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 14px;">
+          <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e8c47a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
+            </svg>
+            <span class="label-text">Calories</span>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 4px;">
+            <span class="small-number" style="color: var(--gold); font-size: 18px;">1,847</span>
+            <span style="font-size: 10px; color: var(--text-muted);">/ 2358</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Readiness Card (existing, kept) ── -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon" style="background: rgba(232,196,122,0.1);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e8c47a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+        </div>
+        <span class="card-title">Readiness</span>
+      </div>
+      <div class="card-body">
+        <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 52px; font-weight: 800; letter-spacing: -3px; color: var(--signal-good);">84</span>
+          <div>
+            <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 2px;">Good recovery</div>
+            <div style="font-size: 11px; color: var(--text-muted);">Sleep 8/10 · RHR 6/10 · Load 9/10</div>
+          </div>
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">
+          Strong recovery overnight. HRV trending up over the last 3 days. Good day for a harder session.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Activity Timeline Chart ── -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon" style="background: rgba(180,112,80,0.1);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b47050" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/>
+          </svg>
+        </div>
+        <span class="card-title">Activity — 14 days</span>
+      </div>
+      <div class="card-body" style="padding-bottom: 14px;">
+        <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+          <div style="min-width: 320px;">
+            <!-- Legend -->
+            <div style="display: flex; gap: 12px; margin-bottom: 10px; flex-wrap: wrap;">
+              <span style="display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-muted);">
+                <span style="width: 8px; height: 8px; border-radius: 2px; background: var(--sand); display: inline-block;"></span>Run
+              </span>
+              <span style="display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-muted);">
+                <span style="width: 8px; height: 8px; border-radius: 2px; background: var(--rust); display: inline-block;"></span>Strength
+              </span>
+              <span style="display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-muted);">
+                <span style="width: 8px; height: 8px; border-radius: 2px; background: var(--dawn); display: inline-block;"></span>Ride
+              </span>
+              <span style="display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-muted);">
+                <span style="width: 8px; height: 8px; border-radius: 2px; background: var(--ember); display: inline-block;"></span>Sauna
+              </span>
+            </div>
+            <canvas id="activityChart" height="140"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Mood & Energy Chart ── -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon" style="background: rgba(212,160,74,0.1);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d4a04a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+          </svg>
+        </div>
+        <span class="card-title">Mood & Energy — 30 days</span>
+      </div>
+      <div class="card-body" style="padding-bottom: 14px;">
+        <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+          <div style="min-width: 320px;">
+            <div style="display: flex; gap: 12px; margin-bottom: 10px;">
+              <span style="display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-muted);">
+                <span style="width: 16px; height: 2px; background: var(--ochre); display: inline-block;"></span>Mood
+              </span>
+              <span style="display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-muted);">
+                <span style="width: 16px; height: 2px; background: var(--gold); display: inline-block;"></span>Energy
+              </span>
+            </div>
+            <canvas id="moodChart" height="140"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Water & Nutrition Chart ── -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon" style="background: rgba(127,170,188,0.1);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7faabc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+          </svg>
+        </div>
+        <span class="card-title">Water & Nutrition — 14 days</span>
+      </div>
+      <div class="card-body" style="padding-bottom: 14px;">
+        <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+          <div style="min-width: 320px;">
+            <div style="display: flex; gap: 12px; margin-bottom: 10px;">
+              <span style="display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-muted);">
+                <span style="width: 8px; height: 8px; border-radius: 2px; background: rgba(127,170,188,0.7); display: inline-block;"></span>Water (ml)
+              </span>
+              <span style="display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-muted);">
+                <span style="width: 16px; height: 2px; background: var(--ochre); display: inline-block;"></span>Calories
+              </span>
+            </div>
+            <canvas id="waterNutritionChart" height="140"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Collapsed: Vitals + Streaks ── -->
+    <div style="margin: 0 12px 12px;">
+      <details style="background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden;">
+        <summary style="padding: 14px 16px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-muted); list-style: none; display: flex; align-items: center; gap: 8px;">
+          <span>▸</span> More stats (Vitals &amp; Streaks)
+        </summary>
+        <div style="padding: 12px 16px 16px; border-top: 1px solid var(--border-subtle);">
+          <div style="font-size: 12px; color: var(--text-muted); font-style: italic;">
+            VitalsCard and StreaksCard will render here — currently under maintenance.
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div style="height: 24px;"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     EMOJI BUTTON STYLES + JS
+════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════
+     BOTTOM NAV BAR — sticky, gradient, archive icons
+════════════════════════════════════════════════════════════ -->
+<div id="bottom-nav">
+  <!-- Gradient fade above nav -->
+  <div id="nav-gradient"></div>
+  <!-- Nav bar itself -->
+  <div id="nav-bar">
+
+    <!-- Dashboard -->
+    <button class="nav-item active" onclick="setNavActive(this)">
+      <div class="nav-icon">
+        <!-- icon-body: person silhouette -->
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+          <circle cx="12" cy="5" r="2.5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M6 21L6 14Q6 9 12 9Q18 9 18 14L18 21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </button>
+
+    <!-- Calendar -->
+    <button class="nav-item" onclick="setNavActive(this)">
+      <div class="nav-icon">
+        <!-- icon-alarm: clock face with tick marks -->
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+          <circle cx="12" cy="13" r="8" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="12" y1="13" x2="15" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M5 5L3 7M19 5L21 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </button>
+
+    <!-- Log -->
+    <button class="nav-item" onclick="setNavActive(this)">
+      <div class="nav-icon">
+        <!-- icon-feather: quill/feather -->
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+          <line x1="4" y1="20" x2="20" y2="4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M20 4Q14 4 10 8Q6 12 6 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M20 4Q20 10 16 14Q12 18 6 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </button>
+
+    <!-- Trends -->
+    <button class="nav-item" onclick="setNavActive(this)">
+      <div class="nav-icon">
+        <!-- icon-pyramid: triangle chart -->
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+          <path d="M12 3L3 21L21 21Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <line x1="6" y1="16" x2="18" y2="16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </button>
+
+  </div>
+</div>
+
+<style>
+  /* ── Bottom nav ── */
+  #bottom-nav {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 375px; z-index: 100; pointer-events: none;
+  }
+  #nav-gradient {
+    height: 40px;
+    background: linear-gradient(to bottom, transparent, var(--bg-base));
+    pointer-events: none;
+  }
+  #nav-bar {
+    display: flex; align-items: stretch;
+    background: var(--bg-card);
+    border-top: 1px solid var(--border-default);
+    padding: 8px 4px calc(8px + env(safe-area-inset-bottom));
+    pointer-events: all;
+  }
+  .nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 8px 4px; background: transparent; border: none; cursor: pointer;
+    color: var(--text-muted); transition: color 0.15s;
+    border-radius: var(--radius-sm);
+    position: relative;
+  }
+  .nav-item.active { color: var(--ochre); }
+  .nav-item.active::before {
+    content: '';
+    position: absolute; inset: 2px;
+    background: linear-gradient(135deg, rgba(212,160,74,0.12) 0%, rgba(232,196,122,0.06) 100%);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(212,160,74,0.15);
+  }
+  .nav-icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; }
+
+  /* ── Meal chips ── */
+  .meal-chip {
+    display: flex; align-items: center; gap: 6px; white-space: nowrap; flex-shrink: 0;
+    background: var(--bg-elevated); border: 1px solid var(--border-default);
+    border-radius: var(--radius-pill); padding: 6px 12px;
+    font-size: 12px; font-weight: 600; color: var(--text-secondary);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .meal-chip:hover { border-color: var(--ochre); color: var(--text-primary); }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<script>
+  function setNavActive(btn) {
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  // ── Food & Nutrition state ──
+  let savedMealsDB = [
+    { id: 1, name: 'Eggs on toast',   kcal: 320, p: 18, c: 28, f: 14 },
+    { id: 2, name: 'Post-gym shake',  kcal: 280, p: 32, c: 22, f:  6 },
+    { id: 3, name: 'Chicken wrap',    kcal: 480, p: 32, c: 42, f: 18 },
+    { id: 4, name: 'Steak & veg',     kcal: 620, p: 52, c: 18, f: 36 },
+    { id: 5, name: 'Overnight oats',  kcal: 380, p: 14, c: 58, f: 10 },
+  ];
+  let todayLog = [];
+  let nextLogId = 1;
+
+  // AI "parse" mock data keyed by keywords
+  const aiMockResults = [
+    { name: 'Banana',         kcal: 89,  p: 1,  c: 23, f: 0 },
+    { name: 'Flat white',     kcal: 120, p: 6,  c: 10, f: 5 },
+    { name: 'Almonds (30g)',  kcal: 174, p: 6,  c: 6,  f: 15 },
+    { name: 'Greek yoghurt',  kcal: 100, p: 10, c: 8,  f: 3 },
+    { name: 'Protein shake',  kcal: 160, p: 30, c: 6,  f: 3 },
+    { name: 'Sparkling water',kcal: 0,   p: 0,  c: 0,  f: 0 },
+  ];
+
+  function renderMealChips() {
+    const row = document.getElementById('meal-chips-row');
+    if (!row) return;
+    row.innerHTML = savedMealsDB.map(m => `
+      <button class="meal-chip" onclick="addToLog(${JSON.stringify(m).replace(/"/g,'&quot;')})">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0; opacity:0.7">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+        ${m.name}
+        <span style="font-size:10px; color:var(--text-muted); margin-left:2px;">${m.kcal}</span>
+      </button>`).join('');
+  }
+
+  function addToLog(item) {
+    todayLog.push({ ...item, logId: nextLogId++ });
+    renderTodayLog();
+    renderTotals();
+    // Flash feedback on chip
+    event && event.currentTarget && flashEl(event.currentTarget);
+  }
+
+  function removeFromLog(logId) {
+    todayLog = todayLog.filter(e => e.logId !== logId);
+    renderTodayLog();
+    renderTotals();
+  }
+
+  function saveToLibrary(item) {
+    // Don't duplicate by name
+    if (savedMealsDB.find(m => m.name.toLowerCase() === item.name.toLowerCase())) return;
+    savedMealsDB.push({ ...item, id: Date.now() });
+    renderMealChips();
+  }
+
+  function renderTodayLog() {
+    const list = document.getElementById('today-log-list');
+    const count = document.getElementById('log-count');
+    const empty = document.getElementById('log-empty');
+    if (!list) return;
+    if (todayLog.length === 0) {
+      list.innerHTML = '<div id="log-empty" style="font-size:12px; color:var(--text-muted); padding:6px 0;">Nothing logged yet</div>';
+      if (count) count.textContent = '0 items';
+      return;
+    }
+    if (count) count.textContent = todayLog.length + ' item' + (todayLog.length !== 1 ? 's' : '');
+    list.innerHTML = todayLog.map(e => `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:7px 10px; background:var(--bg-elevated); border-radius:var(--radius-sm);">
+        <span style="font-size:13px; color:var(--text-primary); flex:1;">${e.name}</span>
+        <span class="small-number" style="color:var(--text-muted); margin-right:10px;">${e.kcal} kcal</span>
+        <button onclick="removeFromLog(${e.logId})" style="background:none; border:none; cursor:pointer; color:var(--text-muted); padding:0; line-height:1; font-size:14px; opacity:0.6;">✕</button>
+      </div>`).join('');
+  }
+
+  function renderTotals() {
+    const totals = todayLog.reduce((acc, e) => ({
+      kcal: acc.kcal + e.kcal, p: acc.p + e.p, c: acc.c + e.c, f: acc.f + e.f
+    }), { kcal: 0, p: 0, c: 0, f: 0 });
+    const targets = { kcal: 2358, p: 180, c: 260, f: 80 };
+    const pct = (v, t) => Math.min(100, Math.round(v / t * 100)) + '%';
+    const el = id => document.getElementById(id);
+    if (el('total-kcal'))   el('total-kcal').textContent   = totals.kcal.toLocaleString();
+    if (el('total-protein'))el('total-protein').textContent = totals.p + 'g';
+    if (el('total-carbs'))  el('total-carbs').textContent   = totals.c + 'g';
+    if (el('total-fat'))    el('total-fat').textContent     = totals.f + 'g';
+    if (el('kcal-bar'))     el('kcal-bar').style.width      = pct(totals.kcal, targets.kcal);
+    if (el('protein-bar'))  el('protein-bar').style.width   = pct(totals.p, targets.p);
+    if (el('carbs-bar'))    el('carbs-bar').style.width     = pct(totals.c, targets.c);
+    if (el('fat-bar'))      el('fat-bar').style.width       = pct(totals.f, targets.f);
+  }
+
+  function processFood() {
+    const input = document.getElementById('food-input').value.trim();
+    if (!input) return;
+    document.getElementById('food-spinner').style.display = 'block';
+    document.getElementById('food-parsed').style.display = 'none';
+    setTimeout(() => {
+      document.getElementById('food-spinner').style.display = 'none';
+      // Mock: pick 2-3 items from aiMockResults based on input length
+      const results = aiMockResults.slice(0, Math.min(4, Math.max(2, input.split(',').length)));
+      renderParsedItems(results);
+      document.getElementById('food-parsed').style.display = 'block';
+    }, 1200);
+  }
+
+  function renderParsedItems(items) {
+    const container = document.getElementById('parsed-items');
+    if (!container) return;
+    container.innerHTML = items.map((item, i) => `
+      <div style="display:flex; align-items:center; gap:8px; padding:8px 10px; background:var(--bg-elevated); border-radius:var(--radius-sm);" id="parsed-row-${i}">
+        <div style="flex:1;">
+          <div style="font-size:13px; color:var(--text-primary);">${item.name}</div>
+          <div class="small-number" style="color:var(--text-muted); font-size:11px;">${item.kcal} kcal · P${item.p} C${item.c} F${item.f}</div>
+        </div>
+        <button class="btn-ghost" style="font-size:11px; padding:5px 9px; white-space:nowrap;"
+          onclick="saveToLibrary(${JSON.stringify(item).replace(/"/g,'&quot;')}); this.textContent='★ Saved'; this.style.color='var(--ochre)';">
+          ★ Save
+        </button>
+        <button class="btn-primary" style="font-size:11px; padding:5px 9px; white-space:nowrap;"
+          onclick="addToLog(${JSON.stringify(item).replace(/"/g,'&quot;')}); document.getElementById('parsed-row-${i}').style.opacity='0.4'; this.textContent='✓ Added'; this.disabled=true;">
+          + Add
+        </button>
+      </div>`).join('');
+  }
+
+  function flashEl(el) {
+    el.style.borderColor = 'var(--ochre)';
+    el.style.color = 'var(--ochre)';
+    setTimeout(() => { el.style.borderColor = ''; el.style.color = ''; }, 600);
+  }
+
+  // Init on load
+  document.addEventListener('DOMContentLoaded', () => {
+    renderMealChips();
+    renderTodayLog();
+    renderTotals();
+  });
+</script>
+
+<style>
+  .icon-btn {
+    flex: 1; aspect-ratio: 1; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-default); background: var(--bg-elevated);
+    cursor: pointer; transition: all 0.15s; opacity: 0.35;
+    display: flex; align-items: center; justify-content: center; padding: 0;
+  }
+  .icon-btn.active {
+    opacity: 1; border-color: var(--ochre); transform: scale(1.08);
+    background: rgba(212,160,74,0.08);
+  }
+  .icon-btn:hover:not(.active) { opacity: 0.65; }
+</style>
+
+<script>
+  // ── Screen switching ──
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.screen-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('screen-' + id).classList.add('active');
+    event.target.classList.add('active');
+    if (id === 'dashboard') setTimeout(initCharts, 50);
+  }
+
+  // ── Card accordion ──
+  function toggleCard(id) {
+    const body = document.getElementById('body-' + id);
+    const chevron = document.getElementById('chevron-' + id);
+    const isOpen = body.style.display !== 'none';
+    body.style.display = isOpen ? 'none' : 'block';
+    chevron.textContent = isOpen ? '▶' : '▼';
+  }
+
+  // ── Icon scale selection ──
+  function selectScale(btn) {
+    const group = btn.dataset.group;
+    document.querySelectorAll(`[data-group="${group}"]`).forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    // Update today label
+    const moodBtn = document.querySelector('[data-group="mood"].active');
+    const energyBtn = document.querySelector('[data-group="energy"].active');
+    if (moodBtn && energyBtn) {
+      document.getElementById('mood-today-label').textContent = `mood ${moodBtn.dataset.val} · energy ${energyBtn.dataset.val}`;
+    }
+  }
+
+  function saveMood() {
+    const moodBtn = document.querySelector('[data-group="mood"].active');
+    const energyBtn = document.querySelector('[data-group="energy"].active');
+    if (!moodBtn || !energyBtn) return;
+    const confirmed = document.getElementById('mood-confirmed');
+    confirmed.style.display = 'flex';
+    document.getElementById('mood-confirmed-text').textContent = `Saved — mood ${moodBtn.dataset.val} · energy ${energyBtn.dataset.val}`;
+  }
+
+  // ── Water ──
+  let waterTotal = 1250;
+  function addWater(ml) {
+    waterTotal += ml;
+    document.getElementById('water-total').textContent = waterTotal.toLocaleString();
+    document.getElementById('water-header-total').textContent = waterTotal.toLocaleString() + ' ml';
+    const pct = Math.min(100, (waterTotal / 3000) * 100);
+    document.getElementById('water-fill').style.height = pct + '%';
+    // Add log entry
+    const list = document.getElementById('water-log-list');
+    const now = new Date();
+    const time = now.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+    const entry = document.createElement('div');
+    entry.style.cssText = 'display:flex;justify-content:space-between;align-items:center;';
+    entry.innerHTML = `<span style="font-size:12px;color:var(--text-muted)">${time}</span><span class="small-number" style="color:var(--text-secondary)">${ml} ml</span>`;
+    list.prepend(entry);
+  }
+
+  // ── Charts ──
+  Chart.defaults.color = '#7a7060';
+  Chart.defaults.borderColor = '#1a1914';
+  Chart.defaults.font.family = 'Inter';
+  Chart.defaults.font.size = 10;
+
+  let chartsInited = false;
+  function initCharts() {
+    if (chartsInited) return;
+    chartsInited = true;
+
+    // ── Activity Chart ──
+    const actDates = ['20 Feb','21','22','23','24','25','26','27','28','1 Mar','2','3','4','5','6'];
+    const actCtx = document.getElementById('activityChart').getContext('2d');
+    new Chart(actCtx, {
+      type: 'bar',
+      data: {
+        labels: actDates,
+        datasets: [
+          { label: 'Run', data: [1,0,0,1,0,1,0,0,1,0,0,0,1,0,0], backgroundColor: '#b8a878', stack: 'a' },
+          { label: 'Strength', data: [0,1,0,0,1,0,1,0,0,1,0,1,0,1,0], backgroundColor: '#b47050', stack: 'a' },
+          { label: 'Ride', data: [0,0,1,0,0,0,0,1,0,0,0,0,0,0,1], backgroundColor: '#7faabc', stack: 'a' },
+          { label: 'Sauna', data: [1,1,0,1,1,0,1,1,1,0,1,1,1,1,1], backgroundColor: '#c45a4a', stack: 'a' }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: {
+          title: items => items[0].label,
+          label: item => item.dataset.label + ': ' + item.raw
+        }}},
+        scales: {
+          x: { stacked: true, grid: { display: false }, ticks: { maxRotation: 0 } },
+          y: { stacked: true, display: false, min: 0, max: 3 }
+        },
+        animation: { duration: 400 }
+      }
+    });
+
+    // ── Mood/Energy Chart ──
+    const moodDates = Array.from({length: 14}, (_, i) => {
+      const d = new Date(); d.setDate(d.getDate() - 13 + i);
+      return d.getDate() + '/' + (d.getMonth()+1);
+    });
+    const moodCtx = document.getElementById('moodChart').getContext('2d');
+    new Chart(moodCtx, {
+      type: 'line',
+      data: {
+        labels: moodDates,
+        datasets: [
+          {
+            label: 'Mood', data: [3,4,3,5,4,3,4,4,3,5,4,3,4,4],
+            borderColor: '#d4a04a', backgroundColor: 'rgba(212,160,74,0.08)',
+            borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#d4a04a',
+            tension: 0.4, fill: false
+          },
+          {
+            label: 'Energy', data: [2,3,4,4,3,2,4,5,4,4,3,4,5,4],
+            borderColor: '#e8c47a', backgroundColor: 'rgba(232,196,122,0.08)',
+            borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#e8c47a',
+            tension: 0.4, fill: false
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { maxTicksLimit: 7 } },
+          y: { min: 1, max: 5, grid: { color: '#1a1914' }, ticks: { stepSize: 1 } }
+        },
+        animation: { duration: 400 }
+      }
+    });
+
+    // ── Water & Nutrition Chart ──
+    const wn14 = Array.from({length: 14}, (_, i) => {
+      const d = new Date(); d.setDate(d.getDate() - 13 + i);
+      return d.getDate() + '/' + (d.getMonth()+1);
+    });
+    const wnCtx = document.getElementById('waterNutritionChart').getContext('2d');
+    new Chart(wnCtx, {
+      type: 'bar',
+      data: {
+        labels: wn14,
+        datasets: [
+          {
+            label: 'Water (ml)', type: 'bar',
+            data: [1800, 2200, 3000, 1500, 2800, 2400, 0, 2600, 3000, 1900, 2100, 2700, 2500, 1250],
+            backgroundColor: 'rgba(127,170,188,0.65)',
+            yAxisID: 'yWater'
+          },
+          {
+            label: 'Calories', type: 'line',
+            data: [2100, 1950, 2350, 1800, 2280, 2050, 0, 2400, 2150, 1990, 2300, 2180, 2050, 1847],
+            borderColor: '#d4a04a', backgroundColor: 'transparent',
+            borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#d4a04a',
+            tension: 0.3, yAxisID: 'yCalories'
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { maxTicksLimit: 7 } },
+          yWater: { position: 'left', max: 4000, grid: { color: '#1a1914' }, ticks: { callback: v => v >= 1000 ? (v/1000)+'L' : v } },
+          yCalories: { position: 'right', min: 0, max: 3000, grid: { display: false }, ticks: { callback: v => v + ' kcal' } }
+        },
+        animation: { duration: 400 }
+      }
+    });
+  }
+</script>
+</body>
+</html>

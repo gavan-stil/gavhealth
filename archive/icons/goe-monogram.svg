@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+  <!-- GOE Monogram — Concentric circles with crossbar -->
+  <!-- Outer ring = O, inner gap circle = G, crossbar from G extends through -->
+  <g transform="translate(40, 40)">
+    <!-- Outer circle (O) -->
+    <circle cx="0" cy="0" r="34" fill="none" stroke="#e8c47a" stroke-width="1.5"/>
+    <!-- Inner arc (G) — gap at 2 o'clock -->
+    <path d="M 18 -9 A 20 20 0 1 0 17 10" fill="none" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- Crossbar -->
+    <line x1="0" y1="0" x2="20" y2="0" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- E dot -->
+    <circle cx="26" cy="0" r="2" fill="#e8c47a"/>
+  </g>
+</svg>

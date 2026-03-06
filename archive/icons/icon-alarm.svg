@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- Alarm: bell with clapper and top ears -->
+  <path d="M 12 3 C 8 3 5 6.5 5 10 L 5 15 L 3 17 L 21 17 L 19 15 L 19 10 C 19 6.5 16 3 12 3 Z" fill="none" stroke="#7FAABC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 10 17 C 10 19 10.9 20 12 20 C 13.1 20 14 19 14 17" fill="none" stroke="#7FAABC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="5" y1="3" x2="2" y2="6" stroke="#7FAABC" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="19" y1="3" x2="22" y2="6" stroke="#7FAABC" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

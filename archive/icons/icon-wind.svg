@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- Wind: Three flowing curves — breath/airflow -->
+  <path d="M 2 8 Q 6 5 10 8 Q 14 11 18 8 Q 20 6.5 21 7" fill="none" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M 2 12 Q 5 9 8 12 Q 11 15 14 12 Q 16 10.5 17 11" fill="none" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M 2 16 Q 5.5 13 9 16 Q 12.5 19 16 16 Q 18 14.5 19 15" fill="none" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

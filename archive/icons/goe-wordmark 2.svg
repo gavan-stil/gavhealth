@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100" width="400" height="100">
+  <!-- GOE Wordmark — Monoline geometric letterforms -->
+  <!-- Stroke: #e8c47a, 1.8px, round caps, no fills -->
+
+  <!-- G: Near-complete circle with gap at 2 o'clock, horizontal crossbar -->
+  <g transform="translate(100, 50)">
+    <!-- Circle arc from ~30° gap at 2 o'clock position -->
+    <!-- Arc from 60° (2 o'clock gap end) around to 30° (2 o'clock gap start) -->
+    <path d="M 12.99,-25.98 A 30,30 0 1,0 25.98,-15"
+          fill="none" stroke="#e8c47a" stroke-width="1.8" stroke-linecap="round"/>
+    <!-- Horizontal crossbar from center to right edge -->
+    <line x1="0" y1="0" x2="30" y2="0"
+          stroke="#e8c47a" stroke-width="1.8" stroke-linecap="round"/>
+  </g>
+
+  <!-- O: Perfect circle -->
+  <g transform="translate(200, 50)">
+    <circle cx="0" cy="0" r="30"
+            fill="none" stroke="#e8c47a" stroke-width="1.8"/>
+  </g>
+
+  <!-- E: Three horizontal lines, no vertical bar, dot at middle line terminus -->
+  <g transform="translate(300, 50)">
+    <!-- Top line (full width) -->
+    <line x1="-25" y1="-28" x2="25" y2="-28"
+          stroke="#e8c47a" stroke-width="1.8" stroke-linecap="round"/>
+    <!-- Middle line (shorter) -->
+    <line x1="-25" y1="0" x2="15" y2="0"
+          stroke="#e8c47a" stroke-width="1.8" stroke-linecap="round"/>
+    <!-- Bottom line (full width) -->
+    <line x1="-25" y1="28" x2="25" y2="28"
+          stroke="#e8c47a" stroke-width="1.8" stroke-linecap="round"/>
+    <!-- Small filled circle at terminus of middle line -->
+    <circle cx="18" cy="0" r="2" fill="#e8c47a"/>
+  </g>
+</svg>

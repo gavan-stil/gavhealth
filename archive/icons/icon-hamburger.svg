@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- Hamburger menu: three horizontal lines with rounded caps -->
+  <line x1="4" y1="7" x2="20" y2="7" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="4" y1="12" x2="20" y2="12" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="4" y1="17" x2="20" y2="17" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

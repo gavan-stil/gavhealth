@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" width="360" height="80">
+  <!-- GOE Wordmark — Light variant (warm white on transparent) -->
+  <g transform="translate(40, 40)">
+    <path d="M 28 -14 A 30 30 0 1 0 26 15" fill="none" stroke="#e8e2d8" stroke-width="1.8" stroke-linecap="round"/>
+    <line x1="0" y1="0" x2="28" y2="0" stroke="#e8e2d8" stroke-width="1.8" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(140, 40)">
+    <circle cx="0" cy="0" r="30" fill="none" stroke="#e8e2d8" stroke-width="1.8"/>
+  </g>
+  <g transform="translate(240, 40)">
+    <line x1="-20" y1="-26" x2="20" y2="-26" stroke="#e8e2d8" stroke-width="1.8" stroke-linecap="round"/>
+    <line x1="-20" y1="0" x2="12" y2="0" stroke="#e8e2d8" stroke-width="1.8" stroke-linecap="round"/>
+    <line x1="-20" y1="26" x2="20" y2="26" stroke="#e8e2d8" stroke-width="1.8" stroke-linecap="round"/>
+    <circle cx="18" cy="0" r="2.5" fill="#e8e2d8"/>
+  </g>
+</svg>

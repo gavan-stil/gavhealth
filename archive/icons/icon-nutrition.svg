@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- Nutrition: Fork — three vertical tines + handle -->
+  <line x1="8" y1="4" x2="8" y2="10" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="12" y1="4" x2="12" y2="10" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="16" y1="4" x2="16" y2="10" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M 8 10 Q 8 14 12 14 Q 16 14 16 10" fill="none" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="12" y1="14" x2="12" y2="20" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { useTrendsData } from "@/hooks/useTrendsData";
 import type { TimeRange } from "@/hooks/useTrendsData";
+import { useStrengthTrends } from "@/hooks/useStrengthTrends";
 import TimeRangeSelector from "@/components/trends/TimeRangeSelector";
 import RecoverySparklines from "@/components/trends/RecoverySparklines";
 import PerformanceOverlay from "@/components/trends/PerformanceOverlay";
 import CorrelationSummary from "@/components/trends/CorrelationSummary";
+import WorkoutVolumeChart from "@/components/trends/WorkoutVolumeChart";
+import ExerciseProgressSection from "@/components/trends/ExerciseProgressSection";
 import { AlertTriangle } from "lucide-react";
 
 /* ── Inline skeleton (avoids modifying dashboard CardSkeleton) ── */
@@ -101,6 +104,7 @@ function TrendsSkeleton() {
 export default function TrendsPage() {
   const [days, setDays] = useState<TimeRange>(30);
   const { data, loading, error, refetch } = useTrendsData(days);
+  const strengthTrends = useStrengthTrends(days);
 
   return (
     <div
@@ -169,6 +173,14 @@ export default function TrendsPage() {
           <RecoverySparklines data={data} />
           <PerformanceOverlay data={data} />
           <CorrelationSummary data={data} />
+          <WorkoutVolumeChart
+            sessions={strengthTrends.sessions}
+            loading={strengthTrends.loading}
+            error={strengthTrends.error}
+            refetch={strengthTrends.refetch}
+            days={days}
+          />
+          <ExerciseProgressSection days={days} />
         </>
       )}
     </div>

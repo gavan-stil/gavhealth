@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GOE Health — Calendar Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Brand tokens ── */
+:root {
+  --bg-base: #0d0d0a;
+  --bg-card: #14130f;
+  --bg-card-hover: #1c1b15;
+  --bg-elevated: #1e1d18;
+  --border-default: #222018;
+  --border-subtle: #1a1914;
+  --text-primary: #f0ece4;
+  --text-secondary: #b0a890;
+  --text-tertiary: #9a9080;
+  --text-muted: #7a7060;
+  --ochre: #d4a04a;
+  --ochre-light: #e8c47a;
+  --ochre-dim: #a07830;
+  --gold: #e8c47a;
+  --dawn: #7FAABC;
+  --clay: #c4856a;
+  --sand: #b8a878;
+  --rust: #b47050;
+  --ember: #c45a4a;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-pill: 100px;
+  --settle: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px 12px 100px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Header ── */
+.cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0 14px;
+}
+.cal-header h2 {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+.cal-nav {
+  display: flex;
+  gap: 6px;
+}
+.cal-nav button {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 120ms;
+}
+.cal-nav button:active { background: var(--bg-card-hover); }
+
+/* ── Toggle bar ── */
+.toggle-bar {
+  display: flex;
+  gap: 6px;
+  padding: 8px 0;
+  flex-wrap: wrap;
+}
+.toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-default);
+  background: var(--bg-card);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 120ms;
+  -webkit-tap-highlight-color: transparent;
+}
+.toggle-btn .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tc);
+  opacity: 0.4;
+  transition: opacity 120ms;
+}
+.toggle-btn.active {
+  border-color: var(--tc);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--tc) 12%, var(--bg-card));
+}
+.toggle-btn.active .dot { opacity: 1; }
+.meta-toggle {
+  border-color: var(--border-subtle);
+  font-size: 10px;
+  padding: 5px 10px;
+}
+.meta-toggle.active {
+  border-color: var(--ochre-dim);
+  color: var(--ochre-light);
+  background: color-mix(in srgb, var(--ochre) 8%, var(--bg-card));
+}
+
+/* ── Sub-toggle bar ── */
+.sub-toggle-bar {
+  display: none;
+  gap: 6px;
+  padding: 4px 0 8px;
+}
+.sub-toggle-bar.visible { display: flex; }
+.sub-toggle-btn {
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 120ms;
+}
+.sub-toggle-btn.active {
+  border-color: var(--ochre-dim);
+  color: var(--ochre-light);
+}
+
+/* ── Day names row ── */
+.day-names {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr) 52px;
+  gap: 2px;
+  padding: 8px 0 4px;
+}
+.day-names span {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.day-names .ws-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+/* ── Calendar grid ── */
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr) 52px;
+  gap: 2px;
+}
+
+/* ── Day cell ── */
+.cal-cell {
+  background: var(--bg-card);
+  border-radius: 6px;
+  min-height: 80px;
+  padding: 4px;
+  position: relative;
+  cursor: pointer;
+  transition: background 120ms;
+  border: 1px solid transparent;
+}
+.cal-cell:active { background: var(--bg-card-hover); }
+.cal-cell.today { border-color: var(--ochre-dim); }
+.cal-cell.other-month { opacity: 0.3; }
+.cal-cell .date-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  padding: 1px 2px;
+}
+.cal-cell.today .date-num { color: var(--ochre-light); }
+
+/* ── Activity stack inside cell ── */
+.activity-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 3px;
+}
+.activity-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.activity-row .cat-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.activity-row .dur {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 400;
+  color: var(--text-muted);
+  line-height: 1;
+}
+.activity-row .detail-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  margin-left: auto;
+}
+
+/* ── Duration hidden state ── */
+.hide-duration .dur { display: none; }
+
+/* ── Week summary column ── */
+.week-summary {
+  background: var(--bg-card);
+  border-radius: 6px;
+  min-height: 80px;
+  padding: 4px 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  justify-content: center;
+}
+.ws-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.ws-row .cat-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.ws-row .ws-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  color: var(--text-muted);
+}
+
+/* ── Stats section ── */
+.stats-section {
+  padding: 12px 0 0;
+  display: none;
+}
+.stats-section.visible { display: block; }
+.stats-header {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 0 0 8px;
+}
+.stat-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+}
+.stat-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+}
+.stat-pill .cat-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.stat-pill .stat-label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+.stat-pill .stat-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.stat-pill .stat-unit {
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-left: -2px;
+}
+
+/* ── Pattern pills ── */
+.pattern-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.pattern-pill {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  text-align: center;
+  min-width: 80px;
+}
+.pattern-pill .pp-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+.pattern-pill .pp-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-top: 2px;
+}
+.pp-green { color: var(--ochre-light); }
+.pp-yellow { color: var(--ochre); }
+.pp-red { color: var(--clay); }
+
+/* ── Summary toggle ── */
+.summary-toggle {
+  display: flex;
+  gap: 6px;
+  padding: 10px 0 0;
+}
+.summary-toggle-btn {
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 120ms;
+}
+.summary-toggle-btn.active {
+  border-color: var(--ochre-dim);
+  color: var(--ochre-light);
+  background: color-mix(in srgb, var(--ochre) 8%, var(--bg-card));
+}
+
+/* ── Bottom sheet placeholder ── */
+.bottom-sheet-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 100;
+}
+.bottom-sheet-overlay.visible { display: block; }
+.bottom-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg-elevated);
+  border-radius: 20px 20px 0 0;
+  padding: 12px 16px 32px;
+  z-index: 101;
+  display: none;
+}
+.bottom-sheet.visible { display: block; }
+.bottom-sheet .handle {
+  width: 36px;
+  height: 4px;
+  background: var(--border-default);
+  border-radius: 2px;
+  margin: 0 auto 12px;
+}
+.bottom-sheet .bs-date {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+.bs-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.bs-item .cat-dot { width: 8px; height: 8px; border-radius: 50%; }
+.bs-item .bs-cat {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  flex: 1;
+}
+.bs-item .bs-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.bs-item .bs-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* ── Mockup label ── */
+.mockup-badge {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  background: var(--ochre-dim);
+  color: var(--bg-base);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  z-index: 200;
+}
+</style>
+</head>
+<body>
+
+<div class="mockup-badge">Mockup v1</div>
+
+<div id="calendar"></div>
+
+<div class="bottom-sheet-overlay" id="bsOverlay" onclick="closeSheet()"></div>
+<div class="bottom-sheet" id="bsSheet">
+  <div class="handle"></div>
+  <div class="bs-date" id="bsDate"></div>
+  <div id="bsContent"></div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════
+   GOE Health — Calendar Mockup
+   Demonstrates: 8-col grid, toggles,
+   sub-toggles, stats, patterns, day sheet
+   ════════════════════════════════════════════ */
+
+const CATEGORIES = {
+  weight:   { label: 'Weight',   color: '#e8c47a', subMetrics: ['kg'] },
+  sleep:    { label: 'Sleep',    color: '#7FAABC', subMetrics: ['deep%'] },
+  heart:    { label: 'Heart',    color: '#c4856a', subMetrics: ['bpm'] },
+  running:  { label: 'Running',  color: '#b8a878', subMetrics: ['km', 'pace'] },
+  strength: { label: 'Strength', color: '#b47050', subMetrics: ['sets'] },
+  sauna:    { label: 'Sauna',    color: '#c45a4a', subMetrics: ['temp'] },
+};
+const CAT_ORDER = ['weight','sleep','heart','running','strength','sauna'];
+
+// Toggle state
+let toggleState = {};
+CAT_ORDER.forEach(c => toggleState[c] = true);
+let showDuration = true;
+let subToggleState = {};
+let statsVisible = false;
+let patternsVisible = false;
+
+// Current month
+let currentYear = 2026;
+let currentMonth = 2; // March (0-indexed)
+
+// ── Mock data generator ──
+function seededRand(seed) {
+  let s = seed;
+  return () => { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+function generateMonthData(year, month) {
+  const data = {};
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const rand = seededRand(year * 100 + month);
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayData = {};
+
+    // Weight: ~60% of days
+    if (rand() < 0.6) {
+      dayData.weight = { dur: 0, kg: +(82 + rand() * 4).toFixed(1) };
+    }
+    // Sleep: ~90% of days
+    if (rand() < 0.9) {
+      const hrs = +(5.5 + rand() * 3).toFixed(1);
+      dayData.sleep = { dur: Math.round(hrs * 60), deep: Math.round(12 + rand() * 18) };
+    }
+    // Heart: ~85% of days
+    if (rand() < 0.85) {
+      dayData.heart = { dur: 0, bpm: Math.round(48 + rand() * 16) };
+    }
+    // Running: ~30%
+    if (rand() < 0.3) {
+      const mins = Math.round(20 + rand() * 50);
+      const km = +(3 + rand() * 12).toFixed(1);
+      dayData.running = { dur: mins, km, pace: +(mins / km).toFixed(1) };
+    }
+    // Strength: ~25%
+    if (rand() < 0.25) {
+      dayData.strength = { dur: Math.round(30 + rand() * 40), sets: Math.round(8 + rand() * 16) };
+    }
+    // Sauna: ~20%
+    if (rand() < 0.2) {
+      dayData.sauna = { dur: Math.round(10 + rand() * 20), temp: Math.round(75 + rand() * 15) };
+    }
+
+    if (Object.keys(dayData).length > 0) data[key] = dayData;
+  }
+  return data;
+}
+
+// ── Helpers ──
+function fmtTime(mins) {
+  if (!mins) return '';
+  if (mins < 60) return mins + 'm';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m ? `${h}h${m}m` : `${h}h`;
+}
+
+function getActiveCats() { return CAT_ORDER.filter(c => toggleState[c]); }
+function getIsolatedCat() {
+  const active = getActiveCats();
+  return active.length === 1 ? active[0] : null;
+}
+
+// ── Render ──
+function render() {
+  const data = generateMonthData(currentYear, currentMonth);
+  const monthName = new Date(currentYear, currentMonth, 1).toLocaleString('en', { month: 'long', year: 'numeric' });
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const startOffset = firstDay === 0 ? 6 : firstDay - 1; // Mon=0
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const activeCats = getActiveCats();
+  const isolated = getIsolatedCat();
+
+  // Collect stats
+  let stats = {};
+  CAT_ORDER.forEach(c => stats[c] = { count: 0, totalMins: 0, subVals: {} });
+  let activeDays = new Set();
+  let streak = 0, bestStreak = 0, curStreak = 0, restDays = 0;
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dd = data[key];
+    let hasActivity = false;
+    if (dd) {
+      CAT_ORDER.forEach(c => {
+        if (dd[c]) {
+          stats[c].count++;
+          stats[c].totalMins += dd[c].dur || 0;
+          if (c === 'running' || c === 'strength' || c === 'sauna') hasActivity = true;
+          // Sub-metric accumulation
+          CATEGORIES[c].subMetrics.forEach(sm => {
+            if (!stats[c].subVals[sm]) stats[c].subVals[sm] = { sum: 0, count: 0 };
+            const val = dd[c][sm] || dd[c][sm.replace('%','')] || 0;
+            if (val) { stats[c].subVals[sm].sum += val; stats[c].subVals[sm].count++; }
+          });
+        }
+      });
+    }
+    if (hasActivity) {
+      activeDays.add(d);
+      curStreak++;
+      if (curStreak > bestStreak) bestStreak = curStreak;
+    } else {
+      curStreak = 0;
+      restDays++;
+    }
+  }
+
+  // Build cells
+  let cellsHTML = '';
+  let weekCats = {}; // track per-week summary
+  CAT_ORDER.forEach(c => weekCats[c] = 0);
+  let dayInWeek = 0;
+
+  // Prev month padding
+  const prevMonthDays = new Date(currentYear, currentMonth, 0).getDate();
+  for (let i = 0; i < startOffset; i++) {
+    const d = prevMonthDays - startOffset + 1 + i;
+    cellsHTML += `<div class="cal-cell other-month"><span class="date-num">${d}</span></div>`;
+    dayInWeek++;
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dd = data[key];
+    const isToday = key === todayKey;
+
+    let stackHTML = '';
+    if (dd) {
+      activeCats.forEach(c => {
+        if (dd[c]) {
+          const dur = dd[c].dur ? fmtTime(dd[c].dur) : '';
+          let detailHTML = '';
+          if (isolated === c) {
+            // Show sub-metric detail
+            CATEGORIES[c].subMetrics.forEach(sm => {
+              if (subToggleState[sm]) {
+                const val = dd[c][sm] || dd[c][sm.replace('%','')];
+                if (val !== undefined) {
+                  let display = sm === 'pace' ? fmtTime(Math.round(val)) + '/km' :
+                                sm === 'km' ? val + 'km' :
+                                sm === 'kg' ? val + 'kg' :
+                                sm === 'deep%' || sm === 'deep' ? val + '%' :
+                                sm === 'bpm' ? val + 'bpm' :
+                                sm === 'sets' ? val + 's' :
+                                sm === 'temp' ? val + 'C' : val;
+                  detailHTML += `<span class="detail-val">${display}</span>`;
+                }
+              }
+            });
+          }
+          // For weight/heart: show value instead of duration
+          let displayDur = dur;
+          if (c === 'weight') displayDur = dd[c].kg + '';
+          else if (c === 'heart') displayDur = dd[c].bpm + '';
+
+          stackHTML += `<div class="activity-row">
+            <span class="cat-dot" style="background:${CATEGORIES[c].color}"></span>
+            <span class="dur">${displayDur}</span>
+            ${detailHTML}
+          </div>`;
+          weekCats[c] += dd[c].dur || 0;
+        }
+      });
+    }
+
+    cellsHTML += `<div class="cal-cell${isToday ? ' today' : ''}" onclick="openSheet('${key}')">
+      <span class="date-num">${d}</span>
+      <div class="activity-stack">${stackHTML}</div>
+    </div>`;
+
+    dayInWeek++;
+
+    // End of week (7 days) → add summary column
+    if (dayInWeek === 7) {
+      let wsHTML = '';
+      activeCats.forEach(c => {
+        if (weekCats[c] > 0 || (c === 'weight' || c === 'heart')) {
+          // For weight/heart show count instead of time
+          const display = (c === 'weight' || c === 'heart') ?
+            stats[c].count > 0 ? '' : '' :
+            fmtTime(weekCats[c]);
+          if (display) {
+            wsHTML += `<div class="ws-row">
+              <span class="cat-dot" style="background:${CATEGORIES[c].color}"></span>
+              <span class="ws-time">${display}</span>
+            </div>`;
+          }
+        }
+      });
+      cellsHTML += `<div class="week-summary">${wsHTML}</div>`;
+      dayInWeek = 0;
+      CAT_ORDER.forEach(c => weekCats[c] = 0);
+    }
+  }
+
+  // Pad remaining days + final week summary
+  if (dayInWeek > 0) {
+    const remaining = 7 - dayInWeek;
+    for (let i = 1; i <= remaining; i++) {
+      cellsHTML += `<div class="cal-cell other-month"><span class="date-num">${i}</span></div>`;
+    }
+    let wsHTML = '';
+    activeCats.forEach(c => {
+      if (weekCats[c] > 0) {
+        wsHTML += `<div class="ws-row">
+          <span class="cat-dot" style="background:${CATEGORIES[c].color}"></span>
+          <span class="ws-time">${fmtTime(weekCats[c])}</span>
+        </div>`;
+      }
+    });
+    cellsHTML += `<div class="week-summary">${wsHTML}</div>`;
+  }
+
+  // Toggle bar
+  let toggleHTML = '';
+  CAT_ORDER.forEach(c => {
+    const cls = toggleState[c] ? 'active' : '';
+    toggleHTML += `<button class="toggle-btn ${cls}" style="--tc:${CATEGORIES[c].color}" onclick="toggleCat('${c}')">
+      <span class="dot"></span>${CATEGORIES[c].label}
+    </button>`;
+  });
+  toggleHTML += `<button class="meta-toggle toggle-btn ${showDuration ? 'active' : ''}" onclick="toggleDuration()">Dur</button>`;
+
+  // Sub-toggle bar
+  let subHTML = '';
+  if (isolated) {
+    CATEGORIES[isolated].subMetrics.forEach(sm => {
+      const cls = subToggleState[sm] ? 'active' : '';
+      subHTML += `<button class="sub-toggle-btn ${cls}" onclick="toggleSub('${sm}')">${sm}</button>`;
+    });
+  }
+
+  // Stats pills
+  let statsHTML = '';
+  activeCats.forEach(c => {
+    const s = stats[c];
+    const timeStr = s.totalMins > 0 ? fmtTime(s.totalMins) : '';
+    statsHTML += `<div class="stat-pill">
+      <span class="cat-dot" style="background:${CATEGORIES[c].color}"></span>
+      <span class="stat-val">${s.count}</span>
+      ${timeStr ? `<span class="stat-unit">${timeStr}</span>` : ''}
+    </div>`;
+  });
+
+  // Pattern pills
+  const activeP = Math.round((activeDays.size / daysInMonth) * 100);
+  const activeClass = activeP >= 60 ? 'pp-green' : activeP >= 40 ? 'pp-yellow' : 'pp-red';
+  const streakClass = bestStreak >= 5 ? 'pp-green' : bestStreak >= 3 ? 'pp-yellow' : 'pp-red';
+  let totalTrainMins = stats.running.totalMins + stats.strength.totalMins + stats.sauna.totalMins;
+
+  const patternsHTML = `
+    <div class="pattern-pill"><div class="pp-val ${activeClass}">${activeP}%</div><div class="pp-label">Active Days</div></div>
+    <div class="pattern-pill"><div class="pp-val ${streakClass}">${bestStreak}</div><div class="pp-label">Best Streak</div></div>
+    <div class="pattern-pill"><div class="pp-val">${restDays}</div><div class="pp-label">Rest Days</div></div>
+    <div class="pattern-pill"><div class="pp-val">${fmtTime(totalTrainMins)}</div><div class="pp-label">Total Time</div></div>
+  `;
+
+  // Assemble
+  document.getElementById('calendar').innerHTML = `
+    <div class="cal-header">
+      <h2>${monthName}</h2>
+      <div class="cal-nav">
+        <button onclick="prevMonth()">&#8249;</button>
+        <button onclick="nextMonth()">&#8250;</button>
+      </div>
+    </div>
+    <div class="toggle-bar">${toggleHTML}</div>
+    <div class="sub-toggle-bar ${isolated ? 'visible' : ''}">${subHTML}</div>
+    <div class="day-names">
+      <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+      <span class="ws-label">Wk</span>
+    </div>
+    <div class="cal-grid ${showDuration ? '' : 'hide-duration'}">${cellsHTML}</div>
+    <div class="summary-toggle">
+      <button class="summary-toggle-btn ${statsVisible ? 'active' : ''}" onclick="toggleStats()">Stats</button>
+      <button class="summary-toggle-btn ${patternsVisible ? 'active' : ''}" onclick="togglePatterns()">Patterns</button>
+    </div>
+    <div class="stats-section ${statsVisible ? 'visible' : ''}">
+      <div class="stats-header">Activity Counts</div>
+      <div class="stat-pills">${statsHTML}</div>
+    </div>
+    <div class="stats-section ${patternsVisible ? 'visible' : ''}">
+      <div class="stats-header">Patterns</div>
+      <div class="pattern-row">${patternsHTML}</div>
+    </div>
+  `;
+}
+
+// ── Interactions ──
+function toggleCat(cat) {
+  toggleState[cat] = !toggleState[cat];
+  subToggleState = {};
+  render();
+}
+function toggleDuration() {
+  showDuration = !showDuration;
+  render();
+}
+function toggleSub(sm) {
+  subToggleState[sm] = !subToggleState[sm];
+  render();
+}
+function toggleStats() {
+  statsVisible = !statsVisible;
+  render();
+}
+function togglePatterns() {
+  patternsVisible = !patternsVisible;
+  render();
+}
+function prevMonth() {
+  currentMonth--;
+  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  render();
+}
+function nextMonth() {
+  currentMonth++;
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  render();
+}
+
+// ── Day detail bottom sheet ──
+const monthData = {};
+function openSheet(key) {
+  const data = generateMonthData(currentYear, currentMonth);
+  const dd = data[key];
+  if (!dd) return;
+
+  const dateObj = new Date(key + 'T00:00:00');
+  document.getElementById('bsDate').textContent = dateObj.toLocaleDateString('en', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  let html = '';
+  CAT_ORDER.forEach(c => {
+    if (dd[c]) {
+      const cat = CATEGORIES[c];
+      let valStr = '';
+      if (c === 'weight') valStr = dd[c].kg + ' kg';
+      else if (c === 'heart') valStr = dd[c].bpm + ' bpm';
+      else valStr = fmtTime(dd[c].dur);
+
+      let subStr = '';
+      if (c === 'running') subStr = `${dd[c].km}km  ${fmtTime(Math.round(dd[c].pace))}/km`;
+      else if (c === 'strength') subStr = `${dd[c].sets} sets`;
+      else if (c === 'sleep') subStr = `${dd[c].deep}% deep`;
+      else if (c === 'sauna') subStr = `${dd[c].temp}C`;
+
+      html += `<div class="bs-item">
+        <span class="cat-dot" style="background:${cat.color}"></span>
+        <span class="bs-cat">${cat.label}</span>
+        <div>
+          <div class="bs-val">${valStr}</div>
+          ${subStr ? `<div class="bs-sub">${subStr}</div>` : ''}
+        </div>
+      </div>`;
+    }
+  });
+
+  document.getElementById('bsContent').innerHTML = html;
+  document.getElementById('bsOverlay').classList.add('visible');
+  document.getElementById('bsSheet').classList.add('visible');
+}
+function closeSheet() {
+  document.getElementById('bsOverlay').classList.remove('visible');
+  document.getElementById('bsSheet').classList.remove('visible');
+}
+
+// Initial render
+render();
+</script>
+</body>
+</html>

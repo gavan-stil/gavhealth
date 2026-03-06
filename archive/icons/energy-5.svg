@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- Energy 5: 100% — battery outline fully filled -->
+  <rect x="3" y="6" width="16" height="12" rx="2" ry="2" fill="none" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 19 10 L 21 10 L 21 14 L 19 14" fill="none" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="5" y="8.5" width="12.5" height="7" rx="0.5" fill="#e8c47a" opacity="0.85"/>
+</svg>

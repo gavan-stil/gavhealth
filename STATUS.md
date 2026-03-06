@@ -24,11 +24,11 @@ Adding 4 new log tracking features (water, mood, energy, nutrition summary) and 
 
 | Task | Date | Summary |
 |------|------|---------|
+| T11 | 2026-03-07 | Strength Trends frontend — WorkoutVolumeChart + ExerciseProgressSection on Trends page |
 | T09 | 2026-03-06 | Manual Withings sync button (Calendar + Dashboard) |
 | T08 | 2026-03-06 | Habits history view |
 | T07 | 2026-03-06 | Strength → Workout linking in ActivityFeed |
 | T06 | 2026-03-06 | Calendar defaults to strength; activity feed polish |
-| T05 | 2026-03-06 | Favicon, 404 redirect, CardEmpty, chart scroll |
 
 Full history: `tasks/done/` + `CHANGELOG.md`
 
@@ -36,11 +36,12 @@ Full history: `tasks/done/` + `CHANGELOG.md`
 
 ## Backlog (top priority first)
 
-1. Sleep dashboard — stage bars, consistency %, debt tracker (ref: `archive/gavhealth[original-design].html`)
-2. Goal rings — 4 SVG rings (Sleep, Activity, Nutrition, Recovery) as dashboard hero
-3. Visual polish pass — card textures, micro-animations, Strava-style tabs
-4. PWA manifest — `manifest.json` + service worker (install as home screen app)
-5. Withings OAuth completion — user action required; sync currently pulls no new data
+1. T10 Water/Mood/Dashboard — WaterCard + MoodEnergyCard (needs backend endpoints) + Dashboard revamp
+2. Sleep dashboard — stage bars, consistency %, debt tracker (ref: `archive/gavhealth[original-design].html`)
+3. Goal rings — 4 SVG rings (Sleep, Activity, Nutrition, Recovery) as dashboard hero
+4. Visual polish pass — card textures, micro-animations, Strava-style tabs
+5. PWA manifest — `manifest.json` + service worker (install as home screen app)
+6. Withings OAuth completion — user action required; sync currently pulls no new data
 
 Full list with notes: `tasks/backlog.md`
 
@@ -68,6 +69,7 @@ Full list with notes: `tasks/backlog.md`
 |------|---------|
 | `reference/architecture.md` | Component tree, data patterns, build/deploy |
 | `reference/api.md` | All verified API endpoints (curl-tested 2026-03-06) |
+| `reference/withings-data.md` | Withings field map, DB gaps, backend tasks for T11 |
 | `reference/brand.md` | Design tokens v1.2: colors, typography, motion, spacing |
 | `reference/stack.md` | Tech stack, deployment credentials |
 | `specs/{dashboard,calendar,log,trends}.md` | Feature specs per route |

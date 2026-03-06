@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- Silent: speaker with off-slash -->
+  <path d="M 11 5 L 6 9 L 2 9 L 2 15 L 6 15 L 11 19 Z" fill="none" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="17" y1="9" x2="22" y2="14" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="22" y1="9" x2="17" y2="14" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

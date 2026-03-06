@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- Category Icon — Generic Template -->
+  <!-- Minimal line icon, monoline 1.5px, round caps/joins -->
+  <!-- Geometric: circles, arcs, straight lines only -->
+
+  <!-- Outer circle (category container) -->
+  <circle cx="12" cy="12" r="10"
+          fill="none" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Inner geometric cross/grid suggesting categorization -->
+  <!-- Horizontal line -->
+  <line x1="6" y1="12" x2="18" y2="12"
+        stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Short vertical tick marks suggesting grid/category divisions -->
+  <line x1="10" y1="8" x2="10" y2="16"
+        stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="14" y1="8" x2="14" y2="16"
+        stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Small decorative dot -->
+  <circle cx="17" cy="7" r="1.5" fill="#e8c47a"/>
+</svg>
