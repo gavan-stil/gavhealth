@@ -29,6 +29,11 @@ export interface FoodEntry {
   calories_kcal: number;
 }
 
+interface FoodApiResponse {
+  data: FoodEntry[];
+  total: number;
+}
+
 export interface TodayStats {
   mood: number | null;
   energy: number | null;
@@ -58,14 +63,19 @@ export default function useDashboardV2() {
   const activities = useFetch<ActivityFeedItem[]>('/api/activities/feed?days=14');
   const mood = useFetch<MoodEntry[]>('/api/mood?days=30');
   const water = useFetch<WaterEntry[]>('/api/water?days=14');
-  const food = useFetch<FoodEntry[]>('/api/food?days=14');
+  const foodRaw = useFetch<FoodApiResponse>('/api/food?days=14');
+  // Unwrap paginated response: { data: FoodEntry[], total, ... } → FoodEntry[]
+  const food = {
+    ...foodRaw,
+    data: foodRaw.data?.data ?? null,
+  };
 
   const refetch = useCallback(() => {
     activities.refetch();
     mood.refetch();
     water.refetch();
     food.refetch();
-  }, [activities, mood, water, food]);
+  }, [activities.refetch, mood.refetch, water.refetch, food.refetch]);
 
   // Today's stats for QuickStatsRow
   const today = new Date().toISOString().split('T')[0];
