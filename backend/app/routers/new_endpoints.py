@@ -14,6 +14,35 @@ router = APIRouter(prefix="/api", tags=["activities"], dependencies=[Depends(ver
 
 
 # ---------------------------------------------------------------------------
+# Debug — list tables + columns (useful for diagnosing missing tables/columns)
+# ---------------------------------------------------------------------------
+@router.get("/debug/tables")
+async def debug_tables(db: AsyncSession = Depends(get_db)):
+    tables_result = await db.execute(
+        text("""
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+            ORDER BY table_name
+        """)
+    )
+    tables = [r[0] for r in tables_result.fetchall()]
+
+    # Get columns for saved_meals specifically
+    cols_result = await db.execute(
+        text("""
+            SELECT column_name, data_type
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'saved_meals'
+            ORDER BY ordinal_position
+        """)
+    )
+    saved_meals_cols = [{"col": r[0], "type": r[1]} for r in cols_result.fetchall()]
+
+    return {"tables": tables, "saved_meals_columns": saved_meals_cols}
+
+
+# ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
 class EffortUpdate(BaseModel):
@@ -291,21 +320,26 @@ async def linkable_activities(days: int = Query(default=14), db: AsyncSession = 
 # saved_meals created via main.py lifespan (CREATE TABLE IF NOT EXISTS)
 # ---------------------------------------------------------------------------
 
+def _meal_row(r: dict) -> dict:
+    """Serialize a saved_meals row — NUMERIC columns come back as Decimal."""
+    return {
+        "id": r["id"],
+        "name": r["name"],
+        "calories_kcal": r["calories_kcal"],
+        "protein_g": float(r["protein_g"]) if r["protein_g"] is not None else 0.0,
+        "carbs_g":   float(r["carbs_g"])   if r["carbs_g"]   is not None else 0.0,
+        "fat_g":     float(r["fat_g"])     if r["fat_g"]     is not None else 0.0,
+    }
+
 
 # 8. GET /api/saved-meals
 @router.get("/saved-meals")
 async def list_saved_meals(db: AsyncSession = Depends(get_db)):
+    # ORDER BY id (not created_at) — table may have been created without that column
     result = await db.execute(
-        text("""
-            SELECT id, name, calories_kcal,
-                   protein_g::float AS protein_g,
-                   carbs_g::float   AS carbs_g,
-                   fat_g::float     AS fat_g
-            FROM saved_meals
-            ORDER BY created_at ASC
-        """)
+        text("SELECT id, name, calories_kcal, protein_g, carbs_g, fat_g FROM saved_meals ORDER BY id ASC")
     )
-    return [dict(r) for r in result.mappings().all()]
+    return [_meal_row(dict(r)) for r in result.mappings().all()]
 
 
 # 9. POST /api/saved-meals
@@ -315,10 +349,7 @@ async def create_saved_meal(body: SavedMealCreate, db: AsyncSession = Depends(ge
         text("""
             INSERT INTO saved_meals (name, calories_kcal, protein_g, carbs_g, fat_g)
             VALUES (:name, :calories_kcal, :protein_g, :carbs_g, :fat_g)
-            RETURNING id, name, calories_kcal,
-                      protein_g::float AS protein_g,
-                      carbs_g::float   AS carbs_g,
-                      fat_g::float     AS fat_g
+            RETURNING id, name, calories_kcal, protein_g, carbs_g, fat_g
         """),
         {
             "name": body.name,
@@ -330,7 +361,7 @@ async def create_saved_meal(body: SavedMealCreate, db: AsyncSession = Depends(ge
     )
     row = result.mappings().first()
     await db.commit()
-    return dict(row)
+    return _meal_row(dict(row))
 
 
 # 10. DELETE /api/saved-meals/{id}
