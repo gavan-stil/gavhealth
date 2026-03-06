@@ -58,6 +58,8 @@ async def lifespan(app: FastAPI):
                 created_at    TIMESTAMPTZ DEFAULT NOW()
             )
             """,
+            # manual_strength_logs: backfill log_date column if missing
+            "ALTER TABLE manual_strength_logs ADD COLUMN IF NOT EXISTS log_date DATE DEFAULT CURRENT_DATE",
             # manual_strength_logs: strength workouts logged via app
             """
             CREATE TABLE IF NOT EXISTS manual_strength_logs (

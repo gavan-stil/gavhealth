@@ -252,10 +252,10 @@ async def save_strength_log(body: StrengthLogCreate, db: AsyncSession = Depends(
 async def last_strength_log(split: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         text("""
-            SELECT log_date AS date, exercises
+            SELECT created_at::date AS date, exercises
             FROM manual_strength_logs
             WHERE workout_split = :split
-            ORDER BY log_date DESC, start_time DESC
+            ORDER BY created_at DESC
             LIMIT 1
         """),
         {"split": split},
@@ -294,12 +294,12 @@ async def relink_strength(id: int, body: RelinkBody, db: AsyncSession = Depends(
 async def list_strength_sessions(days: int = Query(default=14), db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         text("""
-            SELECT id, log_date, workout_split, duration_minutes,
+            SELECT id, created_at::date AS log_date, workout_split, duration_minutes,
                    jsonb_array_length(exercises) AS exercise_count,
                    matched_activity_id, match_confirmed
             FROM manual_strength_logs
-            WHERE log_date >= CURRENT_DATE - (:days * INTERVAL '1 day')
-            ORDER BY log_date DESC, created_at DESC
+            WHERE created_at >= CURRENT_DATE - (:days * INTERVAL '1 day')
+            ORDER BY created_at DESC
         """),
         {"days": days},
     )
