@@ -1,6 +1,7 @@
 """Write endpoints: food, strength, sauna, habits, weight, sleep, activity, RHR."""
 
 from datetime import date, datetime
+from sqlalchemy import text as sa_text
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -127,6 +128,50 @@ async def confirm_strength_entry(
     db.add(session)
     await db.flush()
 
+    # A1: Look up bodyweight for session date (exact match, else 7-day rolling avg)
+    session_date = body.session_datetime.date()
+    bw_result = await db.execute(
+        sa_text("""
+            SELECT weight_kg FROM weight_logs
+            WHERE recorded_at::date = :session_date
+            ORDER BY recorded_at DESC
+            LIMIT 1
+        """),
+        {"session_date": session_date},
+    )
+    bw_row = bw_result.mappings().first()
+    if bw_row:
+        bodyweight_kg = float(bw_row["weight_kg"])
+    else:
+        rolling_result = await db.execute(
+            sa_text("""
+                SELECT AVG(weight_kg) AS avg_weight FROM (
+                    SELECT weight_kg FROM weight_logs
+                    WHERE recorded_at::date < :session_date
+                    ORDER BY recorded_at DESC
+                    LIMIT 7
+                ) sub
+            """),
+            {"session_date": session_date},
+        )
+        rolling_row = rolling_result.mappings().first()
+        bodyweight_kg = float(rolling_row["avg_weight"]) if rolling_row and rolling_row["avg_weight"] else None
+
+    # A2: Match an activity_log workout row on the same date
+    activity_match = await db.execute(
+        sa_text("""
+            SELECT id FROM activity_logs
+            WHERE activity_type = 'workout'
+              AND activity_date = :session_date
+            LIMIT 1
+        """),
+        {"session_date": session_date},
+    )
+    match_row = activity_match.mappings().first()
+    if match_row:
+        session.activity_log_id = match_row["id"]
+        await db.flush()
+
     sets_created = []
     for s in body.sets:
         # Find or create the exercise
@@ -145,6 +190,7 @@ async def confirm_strength_entry(
             reps=s.reps,
             weight_kg=s.weight_kg,
             is_bodyweight=s.is_bodyweight,
+            bodyweight_at_session=bodyweight_kg,
             rpe=s.rpe,
         )
         db.add(strength_set)

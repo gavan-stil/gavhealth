@@ -210,6 +210,7 @@ class StrengthSession(Base):
     session_label: Mapped[str | None] = mapped_column(String(100))
     notes: Mapped[str | None] = mapped_column(Text)
     source: Mapped[str] = mapped_column(String(50), nullable=False, default="manual")
+    activity_log_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     sets: Mapped[list["StrengthSet"]] = relationship(back_populates="session", cascade="all, delete-orphan")
 

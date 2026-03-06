@@ -396,3 +396,105 @@ async def delete_food_log_item(id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Food log entry not found")
     await db.commit()
     return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# A3. GET /api/strength/sessions?days=N
+# Returns per-session aggregates for the Workout Volume chart.
+# activity_logs columns: activity_date, activity_type, duration_mins, avg_hr, calories_burned
+# ---------------------------------------------------------------------------
+@router.get("/strength/sessions")
+async def strength_sessions(days: int = Query(default=90), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        text("""
+            SELECT
+                ss.id,
+                ss.session_datetime::date              AS session_date,
+                ss.activity_log_id,
+                al.duration_mins,
+                al.avg_hr,
+                al.calories_burned                     AS calories,
+                COUNT(st.id)                           AS total_sets,
+                COALESCE(SUM(st.reps), 0)              AS total_reps,
+                COALESCE(SUM(
+                    (COALESCE(st.bodyweight_at_session, 0) + COALESCE(st.weight_kg, 0))
+                    * st.reps
+                ), 0)                                  AS total_load_kg,
+                CASE WHEN COUNT(st.id) > 0 THEN
+                    COALESCE(SUM(
+                        (COALESCE(st.bodyweight_at_session, 0) + COALESCE(st.weight_kg, 0))
+                        * st.reps
+                    ), 0) / COUNT(st.id)
+                ELSE 0 END                             AS avg_load_per_set_kg,
+                ARRAY_AGG(DISTINCT e.name)             AS exercises
+            FROM strength_sessions ss
+            LEFT JOIN strength_sets st ON st.session_id = ss.id
+            LEFT JOIN exercises e ON e.id = st.exercise_id
+            LEFT JOIN activity_logs al ON al.id = ss.activity_log_id
+            WHERE ss.session_datetime >= CURRENT_TIMESTAMP - (:days || ' days')::interval
+            GROUP BY ss.id, ss.session_datetime, ss.activity_log_id,
+                     al.duration_mins, al.avg_hr, al.calories_burned
+            ORDER BY ss.session_datetime DESC
+        """),
+        {"days": days},
+    )
+    rows = result.mappings().all()
+    return [
+        {
+            "id": r["id"],
+            "session_date": r["session_date"].isoformat() if r["session_date"] else None,
+            "activity_log_id": r["activity_log_id"],
+            "duration_mins": float(r["duration_mins"]) if r["duration_mins"] is not None else None,
+            "avg_hr": r["avg_hr"],
+            "calories": r["calories"],
+            "total_sets": r["total_sets"],
+            "total_reps": r["total_reps"],
+            "total_load_kg": float(r["total_load_kg"]),
+            "avg_load_per_set_kg": float(r["avg_load_per_set_kg"]),
+            "exercises": [e for e in (r["exercises"] or []) if e is not None],
+        }
+        for r in rows
+    ]
+
+
+# ---------------------------------------------------------------------------
+# A4. GET /api/strength/exercise/{exercise_id}/history?days=N
+# Returns per-session history for one exercise (sparkline data).
+# Epley 1RM formula: weight × (1 + reps/30)
+# ---------------------------------------------------------------------------
+@router.get("/strength/exercise/{exercise_id}/history")
+async def exercise_history(
+    exercise_id: int,
+    days: int = Query(default=90),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        text("""
+            SELECT
+                ss.session_datetime::date              AS session_date,
+                COUNT(st.id)                           AS sets,
+                SUM(st.reps)                           AS total_reps,
+                MAX(COALESCE(st.weight_kg, 0))         AS top_weight_kg,
+                SUM(st.reps * COALESCE(st.weight_kg, 0)) AS session_volume_kg,
+                MAX(COALESCE(st.weight_kg, 0) * (1.0 + st.reps / 30.0)) AS estimated_1rm
+            FROM strength_sessions ss
+            JOIN strength_sets st ON st.session_id = ss.id
+            WHERE st.exercise_id = :exercise_id
+              AND ss.session_datetime >= CURRENT_TIMESTAMP - (:days || ' days')::interval
+            GROUP BY ss.id, ss.session_datetime
+            ORDER BY ss.session_datetime ASC
+        """),
+        {"exercise_id": exercise_id, "days": days},
+    )
+    rows = result.mappings().all()
+    return [
+        {
+            "session_date": r["session_date"].isoformat() if r["session_date"] else None,
+            "sets": r["sets"],
+            "total_reps": r["total_reps"],
+            "top_weight_kg": float(r["top_weight_kg"]),
+            "session_volume_kg": float(r["session_volume_kg"]),
+            "estimated_1rm": round(float(r["estimated_1rm"]), 1),
+        }
+        for r in rows
+    ]
