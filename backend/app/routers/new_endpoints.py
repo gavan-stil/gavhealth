@@ -179,20 +179,22 @@ async def get_habits_history(days: int = Query(default=14), db: AsyncSession = D
 @router.post("/log/strength/save")
 async def save_strength_log(body: StrengthLogCreate, db: AsyncSession = Depends(get_db)):
     import json
+    from dateutil.parser import parse as dtparse
 
     exercises_json = json.dumps(body.exercises) if not isinstance(body.exercises, str) else body.exercises
+    start_ts = dtparse(body.start_time) if body.start_time else None
 
     result = await db.execute(
         text("""
             INSERT INTO manual_strength_logs
                 (workout_split, exercises, start_time, duration_minutes, notes)
-            VALUES (:workout_split, :exercises, :start_time, :duration_minutes, :notes)
+            VALUES (:workout_split, CAST(:exercises AS JSONB), :start_time, :duration_minutes, :notes)
             RETURNING id, start_time
         """),
         {
             "workout_split": body.workout_split,
             "exercises": exercises_json,
-            "start_time": body.start_time,
+            "start_time": start_ts,
             "duration_minutes": body.duration_minutes,
             "notes": body.notes,
         },
@@ -203,28 +205,24 @@ async def save_strength_log(body: StrengthLogCreate, db: AsyncSession = Depends(
     matched_activity_id = None
     match_confirmed = False
 
-    from dateutil.parser import parse as dtparse
+    ref_date = start_ts.date() if start_ts else None
 
-    ref_date = body.start_time[:10]  # fallback: first 10 chars of "YYYY-MM-DDTHH:MM:SS"
-    try:
-        ref_date = dtparse(body.start_time).date().isoformat()
-    except Exception:
-        pass
-
-    try:
-        match_result = await db.execute(
-            text("""
-                SELECT id FROM activity_logs
-                WHERE activity_type = 'workout'
-                  AND activity_date = :ref_date
-                ORDER BY id DESC
-                LIMIT 1
-            """),
-            {"ref_date": ref_date},
-        )
-        match_row = match_result.mappings().first()
-    except Exception:
-        match_row = None
+    match_row = None
+    if ref_date:
+        try:
+            match_result = await db.execute(
+                text("""
+                    SELECT id FROM activity_logs
+                    WHERE activity_type = 'workout'
+                      AND activity_date = :ref_date
+                    ORDER BY id DESC
+                    LIMIT 1
+                """),
+                {"ref_date": ref_date},
+            )
+            match_row = match_result.mappings().first()
+        except Exception:
+            match_row = None
 
     if match_row:
         matched_activity_id = match_row["id"]
