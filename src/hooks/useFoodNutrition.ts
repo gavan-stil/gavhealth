@@ -13,17 +13,21 @@ type FoodApiEntry = {
   fat_g: number;
 };
 
-// Shape returned by POST /api/log/food (AI parse)
+// Shape returned by POST /api/log/food (AI parse) — flat FoodParseResponse
 type AiParseResult = {
-  parsed: {
-    items: Array<{
-      name: string;
-      calories_kcal: number;
-      protein_g: number;
-      carbs_g: number;
-      fat_g: number;
-    }>;
-  };
+  description_raw: string;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  calories_kcal: number;
+  confidence: string;
+  items: Array<{
+    name: string;
+    calories_kcal: number;
+    protein_g: number;
+    carbs_g: number;
+    fat_g: number;
+  }> | null;
 };
 
 export type ParseState = 'idle' | 'parsing' | 'done' | 'error';
@@ -146,14 +150,23 @@ export function useFoodNutrition() {
         method: 'POST',
         body: JSON.stringify({ description: parseInput }),
       });
-      // Normalise: the existing endpoint returns protein_g / carbs_g / fat_g / calories_kcal
-      const items = (res.parsed?.items ?? []).map(i => ({
-        name: i.name,
-        calories_kcal: i.calories_kcal,
-        protein_g: i.protein_g,
-        carbs_g: i.carbs_g,
-        fat_g: i.fat_g,
-      }));
+      // API returns a flat FoodParseResponse. Use items[] breakdown if present,
+      // otherwise synthesise a single item from the top-level totals.
+      const items = res.items && res.items.length > 0
+        ? res.items.map(i => ({
+            name: i.name,
+            calories_kcal: i.calories_kcal,
+            protein_g: i.protein_g,
+            carbs_g: i.carbs_g,
+            fat_g: i.fat_g,
+          }))
+        : [{
+            name: res.description_raw,
+            calories_kcal: res.calories_kcal,
+            protein_g: res.protein_g,
+            carbs_g: res.carbs_g,
+            fat_g: res.fat_g,
+          }];
       setParsedItems(items);
       setParseState('done');
     } catch {
