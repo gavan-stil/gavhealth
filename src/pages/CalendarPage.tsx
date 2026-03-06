@@ -12,13 +12,13 @@ import PatternsSection from "@/components/calendar/PatternsSection";
 import SyncButton from "@/components/SyncButton";
 
 export default function CalendarPage() {
-  const { data, loading, error, refetch } = useCalendarData();
-
   const now = new Date();
   const [currentMonth, setCurrentMonth] = useState({
     year: now.getFullYear(),
     month: now.getMonth(),
   });
+
+  const { data, loading, error, refetch } = useCalendarData(currentMonth.year, currentMonth.month);
 
   const [activeCategories, setActiveCategories] = useState<Set<CategoryName>>(
     () => new Set<CategoryName>(['strength'])

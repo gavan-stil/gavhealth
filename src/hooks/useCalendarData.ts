@@ -62,7 +62,7 @@ function fmtInt(n: number | undefined | null, unit: string): string {
 
 /* ── Hook ── */
 
-export function useCalendarData() {
+export function useCalendarData(year: number, month: number) {
   const [data, setData] = useState<CalendarData>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,22 +79,26 @@ export function useCalendarData() {
 
       const errors: string[] = [];
 
-      // Correct paths: /api/activity, /api/sleep, /api/sauna, /api/weight, /api/rhr
-      // All except food wrap response in { data: [] }
+      // Build date range for the viewed month
+      const start = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+      const lastDay = new Date(year, month + 1, 0).getDate();
+      const end = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+      const dateRange = `start_date=${start}&end_date=${end}&limit=200`;
+
       const [activityRes, sleepRes, saunaRes, weightRes, rhrRes] = await Promise.all([
-        apiFetch<{ data: RawActivity[] }>("/api/activity?days=90&limit=200").catch(
+        apiFetch<{ data: RawActivity[] }>(`/api/activity?${dateRange}`).catch(
           (e: Error) => { errors.push(`activities: ${e.message}`); return { data: [] as RawActivity[] }; }
         ),
-        apiFetch<{ data: RawSleep[] }>("/api/sleep?days=90&limit=200").catch(
+        apiFetch<{ data: RawSleep[] }>(`/api/sleep?${dateRange}`).catch(
           (e: Error) => { errors.push(`sleep: ${e.message}`); return { data: [] as RawSleep[] }; }
         ),
-        apiFetch<{ data: RawSauna[] }>("/api/sauna?days=90&limit=200").catch(
+        apiFetch<{ data: RawSauna[] }>(`/api/sauna?${dateRange}`).catch(
           (e: Error) => { errors.push(`sauna: ${e.message}`); return { data: [] as RawSauna[] }; }
         ),
-        apiFetch<{ data: RawWeight[] }>("/api/weight?days=90&limit=200").catch(
+        apiFetch<{ data: RawWeight[] }>(`/api/weight?${dateRange}`).catch(
           (e: Error) => { errors.push(`weight: ${e.message}`); return { data: [] as RawWeight[] }; }
         ),
-        apiFetch<{ data: RawRhr[] }>("/api/rhr?days=90&limit=200").catch(
+        apiFetch<{ data: RawRhr[] }>(`/api/rhr?${dateRange}`).catch(
           (e: Error) => { errors.push(`rhr: ${e.message}`); return { data: [] as RawRhr[] }; }
         ),
       ]);
@@ -266,7 +270,7 @@ export function useCalendarData() {
 
     load();
     return () => { cancelled = true; };
-  }, [version]);
+  }, [year, month, version]);
 
   return { data, loading, error, refetch };
 }

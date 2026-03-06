@@ -121,18 +121,38 @@ Ordered by priority for strength trends feature:
 
 ---
 
-## Current Data Volume (as of 2026-03-06)
+## Current Data Volume (as of 2026-03-07)
 
-| Type | Count | Date range |
+| Table | Count | Date range |
 |---|---|---|
-| `workout` (LiftWeights) | 6 sessions | Feb 25 – Mar 4 2026 |
-| `run` | 23 sessions | Feb 5 – Mar 5 2026 |
-| `ride` | 17 sessions | Feb 5 – Mar 2 2026 |
-| `daily_summary` | 4 entries | Recent only |
-| `strength_sessions` (manual) | 2 sessions | Mar 2026 |
-| `strength_sets` (manual) | 7 sets | Mar 2026 |
+| `activity_logs` — workout | 2,076 | Jan 2020 – Mar 2026 |
+| `activity_logs` — run | 1,609 | Jan 2020 – Mar 2026 |
+| `activity_logs` — walk | 2,043 | Jan 2020 – Mar 2026 |
+| `activity_logs` — ride | 341 | Jan 2020 – Mar 2026 |
+| `activity_logs` — other types | ~884 | Jan 2020 – Mar 2026 |
+| `sleep_logs` | 2,805 | Jan 2020 – Mar 2026 |
+| `weight_logs` | 937 | Jan 2020 – Mar 2026 |
+| `strength_sessions` (manual) | 2 | Mar 2026 |
+| `strength_sets` (manual) | 7 | Mar 2026 |
 
-> Data is sparse because Withings OAuth is incomplete (backlog item). Once OAuth is authorised, historical data can be bulk-imported.
+> Bulk-imported 2026-03-07 from `Desktop/Withings_data_gav_5_mar_2026/` using `backend/import_withings_csv.py`.
+> Source tag: `withings_csv`. Script is idempotent — safe to re-run with newer exports.
+
+---
+
+## CSV Import Script
+
+`backend/import_withings_csv.py` — imports weight, sleep, and activities from a Withings CSV export folder.
+
+```bash
+python3 backend/import_withings_csv.py 'postgresql://...'
+```
+
+- De-dupes on `(external_id, source)` / `(recorded_at, source)` — safe to re-run
+- `external_id` = ISO `from` timestamp from activities.csv
+- Activity type mapping: Weights/Gym class → `workout`, Running → `run`, Cycling → `ride`, Walking → `walk`, etc.
+- Calories: uses `manual_calories` field (Withings estimate), falls back to device `calories`
+- HR zones stored as JSONB in `zone_seconds` column
 
 ---
 

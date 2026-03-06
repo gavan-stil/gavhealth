@@ -529,3 +529,138 @@ async def exercise_history(
         }
         for r in rows
     ]
+
+
+# ---------------------------------------------------------------------------
+# Water logging
+# ---------------------------------------------------------------------------
+#
+# Migration (run once on Railway):
+#   CREATE TABLE IF NOT EXISTS water_logs (
+#     id          SERIAL PRIMARY KEY,
+#     logged_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+#     ml          INTEGER NOT NULL CHECK (ml > 0)
+#   );
+#
+
+
+class WaterLogCreate(BaseModel):
+    ml: int
+    logged_at: str | None = None
+
+
+@router.post("/log/water")
+async def log_water(body: WaterLogCreate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        text("""
+            INSERT INTO water_logs (ml, logged_at)
+            VALUES (:ml, COALESCE(:logged_at::timestamptz, NOW()))
+            RETURNING id, logged_at, ml
+        """),
+        {"ml": body.ml, "logged_at": body.logged_at},
+    )
+    await db.commit()
+    row = result.mappings().one()
+    return {
+        "id": row["id"],
+        "logged_at": row["logged_at"].isoformat(),
+        "ml": row["ml"],
+    }
+
+
+@router.get("/water")
+async def get_water(
+    days: int = Query(default=1, ge=1, le=365),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        text("""
+            SELECT id, logged_at, ml
+            FROM water_logs
+            WHERE logged_at >= NOW() - (:days * INTERVAL '1 day')
+            ORDER BY logged_at DESC
+        """),
+        {"days": days},
+    )
+    rows = result.mappings().all()
+    return [
+        {
+            "id": r["id"],
+            "logged_at": r["logged_at"].isoformat(),
+            "ml": r["ml"],
+        }
+        for r in rows
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Mood & energy logging
+# ---------------------------------------------------------------------------
+#
+# Migration (run once on Railway):
+#   CREATE TABLE IF NOT EXISTS mood_logs (
+#     id          SERIAL PRIMARY KEY,
+#     logged_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+#     mood        SMALLINT NOT NULL CHECK (mood BETWEEN 1 AND 5),
+#     energy      SMALLINT NOT NULL CHECK (energy BETWEEN 1 AND 5)
+#   );
+#
+
+
+class MoodLogCreate(BaseModel):
+    mood: int
+    energy: int
+    logged_at: str | None = None
+
+    @field_validator("mood", "energy")
+    @classmethod
+    def validate_scale(cls, v: int) -> int:
+        if v < 1 or v > 5:
+            raise ValueError("must be between 1 and 5")
+        return v
+
+
+@router.post("/log/mood")
+async def log_mood(body: MoodLogCreate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        text("""
+            INSERT INTO mood_logs (mood, energy, logged_at)
+            VALUES (:mood, :energy, COALESCE(:logged_at::timestamptz, NOW()))
+            RETURNING id, logged_at, mood, energy
+        """),
+        {"mood": body.mood, "energy": body.energy, "logged_at": body.logged_at},
+    )
+    await db.commit()
+    row = result.mappings().one()
+    return {
+        "id": row["id"],
+        "logged_at": row["logged_at"].isoformat(),
+        "mood": row["mood"],
+        "energy": row["energy"],
+    }
+
+
+@router.get("/mood")
+async def get_mood(
+    days: int = Query(default=1, ge=1, le=365),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        text("""
+            SELECT id, logged_at, mood, energy
+            FROM mood_logs
+            WHERE logged_at >= NOW() - (:days * INTERVAL '1 day')
+            ORDER BY logged_at DESC
+        """),
+        {"days": days},
+    )
+    rows = result.mappings().all()
+    return [
+        {
+            "id": r["id"],
+            "logged_at": r["logged_at"].isoformat(),
+            "mood": r["mood"],
+            "energy": r["energy"],
+        }
+        for r in rows
+    ]
