@@ -431,7 +431,7 @@ async def strength_sessions(days: int = Query(default=90), db: AsyncSession = De
             LEFT JOIN strength_sets st ON st.session_id = ss.id
             LEFT JOIN exercises e ON e.id = st.exercise_id
             LEFT JOIN activity_logs al ON al.id = ss.activity_log_id
-            WHERE ss.session_datetime >= CURRENT_TIMESTAMP - (:days || ' days')::interval
+            WHERE ss.session_datetime >= CURRENT_TIMESTAMP - (:days * INTERVAL '1 day')
             GROUP BY ss.id, ss.session_datetime, ss.activity_log_id,
                      al.duration_mins, al.avg_hr, al.calories_burned
             ORDER BY ss.session_datetime DESC
@@ -480,7 +480,7 @@ async def exercise_history(
             FROM strength_sessions ss
             JOIN strength_sets st ON st.session_id = ss.id
             WHERE st.exercise_id = :exercise_id
-              AND ss.session_datetime >= CURRENT_TIMESTAMP - (:days || ' days')::interval
+              AND ss.session_datetime >= CURRENT_TIMESTAMP - (:days * INTERVAL '1 day')
             GROUP BY ss.id, ss.session_datetime
             ORDER BY ss.session_datetime ASC
         """),
