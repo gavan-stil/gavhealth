@@ -28,7 +28,25 @@ async def lifespan(app: FastAPI):
             # activity_logs: add effort tracking columns
             "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS effort VARCHAR(20)",
             "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS effort_manually_set BOOLEAN DEFAULT false",
-            # saved_meals: food library
+            # saved_meals: food library.
+            # The table may have been created via Railway GUI without id/name columns.
+            # Drop and recreate if the 'name' column is missing (table is empty so safe).
+            """
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.tables
+                    WHERE table_schema = 'public' AND table_name = 'saved_meals'
+                ) AND NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'saved_meals'
+                      AND column_name = 'name'
+                ) THEN
+                    DROP TABLE saved_meals;
+                END IF;
+            END $$
+            """,
             """
             CREATE TABLE IF NOT EXISTS saved_meals (
                 id            SERIAL PRIMARY KEY,
