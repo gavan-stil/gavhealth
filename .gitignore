@@ -16,6 +16,9 @@ dist/
 # Vite
 *.local
 
+# Raw data exports (large files)
+archive/data/
+
 # Python
 __pycache__/
 *.pyc
