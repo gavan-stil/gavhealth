@@ -224,7 +224,17 @@ function ExerciseCard({
   );
 }
 
-export default function StrengthCard({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+export default function StrengthCard({
+  open,
+  onToggle,
+  activityId,
+  onConfirmed,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  activityId?: number;
+  onConfirmed?: () => void;
+}) {
   const [mode, setMode] = useState<CardMode>('builder');
   const [state, setState] = useState<StrengthState>('empty');
   const [selectedSplit, setSelectedSplit] = useState<SplitName>('push');
@@ -290,16 +300,25 @@ export default function StrengthCard({ open, onToggle }: { open: boolean; onTogg
           notes: null,
         }),
       });
-      setMatchMessage(result.matched_activity_id
-        ? 'Matched to Withings session ✓'
-        : 'Saved — no Withings match found'
-      );
+      if (activityId) {
+        await apiFetch(`/api/log/strength/${result.id}/relink`, {
+          method: 'PATCH',
+          body: JSON.stringify({ activity_id: activityId }),
+        });
+        setMatchMessage('Linked to Workout ✓');
+      } else {
+        setMatchMessage(result.matched_activity_id
+          ? 'Matched to Withings session ✓'
+          : 'Saved — no Withings match found'
+        );
+      }
       setState('confirmed');
       setTimeout(() => {
         setState('empty');
         setExercises([]);
         setLastDate(null);
         setMatchMessage(null);
+        onConfirmed?.();
       }, 3000);
     } catch {
       setErrorMsg('Could not save session');
@@ -326,7 +345,7 @@ export default function StrengthCard({ open, onToggle }: { open: boolean; onTogg
   const handleBrainDumpConfirm = async () => {
     setState('saving');
     try {
-      await apiFetch('/api/log/strength/save', {
+      const result = await apiFetch<{ id: number; matched_activity_id: number | null }>('/api/log/strength/save', {
         method: 'POST',
         body: JSON.stringify({
           workout_split: selectedSplit,
@@ -336,12 +355,20 @@ export default function StrengthCard({ open, onToggle }: { open: boolean; onTogg
           notes: null,
         }),
       });
+      if (activityId) {
+        await apiFetch(`/api/log/strength/${result.id}/relink`, {
+          method: 'PATCH',
+          body: JSON.stringify({ activity_id: activityId }),
+        });
+        setMatchMessage('Linked to Workout ✓');
+      }
       setState('confirmed');
       setTimeout(() => {
         setState('empty');
         setBrainDumpInput('');
         setExercises([]);
         setParsedLabel(null);
+        onConfirmed?.();
       }, 2000);
     } catch {
       setErrorMsg('Could not save session');

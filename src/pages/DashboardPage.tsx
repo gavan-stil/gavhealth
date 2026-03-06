@@ -7,6 +7,7 @@ import StreaksCard from "@/components/dashboard/StreaksCard";
 import CardSkeleton from "@/components/dashboard/CardSkeleton";
 import CardError from "@/components/dashboard/CardError";
 import CardEmpty from "@/components/dashboard/CardEmpty";
+import SyncButton from "@/components/SyncButton";
 
 const PULL_THRESHOLD = 60;
 
@@ -70,6 +71,11 @@ export default function DashboardPage() {
         gap: "var(--space-md)",
       }}
     >
+      {/* Header row with sync button */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <SyncButton onSuccess={refetchAll} />
+      </div>
+
       {/* Pull indicator */}
       {(pullDistance > 0 || refreshing) && (
         <div

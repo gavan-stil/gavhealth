@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
+import StrengthCard from './StrengthCard';
 
 type EffortLevel = 'basic' | 'mid' | 'lets_go';
 
@@ -8,6 +9,7 @@ interface FeedItem {
   id: number;
   type: string;
   date: string;
+  start_time: string | null;
   duration_minutes: number;
   avg_bpm: number | null;
   effort: EffortLevel;
@@ -45,6 +47,15 @@ function formatDate(dateStr: string) {
   return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
 }
 
+function formatTime(isoStr: string) {
+  const d = new Date(isoStr);
+  const h = d.getHours();
+  const m = d.getMinutes();
+  const ampm = h >= 12 ? 'pm' : 'am';
+  const hh = h % 12 || 12;
+  return `${hh}:${String(m).padStart(2, '0')}${ampm}`;
+}
+
 function formatDuration(mins: number) {
   if (mins < 60) return `${Math.round(mins)}m`;
   const h = Math.floor(mins / 60);
@@ -57,6 +68,7 @@ export default function ActivityFeed() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [strengthSheetActivityId, setStrengthSheetActivityId] = useState<number | null>(null);
 
   const fetchFeed = useCallback(async () => {
     setLoading(true);
@@ -75,7 +87,6 @@ export default function ActivityFeed() {
 
   const updateEffort = async (id: number, effort: EffortLevel) => {
     const prev = items.find(i => i.id === id)?.effort;
-    // optimistic update
     setItems(curr => curr.map(i =>
       i.id === id ? { ...i, effort, effort_manually_set: true } : i
     ));
@@ -85,7 +96,6 @@ export default function ActivityFeed() {
         body: JSON.stringify({ effort }),
       });
     } catch {
-      // revert on failure
       setItems(curr => curr.map(i =>
         i.id === id ? { ...i, effort: prev!, effort_manually_set: false } : i
       ));
@@ -136,83 +146,141 @@ export default function ActivityFeed() {
     );
   }
 
+  const isWorkout = (type: string) => type === 'workout' || type === 'strength';
+
   return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)',
-      padding: 'var(--space-lg)',
-    }}>
-      {items.map(item => (
-        <div
-          key={item.id}
-          style={{
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border-default)',
-            borderRadius: 'var(--radius-md)',
-            overflow: 'hidden',
-          }}
-        >
+    <>
+      <div style={{
+        display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)',
+        padding: 'var(--space-lg)',
+      }}>
+        {items.map(item => (
           <div
-            onClick={() => setExpandedId(prev => prev === item.id ? null : item.id)}
+            key={item.id}
             style={{
-              padding: 'var(--space-md) var(--space-lg)',
-              cursor: 'pointer',
-              display: 'flex', flexDirection: 'column', gap: '6px',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-md)',
+              overflow: 'hidden',
             }}
           >
-            {/* Row 1: type dot + label + effort badge */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-              <span style={{
-                width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
-                background: TYPE_COLOURS[item.type] || 'var(--text-muted)',
-              }} />
-              <span style={{
-                font: '700 16px/1.2 Inter, sans-serif', letterSpacing: '-0.5px',
-                color: 'var(--text-primary)', flex: 1,
+            <div
+              onClick={() => setExpandedId(prev => prev === item.id ? null : item.id)}
+              style={{
+                padding: 'var(--space-md) var(--space-lg)',
+                cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', gap: '6px',
+              }}
+            >
+              {/* Row 1: type dot + label + effort badge */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                <span style={{
+                  width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
+                  background: TYPE_COLOURS[item.type] || 'var(--text-muted)',
+                }} />
+                <span style={{
+                  font: '700 16px/1.2 Inter, sans-serif', letterSpacing: '-0.5px',
+                  color: 'var(--text-primary)', flex: 1,
+                }}>
+                  {TYPE_LABELS[item.type] || item.type}
+                </span>
+                <EffortBadge effort={item.effort} isUnreviewed={!item.effort_manually_set} />
+              </div>
+
+              {/* Row 2: date + time + duration + bpm */}
+              <div style={{
+                font: '600 13px/1 JetBrains Mono, monospace', letterSpacing: '-0.5px',
+                color: 'var(--text-secondary)', paddingLeft: 'calc(10px + var(--space-sm))',
               }}>
-                {TYPE_LABELS[item.type] || item.type}
-              </span>
-              <EffortBadge effort={item.effort} isUnreviewed={!item.effort_manually_set} />
+                {formatDate(item.date)}
+                {item.start_time ? ` · ${formatTime(item.start_time)}` : ''}
+                {' · '}{formatDuration(item.duration_minutes)}
+                {item.avg_bpm ? ` · ${item.avg_bpm}bpm` : ''}
+              </div>
             </div>
 
-            {/* Row 2: date + duration + bpm */}
-            <div style={{
-              font: '600 13px/1 JetBrains Mono, monospace', letterSpacing: '-0.5px',
-              color: 'var(--text-secondary)', paddingLeft: 'calc(10px + var(--space-sm))',
-            }}>
-              {formatDate(item.date)} · {formatDuration(item.duration_minutes)}
-              {item.avg_bpm ? ` · ${item.avg_bpm}bpm` : ''}
-            </div>
+            {/* Expanded panel: effort buttons + log strength session for workouts */}
+            {expandedId === item.id && (
+              <div style={{
+                display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)',
+                padding: 'var(--space-sm) var(--space-lg) var(--space-md)',
+                borderTop: '1px solid var(--border-default)',
+              }}>
+                <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                  {(['basic', 'mid', 'lets_go'] as const).map(level => (
+                    <button
+                      key={level}
+                      onClick={(e) => { e.stopPropagation(); updateEffort(item.id, level); }}
+                      style={{
+                        flex: 1, padding: '6px 0',
+                        borderRadius: 'var(--radius-pill)',
+                        border: `1px solid ${item.effort === level ? 'var(--ochre)' : 'var(--border-default)'}`,
+                        background: item.effort === level ? 'var(--ochre)' : 'transparent',
+                        color: item.effort === level ? 'var(--bg-base)' : 'var(--text-muted)',
+                        font: '600 11px/1 Inter, sans-serif',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {EFFORT_LABEL[level]}
+                    </button>
+                  ))}
+                </div>
+                {isWorkout(item.type) && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setStrengthSheetActivityId(item.id); }}
+                    style={{
+                      width: '100%', padding: '8px',
+                      background: 'transparent',
+                      border: '1px solid var(--rust)',
+                      borderRadius: 'var(--radius-md)',
+                      color: 'var(--rust)',
+                      font: '600 12px/1 Inter, sans-serif',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Log strength session
+                  </button>
+                )}
+              </div>
+            )}
           </div>
+        ))}
+      </div>
 
-          {/* Effort editor */}
-          {expandedId === item.id && (
+      {/* Strength sheet overlay */}
+      {strengthSheetActivityId !== null && (
+        <>
+          <div
+            onClick={() => setStrengthSheetActivityId(null)}
+            style={{
+              position: 'fixed', inset: 0,
+              background: 'rgba(0,0,0,0.6)',
+              zIndex: 90,
+            }}
+          />
+          <div style={{
+            position: 'fixed', bottom: 0, left: 0, right: 0,
+            zIndex: 91,
+            background: 'var(--bg-base)',
+            borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
+            maxHeight: '88vh', overflowY: 'auto',
+            padding: 'var(--space-lg)',
+          }}>
             <div style={{
-              display: 'flex', gap: 'var(--space-sm)',
-              padding: 'var(--space-sm) var(--space-lg) var(--space-md)',
-              borderTop: '1px solid var(--border-default)',
-            }}>
-              {(['basic', 'mid', 'lets_go'] as const).map(level => (
-                <button
-                  key={level}
-                  onClick={(e) => { e.stopPropagation(); updateEffort(item.id, level); }}
-                  style={{
-                    flex: 1, padding: '6px 0',
-                    borderRadius: 'var(--radius-pill)',
-                    border: `1px solid ${item.effort === level ? 'var(--ochre)' : 'var(--border-default)'}`,
-                    background: item.effort === level ? 'var(--ochre)' : 'transparent',
-                    color: item.effort === level ? 'var(--bg-base)' : 'var(--text-muted)',
-                    font: '600 11px/1 Inter, sans-serif',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {EFFORT_LABEL[level]}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
+              width: 40, height: 4, borderRadius: 2,
+              background: 'var(--border-default)',
+              margin: '0 auto var(--space-md)',
+            }} />
+            <StrengthCard
+              open={true}
+              onToggle={() => setStrengthSheetActivityId(null)}
+              activityId={strengthSheetActivityId}
+              onConfirmed={() => setStrengthSheetActivityId(null)}
+            />
+          </div>
+        </>
+      )}
+    </>
   );
 }
 

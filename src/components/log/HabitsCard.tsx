@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CheckSquare, Check, AlertCircle } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 
@@ -16,10 +16,70 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function formatShortDate(dateStr: string) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
+}
+
+function HabitsHistory({ refreshTrigger }: { refreshTrigger: number }) {
+  const [history, setHistory] = useState<HabitsResponse[] | null>(null);
+
+  useEffect(() => {
+    apiFetch<HabitsResponse[]>('/api/habits?days=14')
+      .then(data => setHistory(data))
+      .catch(() => setHistory(null));
+  }, [refreshTrigger]);
+
+  if (!history || history.length === 0) return null;
+
+  return (
+    <div style={{
+      borderTop: '1px solid var(--border-default)',
+      paddingTop: 'var(--space-md)',
+      display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)',
+    }}>
+      <span style={{
+        font: '600 10px/1 Inter, sans-serif', letterSpacing: '1.2px',
+        textTransform: 'uppercase', color: 'var(--text-muted)',
+        marginBottom: 'var(--space-xs)',
+      }}>
+        Recent
+      </span>
+      {history.map(row => (
+        <div key={row.habit_date} style={{
+          display: 'flex', alignItems: 'center', gap: 'var(--space-sm)',
+        }}>
+          <span style={{
+            font: '600 12px/1 JetBrains Mono, monospace', letterSpacing: '-0.5px',
+            color: 'var(--text-secondary)', minWidth: 90,
+          }}>
+            {formatShortDate(row.habit_date)}
+          </span>
+          <span style={{
+            font: '600 12px/1 Inter, sans-serif',
+            color: row.did_devotions ? 'var(--ochre)' : 'var(--border-default)',
+          }}>
+            {row.did_devotions ? '✓' : '·'} Dev
+          </span>
+          <span style={{
+            font: '600 12px/1 Inter, sans-serif',
+            color: row.did_breathing ? 'var(--ochre)' : 'var(--border-default)',
+          }}>
+            {row.did_breathing ? '✓' : '·'} Breathe
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function HabitsCard({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   const [state, setState] = useState<HabitsState>('empty');
   const [didBreathing, setDidBreathing] = useState(false);
   const [didDevotions, setDidDevotions] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const handleSubmit = async () => {
     setState('saving');
@@ -37,6 +97,7 @@ export default function HabitsCard({ open, onToggle }: { open: boolean; onToggle
         setState('empty');
         setDidBreathing(false);
         setDidDevotions(false);
+        setRefreshTrigger(n => n + 1);
       }, 2000);
     } catch {
       setState('error');
@@ -65,14 +126,14 @@ export default function HabitsCard({ open, onToggle }: { open: boolean; onToggle
       </button>
 
       {open && (
-        <div style={{ padding: '0 var(--space-lg) var(--space-lg)' }}>
+        <div style={{ padding: '0 var(--space-lg) var(--space-lg)', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
           {state === 'confirmed' ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', color: 'var(--signal-good)' }}>
               <Check size={18} />
               <span style={{ font: '600 14px/1 Inter, sans-serif' }}>Logged!</span>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+            <>
               <div style={{
                 display: 'flex', gap: 'var(--space-lg)',
                 opacity: state === 'saving' ? 0.5 : 1,
@@ -137,8 +198,10 @@ export default function HabitsCard({ open, onToggle }: { open: boolean; onToggle
                   </span>
                 </div>
               )}
-            </div>
+            </>
           )}
+
+          <HabitsHistory refreshTrigger={refreshTrigger} />
         </div>
       )}
     </div>

@@ -9,9 +9,10 @@ import MonthGrid from "@/components/calendar/MonthGrid";
 import DayDetailSheet from "@/components/calendar/DayDetailSheet";
 import StatsSection from "@/components/calendar/StatsSection";
 import PatternsSection from "@/components/calendar/PatternsSection";
+import SyncButton from "@/components/SyncButton";
 
 export default function CalendarPage() {
-  const { data, loading, error } = useCalendarData();
+  const { data, loading, error, refetch } = useCalendarData();
 
   const now = new Date();
   const [currentMonth, setCurrentMonth] = useState({
@@ -20,7 +21,7 @@ export default function CalendarPage() {
   });
 
   const [activeCategories, setActiveCategories] = useState<Set<CategoryName>>(
-    () => new Set(CATEGORY_ORDER)
+    () => new Set<CategoryName>(['strength'])
   );
 
   const [showDuration, setShowDuration] = useState(false);
@@ -136,12 +137,15 @@ export default function CalendarPage() {
         </div>
       )}
 
-      <MonthHeader
-        year={currentMonth.year}
-        month={currentMonth.month}
-        onPrev={handlePrev}
-        onNext={handleNext}
-      />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <MonthHeader
+          year={currentMonth.year}
+          month={currentMonth.month}
+          onPrev={handlePrev}
+          onNext={handleNext}
+        />
+        <SyncButton onSuccess={refetch} />
+      </div>
 
       <ToggleBar
         activeCategories={activeCategories}

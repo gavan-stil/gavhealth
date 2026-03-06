@@ -66,6 +66,9 @@ export function useCalendarData() {
   const [data, setData] = useState<CalendarData>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [version, setVersion] = useState(0);
+
+  const refetch = () => setVersion(v => v + 1);
 
   useEffect(() => {
     let cancelled = false;
@@ -263,7 +266,7 @@ export function useCalendarData() {
 
     load();
     return () => { cancelled = true; };
-  }, []);
+  }, [version]);
 
-  return { data, loading, error };
+  return { data, loading, error, refetch };
 }

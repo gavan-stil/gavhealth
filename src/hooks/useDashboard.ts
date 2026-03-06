@@ -155,5 +155,11 @@ export default function useDashboard() {
     transformStreaks,
   );
 
-  return { readiness, vitals, streaks };
+  const refetch = () => {
+    readiness.refetch();
+    vitals.refetch();
+    streaks.refetch();
+  };
+
+  return { readiness, vitals, streaks, refetch };
 }
