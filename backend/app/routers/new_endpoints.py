@@ -59,7 +59,7 @@ class EffortUpdate(BaseModel):
 class StrengthLogCreate(BaseModel):
     workout_split: str
     exercises: list
-    start_time: str
+    start_time: str | None = None
     duration_minutes: int
     notes: str | None = None
 
@@ -179,10 +179,10 @@ async def get_habits_history(days: int = Query(default=14), db: AsyncSession = D
 @router.post("/log/strength/save")
 async def save_strength_log(body: StrengthLogCreate, db: AsyncSession = Depends(get_db)):
     import json
-    from dateutil.parser import parse as dtparse
+    from datetime import datetime
 
     exercises_json = json.dumps(body.exercises) if not isinstance(body.exercises, str) else body.exercises
-    start_ts = dtparse(body.start_time) if body.start_time else None
+    start_ts = datetime.fromisoformat(body.start_time) if body.start_time else None
 
     result = await db.execute(
         text("""
