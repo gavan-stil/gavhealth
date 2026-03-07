@@ -22,6 +22,7 @@ None — backlog next.
 
 | Task | Date | Summary |
 |------|------|---------|
+| Bugs | 2026-03-07 | Fix strength sheet overlay hidden behind TabBar (z-index 91→111); fix Trends exercise filter (backend categories chest/back/arms/shoulders → push/pull, not name-match) |
 | T12 | 2026-03-07 | Strength session bridge: save→normalised tables, DELETE, UNLINK, 6-category exercise inference, backfill 7 prod sessions |
 | T10 | 2026-03-07 | Water + Mood/Energy + Nutrition log cards; Dashboard revamp with QuickStatsRow + 3 trend charts |
 | T11 | 2026-03-07 | Strength Trends frontend — WorkoutVolumeChart + ExerciseProgressSection on Trends page |

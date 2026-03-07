@@ -25,6 +25,9 @@ export interface SaunaPoint extends TrendsDataPoint {
 export interface NutritionPoint {
   week_start: string;
   avg_calories: number;
+  avg_protein_g: number;
+  avg_carbs_g: number;
+  avg_fat_g: number;
   consistency_pct: number;
 }
 
@@ -74,6 +77,9 @@ interface RawSauna {
 interface RawFoodWeekly {
   week_start: string;
   avg_calories: number;
+  avg_protein_g: number;
+  avg_carbs_g: number;
+  avg_fat_g: number;
   total_meals: number;
 }
 
@@ -143,11 +149,14 @@ export function useTrendsData(days: TimeRange): UseTrendsReturn {
       count,
     })).sort((a, b) => a.date.localeCompare(b.date));
 
-    // Food: bare array, compute consistency_pct
+    // Food: bare array, compute consistency_pct, map macros
     const nutrition: NutritionPoint[] = (foodRaw || [])
       .map((f) => ({
         week_start: f.week_start,
         avg_calories: f.avg_calories ?? 0,
+        avg_protein_g: f.avg_protein_g ?? 0,
+        avg_carbs_g: f.avg_carbs_g ?? 0,
+        avg_fat_g: f.avg_fat_g ?? 0,
         consistency_pct: Math.min(
           100,
           Math.round(((f.total_meals ?? 0) / 7) * 100)

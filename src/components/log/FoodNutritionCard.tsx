@@ -145,7 +145,7 @@ export default function FoodNutritionCard({
                     <span
                       role="button"
                       onClick={e => { e.stopPropagation(); handleDeleteMeal(meal.id); }}
-                      style={{ marginLeft: 2, opacity: deletingId === meal.id ? 1 : 0.3, color: 'var(--ember)', lineHeight: 1, fontSize: 12 }}
+                      style={{ marginLeft: 2, opacity: deletingId === meal.id ? 1 : 0.65, color: 'var(--ember)', lineHeight: 1, fontSize: 12 }}
                     >
                       ×
                     </span>

@@ -5,9 +5,8 @@ import SaunaCard from './SaunaCard';
 import HabitsCard from './HabitsCard';
 import WaterCard from './WaterCard';
 import MoodEnergyCard from './MoodEnergyCard';
-import NutritionCard from './NutritionCard';
 
-type CardKey = 'food' | 'strength' | 'sauna' | 'habits' | 'water' | 'mood' | 'nutrition' | null;
+type CardKey = 'food' | 'strength' | 'sauna' | 'habits' | 'water' | 'mood' | null;
 
 export default function LogCards() {
   const [openCard, setOpenCard] = useState<CardKey>(null);
@@ -23,7 +22,6 @@ export default function LogCards() {
       padding: 'var(--space-lg)',
     }}>
       <FoodNutritionCard open={openCard === 'food'} onToggle={() => toggle('food')} />
-      <NutritionCard open={openCard === 'nutrition'} onToggle={() => toggle('nutrition')} />
       <WaterCard open={openCard === 'water'} onToggle={() => toggle('water')} />
       <MoodEnergyCard open={openCard === 'mood'} onToggle={() => toggle('mood')} />
       <StrengthCard open={openCard === 'strength'} onToggle={() => toggle('strength')} />
