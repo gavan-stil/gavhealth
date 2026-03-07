@@ -10,6 +10,8 @@ interface Props {
   loading: boolean;
 }
 
+const toLocalDate = (iso: string) => new Date(iso).toLocaleDateString('en-CA');
+
 function formatLabel(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');
   return `${d.toLocaleDateString('en-US', { month: 'short' })} ${d.getDate()}`;
@@ -21,11 +23,11 @@ export default function WaterNutritionChart({ waterData, foodData, loading }: Pr
     for (let i = 13; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      days.push(d.toISOString().split('T')[0]);
+      days.push(d.toLocaleDateString('en-CA'));
     }
     return days.map(date => {
       const waterMl = waterData
-        ? waterData.filter(w => w.logged_at.startsWith(date)).reduce((sum, w) => sum + w.ml, 0)
+        ? waterData.filter(w => toLocalDate(w.logged_at) === date).reduce((sum, w) => sum + w.ml, 0)
         : 0;
       const kcal = foodData
         ? foodData.filter(f => f.log_date === date).reduce((sum, f) => sum + f.calories_kcal, 0)

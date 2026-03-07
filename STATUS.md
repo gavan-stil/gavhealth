@@ -18,10 +18,13 @@ None — backlog next.
 
 ---
 
+---
+
 ## Recently Completed
 
 | Task | Date | Summary |
 |------|------|---------|
+| Water bugs | 2026-03-07 | Fix POST /log/water + /log/mood 500 (asyncpg NULL→timestamptz cast); fix UTC day-boundary bucketing (Brisbane UTC+10) in WaterCard/Dashboard/WaterNutritionChart; add WaterTrendsChart to Trends (daily bars, 3L target line, green/ochre) |
 | T13 | 2026-03-07 | Food logging gaps: remove stale NutritionCard, fix × opacity, protein trends chart (weekly bars, 180g target line, green/ochre colouring) |
 | Bugs | 2026-03-07 | Fix strength sheet overlay hidden behind TabBar (z-index 91→111); fix Trends exercise filter (backend categories chest/back/arms/shoulders → push/pull, not name-match) |
 | T12 | 2026-03-07 | Strength session bridge: save→normalised tables, DELETE, UNLINK, 6-category exercise inference, backfill 7 prod sessions |

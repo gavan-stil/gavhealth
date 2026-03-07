@@ -9,6 +9,7 @@ import CorrelationSummary from "@/components/trends/CorrelationSummary";
 import WorkoutVolumeChart from "@/components/trends/WorkoutVolumeChart";
 import ExerciseProgressSection from "@/components/trends/ExerciseProgressSection";
 import NutritionTrendsChart from "@/components/trends/NutritionTrendsChart";
+import WaterTrendsChart from "@/components/trends/WaterTrendsChart";
 import { AlertTriangle } from "lucide-react";
 
 /* ── Inline skeleton (avoids modifying dashboard CardSkeleton) ── */
@@ -175,6 +176,7 @@ export default function TrendsPage() {
           <PerformanceOverlay data={data} />
           <CorrelationSummary data={data} />
           <NutritionTrendsChart nutrition={data.nutrition} />
+          <WaterTrendsChart water={data.water} />
           <WorkoutVolumeChart
             sessions={strengthTrends.sessions}
             loading={strengthTrends.loading}

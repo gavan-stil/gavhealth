@@ -734,13 +734,14 @@ class WaterLogCreate(BaseModel):
 
 @router.post("/log/water")
 async def log_water(body: WaterLogCreate, db: AsyncSession = Depends(get_db)):
+    logged_at_val = datetime.fromisoformat(body.logged_at) if body.logged_at else datetime.now(timezone.utc)
     result = await db.execute(
         text("""
             INSERT INTO water_logs (ml, logged_at)
-            VALUES (:ml, COALESCE(:logged_at::timestamptz, NOW()))
+            VALUES (:ml, :logged_at)
             RETURNING id, logged_at, ml
         """),
-        {"ml": body.ml, "logged_at": body.logged_at},
+        {"ml": body.ml, "logged_at": logged_at_val},
     )
     await db.commit()
     row = result.mappings().one()
@@ -805,13 +806,14 @@ class MoodLogCreate(BaseModel):
 
 @router.post("/log/mood")
 async def log_mood(body: MoodLogCreate, db: AsyncSession = Depends(get_db)):
+    logged_at_val = datetime.fromisoformat(body.logged_at) if body.logged_at else datetime.now(timezone.utc)
     result = await db.execute(
         text("""
             INSERT INTO mood_logs (mood, energy, logged_at)
-            VALUES (:mood, :energy, COALESCE(:logged_at::timestamptz, NOW()))
+            VALUES (:mood, :energy, :logged_at)
             RETURNING id, logged_at, mood, energy
         """),
-        {"mood": body.mood, "energy": body.energy, "logged_at": body.logged_at},
+        {"mood": body.mood, "energy": body.energy, "logged_at": logged_at_val},
     )
     await db.commit()
     row = result.mappings().one()

@@ -77,14 +77,15 @@ export default function useDashboardV2() {
     food.refetch();
   }, [activities.refetch, mood.refetch, water.refetch, food.refetch]);
 
-  // Today's stats for QuickStatsRow
-  const today = new Date().toISOString().split('T')[0];
-  const todayMood = mood.data?.find(m => m.logged_at.startsWith(today)) ?? null;
+  // Today's stats for QuickStatsRow — use local date to avoid UTC day-boundary bug (Brisbane UTC+10)
+  const toLocalDate = (iso: string) => new Date(iso).toLocaleDateString('en-CA');
+  const todayLocal = new Date().toLocaleDateString('en-CA');
+  const todayMood = mood.data?.find(m => toLocalDate(m.logged_at) === todayLocal) ?? null;
   const todayWater = water.data
-    ? water.data.filter(w => w.logged_at.startsWith(today)).reduce((sum, w) => sum + w.ml, 0)
+    ? water.data.filter(w => toLocalDate(w.logged_at) === todayLocal).reduce((sum, w) => sum + w.ml, 0)
     : 0;
   const todayKcal = food.data
-    ? food.data.filter(f => f.log_date === today).reduce((sum, f) => sum + f.calories_kcal, 0)
+    ? food.data.filter(f => f.log_date === todayLocal).reduce((sum, f) => sum + f.calories_kcal, 0)
     : 0;
 
   const todayStats: TodayStats = {

@@ -40,6 +40,11 @@ export interface StrengthPoint extends TrendsDataPoint {
   count: number;
 }
 
+export interface WaterPoint {
+  date: string;
+  total_ml: number;
+}
+
 export interface TrendsData {
   sleep: SleepPoint[];
   rhr: RhrPoint[];
@@ -47,6 +52,7 @@ export interface TrendsData {
   nutrition: NutritionPoint[];
   runs: RunPoint[];
   strength: StrengthPoint[];
+  water: WaterPoint[];
 }
 
 interface UseTrendsReturn {
@@ -90,6 +96,12 @@ interface RawActivity {
   distance_km: number | null;
 }
 
+interface RawWaterEntry {
+  id: number;
+  logged_at: string;
+  ml: number;
+}
+
 /* ── Hook ── */
 
 export function useTrendsData(days: TimeRange): UseTrendsReturn {
@@ -103,7 +115,7 @@ export function useTrendsData(days: TimeRange): UseTrendsReturn {
 
     const errors: string[] = [];
 
-    const [sleepRaw, rhrRaw, saunaRaw, foodRaw, actRaw] = await Promise.all([
+    const [sleepRaw, rhrRaw, saunaRaw, foodRaw, actRaw, waterRaw] = await Promise.all([
       apiFetch<{ data: RawSleep[] }>(`/api/sleep?days=${days}&limit=200`).catch(
         (e: Error) => { errors.push(`sleep: ${e.message}`); return { data: [] as RawSleep[] }; }
       ),
@@ -118,6 +130,9 @@ export function useTrendsData(days: TimeRange): UseTrendsReturn {
       ),
       apiFetch<{ data: RawActivity[] }>(`/api/activity?days=${days}&limit=200`).catch(
         (e: Error) => { errors.push(`activity: ${e.message}`); return { data: [] as RawActivity[] }; }
+      ),
+      apiFetch<RawWaterEntry[]>(`/api/water?days=${days}`).catch(
+        () => [] as RawWaterEntry[]
       ),
     ]);
 
@@ -189,6 +204,17 @@ export function useTrendsData(days: TimeRange): UseTrendsReturn {
       ([date, count]) => ({ date, count })
     ).sort((a, b) => a.date.localeCompare(b.date));
 
+    // Water: aggregate ml by local date
+    const waterByDay = new Map<string, number>();
+    for (const w of waterRaw) {
+      const date = new Date(w.logged_at).toLocaleDateString("en-CA");
+      waterByDay.set(date, (waterByDay.get(date) || 0) + w.ml);
+    }
+    const water: WaterPoint[] = Array.from(waterByDay, ([date, total_ml]) => ({
+      date,
+      total_ml,
+    })).sort((a, b) => a.date.localeCompare(b.date));
+
     // If ALL endpoints failed, set error
     if (errors.length === 5) {
       setError("All data endpoints failed");
@@ -197,7 +223,7 @@ export function useTrendsData(days: TimeRange): UseTrendsReturn {
       if (errors.length > 0) {
         setError(`Partial failures: ${errors.join("; ")}`);
       }
-      setData({ sleep, rhr, sauna, nutrition, runs, strength });
+      setData({ sleep, rhr, sauna, nutrition, runs, strength, water });
     }
     setLoading(false);
   }, [days]);

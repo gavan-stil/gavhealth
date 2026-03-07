@@ -31,12 +31,15 @@ export default function WaterCard({ open, onToggle }: Props) {
   const todayTotal = entries.reduce((sum, e) => sum + e.ml, 0);
   const fillPct = Math.min(100, Math.round((todayTotal / DAILY_TARGET) * 100));
 
+  const toLocalDate = (iso: string) => new Date(iso).toLocaleDateString('en-CA');
+  const todayLocal = new Date().toLocaleDateString('en-CA');
+
   const fetchToday = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiFetch<WaterEntry[]>('/api/water?days=1');
-      setEntries(data);
+      const data = await apiFetch<WaterEntry[]>('/api/water?days=2');
+      setEntries(data.filter(e => toLocalDate(e.logged_at) === todayLocal));
     } catch (e) {
       setError((e as Error).message);
     } finally {
