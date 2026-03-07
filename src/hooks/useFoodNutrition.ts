@@ -71,8 +71,8 @@ export function useFoodNutrition() {
       .then(setSavedMeals)
       .catch(() => {});
 
-    apiFetch<FoodApiEntry[]>(`/api/food?date=${today}`)
-      .then(entries => setTodayLog(entries.map(toLogEntry)))
+    apiFetch<{ data: FoodApiEntry[] }>(`/api/food?start_date=${today}&end_date=${today}`)
+      .then(res => setTodayLog((res.data ?? []).map(toLogEntry)))
       .catch(() => {});
   }, []);
 
