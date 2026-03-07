@@ -41,3 +41,4 @@
 ## Blocked / User Action Required
 
 - **Withings OAuth** — Daily sync via GitHub Actions cron is set up but Withings OAuth flow not completed. No new health data will sync until Gav completes the Withings device authorisation. (Not a code task.)
+- **Railway backend redeploy** — T10 added `POST /api/log/water`, `GET /api/water`, `POST /api/log/mood`, `GET /api/mood` to `new_endpoints.py`. These are pushed to GitHub but Railway does not auto-deploy. Must manually trigger a redeploy on Railway dashboard before WaterCard and MoodEnergyCard will work in production. Also requires the two CREATE TABLE migrations (`water_logs`, `mood_logs`) to run — SQL is in `new_endpoints.py` as comments at the top of each router section.

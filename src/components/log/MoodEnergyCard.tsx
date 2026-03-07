@@ -54,7 +54,7 @@ export default function MoodEnergyCard({ open, onToggle }: Props) {
   }, [mood, energy, canSave]);
 
   const headerLabel = saveState === 'confirmed' && mood !== null && energy !== null
-    ? `${MOOD_EMOJI[mood - 1]} ${ENERGY_EMOJI[energy - 1]}`
+    ? `${MOOD_EMOJI[mood - 1] ?? ''} ${ENERGY_EMOJI[energy - 1] ?? ''}`.trim()
     : '';
 
   return (

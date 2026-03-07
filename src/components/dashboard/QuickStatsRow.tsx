@@ -48,8 +48,8 @@ export default function QuickStatsRow({ stats }: Props) {
   const navigate = useNavigate();
   const goLog = () => navigate('/log');
 
-  const moodLabel = stats.mood !== null ? MOOD_EMOJI[stats.mood - 1] : '—';
-  const energyLabel = stats.energy !== null ? ENERGY_EMOJI[stats.energy - 1] : '—';
+  const moodLabel = stats.mood !== null ? (MOOD_EMOJI[stats.mood - 1] ?? '—') : '—';
+  const energyLabel = stats.energy !== null ? (ENERGY_EMOJI[stats.energy - 1] ?? '—') : '—';
   const waterLabel = stats.water_ml > 0 ? `${(stats.water_ml / 1000).toFixed(1)}L` : '—';
   const kcalLabel = stats.calories_kcal > 0 ? `${Math.round(stats.calories_kcal)}` : '—';
 

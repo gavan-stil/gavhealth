@@ -506,12 +506,12 @@ export default function ActivityFeed() {
             style={{
               position: 'fixed', inset: 0,
               background: 'rgba(0,0,0,0.6)',
-              zIndex: 90,
+              zIndex: 110,
             }}
           />
           <div style={{
             position: 'fixed', bottom: 0, left: 0, right: 0,
-            zIndex: 91,
+            zIndex: 111,
             background: 'var(--bg-base)',
             borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
             maxHeight: '88vh', overflowY: 'auto',

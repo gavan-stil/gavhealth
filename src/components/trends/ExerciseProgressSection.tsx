@@ -5,20 +5,14 @@ import ExerciseProgressCard from "./ExerciseProgressCard";
 
 type Filter = "all" | "push" | "pull" | "legs" | "abs";
 
-const EXERCISE_CATEGORIES: Record<string, Filter> = {
-  Squat: "legs",
-  "Leg Press": "legs",
-  RDL: "legs",
-  Deadlift: "legs",
-  "Bench Press": "push",
-  OHP: "push",
-  Dips: "push",
-  "Push-ups": "push",
-  "Pull-ups": "pull",
-  Row: "pull",
-  "Chin-ups": "pull",
-  Plank: "abs",
-  Crunch: "abs",
+// Maps backend category values → frontend filter tabs
+const CATEGORY_TO_FILTER: Record<string, Filter> = {
+  chest: "push",
+  shoulders: "push",
+  arms: "push",
+  back: "pull",
+  legs: "legs",
+  abs: "abs",
 };
 
 const FILTERS: { key: Filter; label: string }[] = [
@@ -49,7 +43,7 @@ export default function ExerciseProgressSection({ days }: Props) {
       : filter === "all"
       ? exercises
       : exercises.filter(
-          (ex) => (EXERCISE_CATEGORIES[ex.name] ?? "legs") === filter
+          (ex) => (CATEGORY_TO_FILTER[ex.category] ?? "push") === filter
         );
 
   return (
