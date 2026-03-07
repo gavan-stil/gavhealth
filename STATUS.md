@@ -14,7 +14,7 @@ All 9 tasks shipped. App is live, logging flows work end-to-end.
 
 ## Active Task
 
-None
+None — backlog next.
 
 ---
 
@@ -22,6 +22,7 @@ None
 
 | Task | Date | Summary |
 |------|------|---------|
+| T12 | 2026-03-07 | Strength session bridge: save→normalised tables, DELETE, UNLINK, 6-category exercise inference, backfill 7 prod sessions |
 | T10 | 2026-03-07 | Water + Mood/Energy + Nutrition log cards; Dashboard revamp with QuickStatsRow + 3 trend charts |
 | T11 | 2026-03-07 | Strength Trends frontend — WorkoutVolumeChart + ExerciseProgressSection on Trends page |
 | T09 | 2026-03-06 | Manual Withings sync button (Calendar + Dashboard) |
