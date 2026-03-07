@@ -84,6 +84,7 @@ export default function ActivityFeed() {
   const [linkingActivityId, setLinkingActivityId] = useState<number | null>(null);
   const [linkingSessionId, setLinkingSessionId] = useState<number | null>(null);
   const [linkDoneFor, setLinkDoneFor] = useState<number | null>(null); // activity id that just got linked
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchStrengthSessions = useCallback(async () => {
     try {
@@ -153,6 +154,28 @@ export default function ActivityFeed() {
       // ignore
     } finally {
       setLinkingSessionId(null);
+    }
+  };
+
+  const handleUnlink = async (sessionId: number) => {
+    try {
+      await apiFetch(`/api/log/strength/${sessionId}/unlink`, { method: 'PATCH' });
+      await fetchStrengthSessions();
+    } catch {
+      // silently ignore
+    }
+  };
+
+  const handleDelete = async (sessionId: number) => {
+    if (!window.confirm('Delete this strength session?')) return;
+    setDeletingId(sessionId);
+    try {
+      await apiFetch(`/api/log/strength/${sessionId}`, { method: 'DELETE' });
+      await fetchStrengthSessions();
+    } catch {
+      // silently ignore
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -322,18 +345,31 @@ export default function ActivityFeed() {
                             {linkedByActivityId[item.id].exercise_count} exercises · {linkedByActivityId[item.id].duration_minutes}min
                           </span>
                         </div>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setStrengthSheetActivityId(item.id); }}
-                          style={{
-                            background: 'transparent', border: '1px solid var(--rust)',
-                            borderRadius: 'var(--radius-md)',
-                            padding: '5px 10px',
-                            font: '600 11px/1 Inter, sans-serif', color: 'var(--rust)',
-                            cursor: 'pointer', whiteSpace: 'nowrap' as const,
-                          }}
-                        >
-                          Re-log
-                        </button>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleUnlink(linkedByActivityId[item.id].id); }}
+                            style={{
+                              background: 'transparent', border: 'none',
+                              padding: '5px 6px',
+                              font: '600 11px/1 Inter, sans-serif', color: 'var(--text-muted)',
+                              cursor: 'pointer', whiteSpace: 'nowrap' as const,
+                            }}
+                          >
+                            Unlink
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setStrengthSheetActivityId(item.id); }}
+                            style={{
+                              background: 'transparent', border: '1px solid var(--rust)',
+                              borderRadius: 'var(--radius-md)',
+                              padding: '5px 10px',
+                              font: '600 11px/1 Inter, sans-serif', color: 'var(--rust)',
+                              cursor: 'pointer', whiteSpace: 'nowrap' as const,
+                            }}
+                          >
+                            Re-log
+                          </button>
+                        </div>
                       </div>
                     ) : linkDoneFor === item.id ? (
                       /* Just linked */
@@ -417,20 +453,36 @@ export default function ActivityFeed() {
                                       {session.log_date} · {session.exercise_count} exercises · {session.duration_minutes}min
                                     </span>
                                   </div>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handleLink(session.id, item.id); }}
-                                    disabled={linkingSessionId === session.id}
-                                    style={{
-                                      padding: '4px 12px',
-                                      background: 'var(--rust)', color: 'var(--bg-base)',
-                                      border: 'none', borderRadius: 'var(--radius-pill)',
-                                      font: '600 11px/1 Inter, sans-serif',
-                                      cursor: 'pointer',
-                                      opacity: linkingSessionId === session.id ? 0.5 : 1,
-                                    }}
-                                  >
-                                    {linkingSessionId === session.id ? '…' : 'Link'}
-                                  </button>
+                                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleDelete(session.id); }}
+                                      disabled={deletingId === session.id}
+                                      style={{
+                                        padding: '4px 8px',
+                                        background: 'transparent', color: 'var(--signal-bad)',
+                                        border: '1px solid var(--signal-bad)', borderRadius: 'var(--radius-pill)',
+                                        font: '700 12px/1 Inter, sans-serif',
+                                        cursor: 'pointer',
+                                        opacity: deletingId === session.id ? 0.5 : 1,
+                                      }}
+                                    >
+                                      ×
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleLink(session.id, item.id); }}
+                                      disabled={linkingSessionId === session.id}
+                                      style={{
+                                        padding: '4px 12px',
+                                        background: 'var(--rust)', color: 'var(--bg-base)',
+                                        border: 'none', borderRadius: 'var(--radius-pill)',
+                                        font: '600 11px/1 Inter, sans-serif',
+                                        cursor: 'pointer',
+                                        opacity: linkingSessionId === session.id ? 0.5 : 1,
+                                      }}
+                                    >
+                                      {linkingSessionId === session.id ? '…' : 'Link'}
+                                    </button>
+                                  </div>
                                 </div>
                               ))
                             )}

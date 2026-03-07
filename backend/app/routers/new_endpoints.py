@@ -1,16 +1,60 @@
 """New endpoints: activity effort, activity feed, manual strength logging, food & nutrition."""
 
-from datetime import timedelta
+from datetime import timedelta, datetime, date, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, field_validator
-from sqlalchemy import text
+from sqlalchemy import text, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import verify_api_key
 from app.database import get_db
+from app.models.health import StrengthSession, StrengthSet, Exercise
 
 router = APIRouter(prefix="/api", tags=["activities"], dependencies=[Depends(verify_api_key)])
+
+
+# ---------------------------------------------------------------------------
+# T12 helpers — exercise category inference + bodyweight lookup
+# ---------------------------------------------------------------------------
+def _infer_category(name: str) -> str:
+    """Map exercise name → body-part category via keyword matching."""
+    n = name.lower()
+    if any(k in n for k in ("bench", "chest", "pec", "push up", "push-up", "cable fly", "chest fly", "incline press", "decline press", "db press")):
+        return "chest"
+    if any(k in n for k in ("row", "pull up", "pull-up", "chin up", "chin-up", "pulldown", "lat ", "deadlift", "back ext", "t-bar")):
+        return "back"
+    if any(k in n for k in ("overhead", "shoulder", "lateral raise", "front raise", "face pull", "arnold", "shrug", "rear delt", "military", "ohp")):
+        return "shoulders"
+    # Legs before arms: "leg extension" must → legs, not arms
+    if any(k in n for k in ("squat", "leg ", "lunge", "calf", "hip thrust", "hamstring", "glute", "step up", "step-up", "hack", "rdl", "romanian")):
+        return "legs"
+    if any(k in n for k in ("curl", "tricep", "skull", "pushdown", "dip", "extension", "kickback", "hammer")):
+        return "arms"
+    if any(k in n for k in ("plank", "crunch", "sit up", "sit-up", "ab ", "abs", "core", "twist", "woodchop", "dead bug", "leg raise", "hanging")):
+        return "core"
+    return "other"
+
+
+async def _lookup_bodyweight(db: AsyncSession, session_date) -> float | None:
+    """Get bodyweight: exact date match, else 7-day rolling avg."""
+    bw_result = await db.execute(
+        text("SELECT weight_kg FROM weight_logs WHERE recorded_at::date = :d ORDER BY recorded_at DESC LIMIT 1"),
+        {"d": session_date},
+    )
+    row = bw_result.mappings().first()
+    if row:
+        return float(row["weight_kg"])
+    rolling = await db.execute(
+        text("""SELECT AVG(weight_kg) AS avg FROM (
+            SELECT weight_kg FROM weight_logs
+            WHERE recorded_at::date < :d
+            ORDER BY recorded_at DESC LIMIT 7
+        ) sub"""),
+        {"d": session_date},
+    )
+    r = rolling.mappings().first()
+    return float(r["avg"]) if r and r["avg"] else None
 
 
 # ---------------------------------------------------------------------------
@@ -179,7 +223,6 @@ async def get_habits_history(days: int = Query(default=14), db: AsyncSession = D
 @router.post("/log/strength/save")
 async def save_strength_log(body: StrengthLogCreate, db: AsyncSession = Depends(get_db)):
     import json
-    from datetime import datetime
 
     exercises_json = json.dumps(body.exercises) if not isinstance(body.exercises, str) else body.exercises
     start_ts = datetime.fromisoformat(body.start_time) if body.start_time else None
@@ -235,6 +278,61 @@ async def save_strength_log(body: StrengthLogCreate, db: AsyncSession = Depends(
             {"aid": matched_activity_id, "lid": log_id},
         )
 
+    # --- Bridge to normalised tables (feeds Trends) ---
+    bridged_session_id = None
+    if body.exercises and len(body.exercises) > 0:
+        session = StrengthSession(
+            session_datetime=start_ts or datetime.now(timezone.utc),
+            session_label=body.workout_split,
+            source="manual",
+            activity_log_id=matched_activity_id,
+        )
+        db.add(session)
+        await db.flush()  # get session.id
+        bridged_session_id = session.id
+
+        session_date = start_ts.date() if start_ts else date.today()
+        bodyweight_kg = await _lookup_bodyweight(db, session_date)
+
+        set_number_global = 0
+        for ex_data in body.exercises:
+            ex_name = (ex_data.get("name") or "").strip()
+            if not ex_name:
+                continue
+
+            exercise = (
+                await db.execute(
+                    select(Exercise).where(func.lower(Exercise.name) == ex_name.lower())
+                )
+            ).scalar_one_or_none()
+            if not exercise:
+                exercise = Exercise(name=ex_name, category=_infer_category(ex_name))
+                db.add(exercise)
+                await db.flush()
+
+            for set_data in ex_data.get("sets", []):
+                set_number_global += 1
+                load_type = set_data.get("load_type", "kg")
+                is_bw = load_type in ("bw", "bw+")
+                weight = set_data.get("kg") if load_type != "bw" else None
+
+                strength_set = StrengthSet(
+                    session_id=session.id,
+                    exercise_id=exercise.id,
+                    set_number=set_number_global,
+                    reps=set_data.get("reps", 0),
+                    weight_kg=weight,
+                    is_bodyweight=is_bw,
+                    bodyweight_at_session=bodyweight_kg,
+                    rpe=None,
+                )
+                db.add(strength_set)
+
+        await db.execute(
+            text("UPDATE manual_strength_logs SET bridged_session_id = :sid WHERE id = :lid"),
+            {"sid": bridged_session_id, "lid": log_id},
+        )
+
     await db.commit()
     return {
         "id": log_id,
@@ -283,6 +381,152 @@ async def relink_strength(id: int, body: RelinkBody, db: AsyncSession = Depends(
         raise HTTPException(status_code=404, detail="Strength log not found")
     await db.commit()
     return dict(row)
+
+
+# ---------------------------------------------------------------------------
+# 5b. DELETE /api/log/strength/{id}
+# ---------------------------------------------------------------------------
+@router.delete("/log/strength/{id}")
+async def delete_strength_log(id: int, db: AsyncSession = Depends(get_db)):
+    row = await db.execute(
+        text("SELECT id, bridged_session_id FROM manual_strength_logs WHERE id = :id"),
+        {"id": id},
+    )
+    log = row.mappings().first()
+    if not log:
+        raise HTTPException(status_code=404, detail="Strength log not found")
+
+    if log["bridged_session_id"]:
+        await db.execute(
+            text("DELETE FROM strength_sessions WHERE id = :sid"),
+            {"sid": log["bridged_session_id"]},
+        )
+
+    await db.execute(
+        text("DELETE FROM manual_strength_logs WHERE id = :id"),
+        {"id": id},
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# 5c. PATCH /api/log/strength/{id}/unlink
+# ---------------------------------------------------------------------------
+@router.patch("/log/strength/{id}/unlink")
+async def unlink_strength(id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        text("""
+            UPDATE manual_strength_logs
+            SET matched_activity_id = NULL, match_confirmed = false
+            WHERE id = :id
+            RETURNING id, bridged_session_id
+        """),
+        {"id": id},
+    )
+    row = result.mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Strength log not found")
+
+    if row["bridged_session_id"]:
+        await db.execute(
+            text("UPDATE strength_sessions SET activity_log_id = NULL WHERE id = :sid"),
+            {"sid": row["bridged_session_id"]},
+        )
+
+    await db.commit()
+    return {"ok": True, "id": id}
+
+
+# ---------------------------------------------------------------------------
+# ADMIN: POST /api/admin/backfill-strength-bridge
+# One-time: bridge existing manual_strength_logs → normalised tables.
+# Remove after running in prod.
+# ---------------------------------------------------------------------------
+@router.post("/admin/backfill-strength-bridge")
+async def backfill_strength_bridge(db: AsyncSession = Depends(get_db)):
+    import json
+
+    rows_result = await db.execute(
+        text("""
+            SELECT id, workout_split, exercises, start_time, duration_minutes
+            FROM manual_strength_logs
+            WHERE bridged_session_id IS NULL
+              AND jsonb_array_length(exercises) > 0
+            ORDER BY id
+        """)
+    )
+    rows = rows_result.mappings().all()
+
+    bridged = 0
+    for log in rows:
+        try:
+            exercises_data = log["exercises"] if isinstance(log["exercises"], list) else json.loads(log["exercises"])
+            start_ts = log["start_time"]
+            if start_ts and isinstance(start_ts, str):
+                start_ts = datetime.fromisoformat(start_ts)
+
+            session = StrengthSession(
+                session_datetime=start_ts or datetime.now(timezone.utc),
+                session_label=log["workout_split"],
+                source="manual",
+                activity_log_id=None,
+            )
+            db.add(session)
+            await db.flush()
+
+            session_date = start_ts.date() if start_ts and hasattr(start_ts, "date") else date.today()
+            bodyweight_kg = await _lookup_bodyweight(db, session_date)
+
+            set_number_global = 0
+            for ex_data in exercises_data:
+                ex_name = (ex_data.get("name") or "").strip()
+                if not ex_name:
+                    continue
+
+                exercise = (
+                    await db.execute(
+                        select(Exercise).where(func.lower(Exercise.name) == ex_name.lower())
+                    )
+                ).scalar_one_or_none()
+                if not exercise:
+                    exercise = Exercise(name=ex_name, category=_infer_category(ex_name))
+                    db.add(exercise)
+                    await db.flush()
+                else:
+                    # Update existing exercises with correct category if still "other"
+                    if exercise.category == "other":
+                        exercise.category = _infer_category(ex_name)
+                        await db.flush()
+
+                for set_data in ex_data.get("sets", []):
+                    set_number_global += 1
+                    load_type = set_data.get("load_type", "kg")
+                    is_bw = load_type in ("bw", "bw+")
+                    weight = set_data.get("kg") if load_type != "bw" else None
+
+                    db.add(StrengthSet(
+                        session_id=session.id,
+                        exercise_id=exercise.id,
+                        set_number=set_number_global,
+                        reps=set_data.get("reps", 0),
+                        weight_kg=weight,
+                        is_bodyweight=is_bw,
+                        bodyweight_at_session=bodyweight_kg,
+                        rpe=None,
+                    ))
+
+            await db.execute(
+                text("UPDATE manual_strength_logs SET bridged_session_id = :sid WHERE id = :lid"),
+                {"sid": session.id, "lid": log["id"]},
+            )
+            bridged += 1
+        except Exception as e:
+            # Log but continue with other rows
+            print(f"Backfill failed for log {log['id']}: {e}")
+
+    await db.commit()
+    return {"ok": True, "bridged": bridged, "total_processed": len(rows)}
 
 
 # ---------------------------------------------------------------------------

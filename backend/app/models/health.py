@@ -185,7 +185,7 @@ class Exercise(Base):
     __tablename__ = "exercises"
     __table_args__ = (
         CheckConstraint(
-            "category IN ('upper_push','upper_pull','lower','core','carry','full_body','other')",
+            "category IN ('chest','back','shoulders','arms','legs','core','other')",
             name="ck_exercise_category",
         ),
     )

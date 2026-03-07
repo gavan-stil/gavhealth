@@ -28,6 +28,10 @@ async def lifespan(app: FastAPI):
             # activity_logs: add effort tracking columns
             "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS effort VARCHAR(20)",
             "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS effort_manually_set BOOLEAN DEFAULT false",
+            # T12: bridge manual strength logs to normalised tables
+            "ALTER TABLE manual_strength_logs ADD COLUMN IF NOT EXISTS bridged_session_id INTEGER",
+            # Drop old category check constraint so new body-part categories work
+            "ALTER TABLE exercises DROP CONSTRAINT IF EXISTS ck_exercise_category",
             # saved_meals: food library.
             # The table may have been created via Railway GUI without id/name columns.
             # Drop and recreate if the 'name' column is missing (table is empty so safe).
