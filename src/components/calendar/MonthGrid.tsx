@@ -293,6 +293,7 @@ function DayCell({
         background: "none",
         border: "none",
         padding: "3px 2px",
+        width: "100%",
         cursor: inMonth ? "pointer" : "default",
         display: "flex",
         flexDirection: "column",
