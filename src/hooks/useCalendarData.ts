@@ -269,8 +269,12 @@ export function useCalendarData() {
   }
   const { year: initYear, month: initMonth } = initRef.current;
 
+  // Previous month relative to init
+  const prevInitYear = initMonth === 0 ? initYear - 1 : initYear;
+  const prevInitMonth = initMonth === 0 ? 11 : initMonth - 1;
+
   const blocksRef = useRef<MonthBlock[]>([]);
-  const earliestRef = useRef({ year: initYear, month: initMonth });
+  const earliestRef = useRef({ year: prevInitYear, month: prevInitMonth });
   // Captures scroll state just before a prepend so useLayoutEffect can restore it
   const scrollRestoreRef = useRef<{ prevScrollY: number; prevScrollHeight: number } | null>(null);
 
@@ -279,15 +283,21 @@ export function useCalendarData() {
   const [loadingPrev, setLoadingPrev] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Initial load — runs once
+  // Initial load — always fetches current + previous month in parallel
   useEffect(() => {
     let cancelled = false;
     async function init() {
       setLoading(true);
       try {
-        const data = await fetchMonthData(initYear, initMonth);
+        const [prevData, currData] = await Promise.all([
+          fetchMonthData(prevInitYear, prevInitMonth),
+          fetchMonthData(initYear, initMonth),
+        ]);
         if (cancelled) return;
-        const initial = [{ year: initYear, month: initMonth, data }];
+        const initial = [
+          { year: prevInitYear, month: prevInitMonth, data: prevData },
+          { year: initYear, month: initMonth, data: currData },
+        ];
         blocksRef.current = initial;
         setBlocks(initial);
       } catch (e) {
