@@ -163,10 +163,12 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
         const exMap = new Map<string, RawExercise>();
         allEx.forEach((e) => exMap.set(e.name.toLowerCase(), e));
 
-        /* Prefer sessions with exercises logged; fall back to all.
-           (activity_log_id is null for all sessions currently, so can't use that.) */
-        const withEx = rawSessions.filter((s) => s.exercises.length > 0);
-        const sessionsToUse = withEx.length > 0 ? withEx : rawSessions;
+        /* API date filter is unreliable — enforce client-side.
+           Then prefer sessions that have exercises logged. */
+        const onDate = rawSessions.filter((s) => s.session_date === date);
+        const pool = onDate.length > 0 ? onDate : rawSessions;
+        const withEx = pool.filter((s) => s.exercises.length > 0);
+        const sessionsToUse = withEx.length > 0 ? withEx : pool;
 
         /* collect unique exercise IDs across sessions to show */
         const ids = new Set<number>();
