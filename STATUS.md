@@ -15,7 +15,7 @@ All 9 tasks shipped. App is live, logging flows work end-to-end.
 ## Active Task
 
 **T14 Sprint** — Medium items next.
-Quick Wins: all done. Medium items done: 1a✅ 1c✅. Remaining: 1f, 1g✅, 1h✅, 1.7🔒, 3, 1.1-sessions🔒.
+Quick Wins: all done. Medium items done: 1a✅ 1c✅ 1f✅ 1g✅ 1h✅. Remaining: 1.7🔒, 3, 1.1-sessions🔒.
 Full task list: `tasks/T14-sprint.md`
 
 ---

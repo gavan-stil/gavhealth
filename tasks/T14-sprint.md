@@ -23,7 +23,6 @@
 
 ## Medium (frontend + small backend)
 
-- [ ] **1f** — Weights session: edit a previously completed set (feather icon)
 - [ ] **1g** — Weights session: date field under "Time started". Defaults to current day. User can change.
   - `buildStartTime()` currently uses `today()` + time input — extend to take a date input too
 - [ ] **1h** — Weights session: session notes field. Icon to add/save, icon to edit.
@@ -54,6 +53,7 @@
 - [x] **1.4** — Mood/energy: replace emojis with lucide icons; collapsed header shows "Mood X · Energy Y" (2026-03-08)
 - [x] **4** — Dashboard: readiness score tap-tooltips on SLEEP/RHR/LOAD/REST (2026-03-08)
 - [x] **1b** — Weights session: cancel confirmation (separate button below list → inline [Yes, cancel] / [Keep going]; closes card on confirm) (2026-03-08)
+- [x] **1f** — Weights session: completed sets collapse to compact read-only; Pencil icon re-opens for editing (2026-03-08)
 - [x] **1c** — Weights session: previous session affordance in ExerciseCard (name match → fetch history → "Last: 80kg top · 5 sets · 1 Mar") (2026-03-08)
 - [x] **1d** — Weights session: broad-match exercise autocomplete dropdown (2026-03-08)
 - [x] **1e** — Weights session: per-set tick button (green check + stays visible) (2026-03-08)
