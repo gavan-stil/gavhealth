@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Dumbbell, Check, X, Plus, AlertCircle, Square, CheckSquare, Pencil } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
-import type { Exercise } from '@/types/trends';
+import type { Exercise, ExerciseSession } from '@/types/trends';
 
 type LoadType = 'kg' | 'bw' | 'bw+';
 type WorkoutSet = { load_type: LoadType; kg: number; reps: number; completed?: boolean };
@@ -83,6 +83,11 @@ function buildStartTime(dateInput: string, timeInput: string) {
   return `${dateInput}T${timeInput}:00`;
 }
 
+function formatShortDate(dateStr: string): string {
+  const d = new Date(dateStr + 'T12:00:00');
+  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+}
+
 function Stepper({ value, onChange, step, min }: { value: number; onChange: (v: number) => void; step: number; min: number }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -150,6 +155,17 @@ function ExerciseCard({
   exerciseList: Exercise[];
 }) {
   const [inputFocused, setInputFocused] = useState(false);
+  const [prevSession, setPrevSession] = useState<ExerciseSession | null>(null);
+
+  useEffect(() => {
+    const match = exerciseList.find(e => e.name.toLowerCase() === exercise.name.toLowerCase());
+    if (!match) { setPrevSession(null); return; }
+    let cancelled = false;
+    apiFetch<ExerciseSession[]>(`/api/strength/exercise/${match.id}/history?days=365`)
+      .then(data => { if (!cancelled) setPrevSession(data.length > 0 ? data[data.length - 1] : null); })
+      .catch(() => { if (!cancelled) setPrevSession(null); });
+    return () => { cancelled = true; };
+  }, [exercise.name, exerciseList]);
 
   const filteredExercises = exercise.name.length > 0
     ? exerciseList.filter(e => e.name.toLowerCase().includes(exercise.name.toLowerCase())).slice(0, 8)
@@ -244,6 +260,15 @@ function ExerciseCard({
           </div>
         )}
       </div>
+
+      {prevSession && (
+        <div style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-muted)', paddingLeft: 2 }}>
+          {prevSession.top_weight_kg > 0
+            ? `Last: ${prevSession.top_weight_kg}kg top · ${prevSession.sets} sets · ${formatShortDate(prevSession.session_date)}`
+            : `Last: ${prevSession.sets} sets × ${prevSession.total_reps} reps · ${formatShortDate(prevSession.session_date)}`
+          }
+        </div>
+      )}
 
       {exercise.sets.map((set, si) => (
         <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>

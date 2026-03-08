@@ -41,7 +41,7 @@ All require `X-API-Key` header. All support `?days=N` unless noted.
 | `/api/strength/:exercise_id` | History for one exercise | 0 |
 | `/api/strength/prs` | Personal records per exercise | 0 |
 | `/api/strength/sessions?days=N` | Per-session aggregates: id, session_date, activity_log_id, duration_mins, avg_hr, calories, total_sets, total_reps, total_load_kg, avg_load_per_set_kg, exercises[] | — |
-| `/api/strength/exercise/:id/history?days=N` | Per-exercise session history (chronological): session_date, sets, total_reps, top_weight_kg, session_volume_kg, estimated_1rm | — |
+| `/api/strength/exercise/:id/history?days=N` | Per-exercise session history (chronological): `[{ session_date, sets: int, total_reps, top_weight_kg, session_volume_kg, estimated_1rm }]`. `sets` is a count integer. BW exercises have `top_weight_kg: 0`. Use last element for "previous session". | — |
 | `/api/sauna` | Sauna sessions | ~65 |
 | `/api/dexa` | DEXA scan results | 1 |
 
