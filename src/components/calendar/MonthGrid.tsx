@@ -58,7 +58,7 @@ function barIcon(dot: CategoryDot): string {
   return "";
 }
 
-/** Duration label inside an activity bar (always shown) */
+/** Duration label inside an activity bar */
 function barLabel(dot: CategoryDot): string {
   return dot.duration ?? "";
 }
@@ -94,14 +94,13 @@ function wkPillText(category: CategoryName, dots: CategoryDot[]): string {
       const h = parseFloat(d.duration ?? "0");
       if (!isNaN(h)) sum += h;
     }
-    const avg = sum / dots.length;
-    return `${avg.toFixed(1)}h`;
+    return `${(sum / dots.length).toFixed(1)}h`;
   }
 
   return `${dots.length}×`;
 }
 
-/** Aggregate weekly summary: dots per category */
+/** Aggregate weekly summary: dots per active category, ordered by CATEGORY_ORDER */
 function weekSummary(
   week: { date: Date; inMonth: boolean }[],
   data: CalendarData,
@@ -146,7 +145,7 @@ export default function MonthGrid({
 
   return (
     <div>
-      {/* Header row */}
+      {/* ── Header: M T W T F S S | Wk ── */}
       <div style={{ display: "grid", gridTemplateColumns: cols, gap: "1px" }}>
         {DAY_LABELS.map((l, i) => (
           <div
@@ -179,227 +178,188 @@ export default function MonthGrid({
         )}
       </div>
 
-      {/* Week rows */}
+      {/* ── Week blocks ── */}
       {weeks.map((week, wi) => {
         const summary = weekSummary(week, data, activeCategories);
         return (
-          <div
-            key={wi}
-            style={{
-              display: "grid",
-              gridTemplateColumns: cols,
-              gap: "1px",
-              borderBottom: "1px solid var(--border-subtle)",
-            }}
-          >
-            {week.map(({ date, inMonth }, di) => {
-              const key = toKey(date);
-              const isToday = key === today;
-              const dots = (data[key] ?? []).filter((d) => activeCategories.has(d.category));
-              return (
-                <DayCell
-                  key={di}
-                  dayNum={date.getDate()}
-                  inMonth={inMonth}
-                  isToday={isToday}
-                  dots={dots}
-                  singleCategory={singleCategory}
-                  subToggles={subToggles}
-                  onClick={() => inMonth && onDaySelect(key)}
-                />
-              );
-            })}
+          <div key={wi} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
 
-            {/* Weekly summary column */}
-            {showWk && (
-              <div
-                style={{
-                  background: "var(--bg-card)",
-                  padding: "4px 3px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "2px",
-                  justifyContent: "center",
-                  minHeight: 72,
-                }}
-              >
-                {summary.map((s) => {
-                  const text = wkPillText(s.category, s.dots);
-                  return (
-                    <div
-                      key={s.category}
+            {/* Day-number row */}
+            <div style={{ display: "grid", gridTemplateColumns: cols }}>
+              {week.map(({ date, inMonth }, di) => {
+                const key = toKey(date);
+                const isToday = key === today;
+                return (
+                  <button
+                    key={di}
+                    onClick={() => inMonth && onDaySelect(key)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      padding: "4px 1px 3px",
+                      width: "100%",
+                      cursor: inMonth ? "pointer" : "default",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      opacity: inMonth ? 1 : 0.2,
+                    }}
+                  >
+                    <span
                       style={{
-                        height: 14,
-                        borderRadius: 3,
-                        background: "transparent",
-                        border: `1px solid ${s.color}`,
+                        font: "600 13px/1 'JetBrains Mono', monospace",
+                        color: isToday ? "var(--ochre)" : "var(--text-secondary)",
+                        borderBottom: isToday ? "2px solid var(--ochre)" : "none",
+                        paddingBottom: isToday ? "1px" : "0",
+                      }}
+                    >
+                      {date.getDate()}
+                    </span>
+                  </button>
+                );
+              })}
+              {showWk && <div />}
+            </div>
+
+            {/* ── Activity rows — one per category, full-width across all 7 days ── */}
+            {summary.map((s) => {
+              const pillText = wkPillText(s.category, s.dots);
+              return (
+                <div
+                  key={s.category}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: cols,
+                    borderTop: "1px solid var(--border-subtle)",
+                  }}
+                >
+                  {/* Seven day cells for this category */}
+                  {week.map(({ date, inMonth }, di) => {
+                    const key = toKey(date);
+                    const dot = inMonth
+                      ? (data[key] ?? []).find(
+                          (d) => d.category === s.category && activeCategories.has(d.category)
+                        )
+                      : undefined;
+
+                    const icon = dot ? barIcon(dot) : "";
+                    const label = dot ? barLabel(dot) : "";
+                    const hasMarker = dot
+                      ? !!(dot.isLetsGo || dot.isInterval || dot.saunaHasDevotion)
+                      : false;
+
+                    return (
+                      <div
+                        key={di}
+                        style={{
+                          padding: "3px 1px",
+                          minHeight: 22,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {dot && (
+                          singleCategory === s.category
+                            ? /* Sub-metric mode: stacked values */
+                              <div style={{ display: "flex", flexDirection: "column", gap: "1px", alignItems: "center" }}>
+                                {dot.subMetrics &&
+                                  Object.entries(dot.subMetrics)
+                                    .filter(([id]) => subToggles[id] !== false)
+                                    .map(([id, val]) => (
+                                      <span
+                                        key={id}
+                                        style={{
+                                          font: "500 8px/1 'JetBrains Mono', monospace",
+                                          color: dot.color,
+                                        }}
+                                      >
+                                        {val}
+                                      </span>
+                                    ))}
+                              </div>
+                            : /* Bar mode: full-width coloured bar */
+                              <div
+                                style={{
+                                  width: "calc(100% - 2px)",
+                                  height: 14,
+                                  borderRadius: 3,
+                                  background: dot.color,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: 2,
+                                  paddingInline: 3,
+                                  overflow: "hidden",
+                                }}
+                              >
+                                {icon && (
+                                  <span style={{ font: "700 9px/1 monospace", color: "rgba(255,255,255,0.95)", flexShrink: 0 }}>
+                                    {icon}
+                                  </span>
+                                )}
+                                {label && (
+                                  <span style={{ font: "500 8px/1 'Inter', sans-serif", color: "rgba(255,255,255,0.88)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, textAlign: "center" }}>
+                                    {label}
+                                  </span>
+                                )}
+                                {hasMarker && (
+                                  <span style={{ font: "700 6px/1 monospace", color: "rgba(255,255,255,0.85)", flexShrink: 0 }}>▲</span>
+                                )}
+                              </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* WK outline pill — Option A: transparent bg, coloured border + text */}
+                  {showWk && (
+                    <div
+                      style={{
+                        padding: "3px 4px",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        paddingInline: 2,
-                        overflow: "hidden",
+                        background: "var(--bg-card)",
+                        borderLeft: "1px solid var(--border-subtle)",
+                        minHeight: 22,
                       }}
                     >
-                      {text && (
+                      <div
+                        style={{
+                          width: "100%",
+                          height: 16,
+                          borderRadius: 3,
+                          background: "transparent",
+                          border: `1px solid ${s.color}`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          paddingInline: 3,
+                          overflow: "hidden",
+                        }}
+                      >
                         <span
                           style={{
-                            font: "500 7px/1 'Inter', sans-serif",
+                            font: "700 8px/1 'Inter', sans-serif",
                             color: s.color,
                             whiteSpace: "nowrap",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                           }}
                         >
-                          {text}
+                          {pillText}
                         </span>
-                      )}
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                  )}
+                </div>
+              );
+            })}
+
           </div>
         );
       })}
     </div>
-  );
-}
-
-/* ── DayCell ── */
-
-function DayCell({
-  dayNum,
-  inMonth,
-  isToday,
-  dots,
-  singleCategory,
-  subToggles,
-  onClick,
-}: {
-  dayNum: number;
-  inMonth: boolean;
-  isToday: boolean;
-  dots: CategoryDot[];
-  singleCategory: CategoryName | null;
-  subToggles: Record<string, boolean>;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        background: "none",
-        border: "none",
-        padding: "4px 1px 3px",
-        width: "100%",
-        cursor: inMonth ? "pointer" : "default",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: "2px",
-        minHeight: 72,
-        opacity: inMonth ? 1 : 0.2,
-      }}
-    >
-      {/* Day number */}
-      <span
-        style={{
-          font: "600 13px/1 'JetBrains Mono', monospace",
-          color: isToday ? "var(--ochre)" : inMonth ? "var(--text-secondary)" : "var(--text-muted)",
-          borderBottom: isToday ? "2px solid var(--ochre)" : "none",
-          paddingBottom: isToday ? "1px" : "0",
-          marginBottom: 1,
-          flexShrink: 0,
-        }}
-      >
-        {dayNum}
-      </span>
-
-      {/* Bars / sub-metrics */}
-      {singleCategory && dots.length > 0
-        ? /* Single-category mode: sub-metric values */
-          dots
-            .filter((d) => d.category === singleCategory)
-            .map((d) => (
-              <div
-                key={d.category}
-                style={{ display: "flex", flexDirection: "column", gap: "1px", alignItems: "center" }}
-              >
-                {d.subMetrics &&
-                  Object.entries(d.subMetrics)
-                    .filter(([id]) => subToggles[id] !== false)
-                    .map(([id, val]) => (
-                      <span
-                        key={id}
-                        style={{ font: "500 8px/1 'JetBrains Mono', monospace", color: d.color }}
-                      >
-                        {val}
-                      </span>
-                    ))}
-              </div>
-            ))
-        : /* Normal mode: full-width bars */
-          dots.map((d) => {
-            const icon = barIcon(d);
-            const label = barLabel(d);
-            const hasMarker = d.isLetsGo || d.isInterval || d.saunaHasDevotion;
-            return (
-              <div
-                key={d.category}
-                style={{
-                  width: "calc(100% - 2px)",
-                  height: 14,
-                  borderRadius: 3,
-                  background: d.color,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 2,
-                  paddingInline: 3,
-                  overflow: "hidden",
-                  flexShrink: 0,
-                }}
-              >
-                {icon && (
-                  <span
-                    style={{
-                      font: "700 9px/1 monospace",
-                      color: "rgba(255,255,255,0.95)",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {icon}
-                  </span>
-                )}
-                {label && (
-                  <span
-                    style={{
-                      font: "500 8px/1 'Inter', sans-serif",
-                      color: "rgba(255,255,255,0.88)",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      flex: 1,
-                      textAlign: "center",
-                    }}
-                  >
-                    {label}
-                  </span>
-                )}
-                {hasMarker && (
-                  <span
-                    style={{
-                      font: "700 6px/1 monospace",
-                      color: "rgba(255,255,255,0.85)",
-                      flexShrink: 0,
-                    }}
-                  >
-                    ▲
-                  </span>
-                )}
-              </div>
-            );
-          })}
-    </button>
   );
 }
