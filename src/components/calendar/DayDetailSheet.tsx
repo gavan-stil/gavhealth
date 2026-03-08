@@ -163,9 +163,14 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
         const exMap = new Map<string, RawExercise>();
         allEx.forEach((e) => exMap.set(e.name.toLowerCase(), e));
 
-        /* collect unique exercise IDs across all sessions */
+        /* Only show sessions linked to a Withings activity (activity_log_id set).
+           Fall back to all sessions only if none are linked (e.g. pure manual logging). */
+        const linked = rawSessions.filter((s) => s.activity_log_id !== null);
+        const sessionsToUse = linked.length > 0 ? linked : rawSessions;
+
+        /* collect unique exercise IDs across sessions to show */
         const ids = new Set<number>();
-        rawSessions.forEach((s) =>
+        sessionsToUse.forEach((s) =>
           s.exercises.forEach((r) => {
             const ex = exMap.get(parseEx(r).name.toLowerCase());
             if (ex) ids.add(ex.id);
@@ -185,7 +190,7 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
         if (cancelled) return;
 
         /* build SessionDetail objects */
-        const details: SessionDetail[] = rawSessions.map((s) => {
+        const details: SessionDetail[] = sessionsToUse.map((s) => {
           const rows: ExRow[] = [];
           s.exercises.forEach((r) => {
             const { name } = parseEx(r);
