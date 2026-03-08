@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GOE Health — Mockup v2</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0e0c09;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 40px;
+    padding: 40px 20px 60px;
+    font-family: 'Inter', -apple-system, sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── GOE tokens ── */
+  :root {
+    --ochre: #d4a04a;
+    --ochre-light: #e8c47a;
+    --bg-base: #13110d;
+    --bg-card: #1e1a14;
+    --bg-elevated: #252017;
+    --border: rgba(184,168,120,0.14);
+    --text-primary: #e8dcc8;
+    --text-secondary: #a09070;
+    --text-muted: #605840;
+    --radius-lg: 14px;
+    --radius-sm: 8px;
+    --radius-pill: 100px;
+    --signal-poor:    rgba(196,90,74,0.28);
+    --signal-caution: rgba(180,112,80,0.28);
+    --ember:          rgba(184,168,120,0.20);
+    --signal-good:    rgba(212,160,74,0.28);
+    --ochre-bg:       rgba(212,160,74,0.32);
+  }
+
+  /* ── Phone frame ── */
+  .label {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .phone {
+    width: 375px;
+    border-radius: 40px;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 32px 80px rgba(0,0,0,0.8);
+    flex-shrink: 0;
+  }
+
+  .screen {
+    width: 375px;
+    height: 812px;
+    background: var(--bg-base);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ── Gradient header ── */
+  .goe-header {
+    background: linear-gradient(180deg, #2a2218, #1e1a14);
+    border-bottom: 1px solid rgba(184,168,120,0.10);
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* ── Scrollable content area ── */
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-bottom: 80px;
+  }
+
+  /* ── Tab bar ── */
+  .tabbar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 64px;
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    z-index: 100;
+  }
+
+  .tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    color: var(--text-muted);
+  }
+  .tab.active { color: var(--ochre); }
+
+  /* ── Quick stats row ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .stat-pill {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 10px 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .stat-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--ochre-light);
+    letter-spacing: -0.5px;
+  }
+  .stat-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+  }
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text-primary);
+  }
+  .card-chevron { color: var(--text-muted); font-size: 10px; }
+
+  /* ── Readiness card ── */
+  .readiness-body {
+    padding: 0 16px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .readiness-score {
+    font-size: 52px;
+    font-weight: 800;
+    color: var(--ochre);
+    letter-spacing: -2px;
+    line-height: 1;
+  }
+  .readiness-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .readiness-label {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .readiness-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+  .readiness-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 4px;
+  }
+  .rbar { display: flex; align-items: center; gap: 8px; }
+  .rbar-label { font-size: 10px; color: var(--text-muted); width: 56px; letter-spacing: 0.5px; }
+  .rbar-track {
+    flex: 1; height: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .rbar-fill { height: 100%; border-radius: 2px; background: var(--ochre); }
+
+  /* ── Chart placeholder ── */
+  .chart-body { padding: 12px 16px 16px; }
+  .chart-placeholder {
+    height: 80px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 0 4px 0;
+    gap: 3px;
+  }
+  .bar { border-radius: 3px 3px 0 0; flex: 1; }
+
+  /* Mood summary in confirmed state */
+  .mood-summary {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-top: 1px solid var(--border);
+  }
+  .mood-summary-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  /* ── Log screen: Mood & Energy card open ── */
+  .me-body {
+    padding: 12px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .me-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .me-col { display: flex; flex-direction: column; gap: 8px; }
+  .me-col-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .icon-row { display: flex; gap: 3px; }
+
+  /* icon button */
+  .icon-btn {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+    opacity: 0.45;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .icon-btn.active {
+    opacity: 1;
+    border-color: transparent;
+    transform: scale(1.12);
+  }
+
+  /* per-value active backgrounds */
+  .mood-btn-1.active { background: var(--signal-poor); }
+  .mood-btn-2.active { background: var(--signal-caution); }
+  .mood-btn-3.active { background: var(--ember); }
+  .mood-btn-4.active { background: var(--signal-good); }
+  .mood-btn-5.active { background: var(--ochre-bg); }
+  .energy-btn-1.active { background: rgba(127,170,188,0.2); }
+  .energy-btn-2.active { background: rgba(127,170,188,0.2); }
+  .energy-btn-3.active { background: var(--ember); }
+  .energy-btn-4.active { background: var(--signal-good); }
+  .energy-btn-5.active { background: var(--signal-poor); }
+
+  .save-btn {
+    align-self: flex-end;
+    padding: 8px 24px;
+    border-radius: 100px;
+    border: none;
+    background: var(--ochre);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* collapsed card */
+  .card-collapsed .card-header { border-top: none; }
+  .card-collapsed-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+
+  /* more stats */
+  .more-stats {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .more-stats-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* sync row */
+  .sync-row {
+    display: flex;
+    justify-content: flex-end;
+  }
+  .sync-btn {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 5px 12px;
+    background: transparent;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     SCREEN 1 — DASHBOARD
+════════════════════════════════════════════ -->
+<div>
+  <div class="label">Dashboard</div>
+  <div class="phone">
+    <div class="screen">
+
+      <!-- Header -->
+      <div class="goe-header">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" height="28">
+          <g transform="translate(40, 40)">
+            <path d="M 28 -14 A 30 30 0 1 0 26 15" fill="none" stroke="#e8c47a" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="0" y1="0" x2="28" y2="0" stroke="#e8c47a" stroke-width="1.8" stroke-linecap="round"/>
+          </g>
+          <g transform="translate(140, 40)">
+            <circle cx="0" cy="0" r="30" fill="none" stroke="#e8c47a" stroke-width="1.8"/>
+          </g>
+          <g transform="translate(240, 40)">
+            <line x1="-20" y1="-26" x2="20" y2="-26" stroke="#e8c47a" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="-20" y1="0" x2="12" y2="0" stroke="#e8c47a" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="-20" y1="26" x2="20" y2="26" stroke="#e8c47a" stroke-width="1.8" stroke-linecap="round"/>
+            <circle cx="18" cy="0" r="2.5" fill="#e8c47a"/>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Scrollable content -->
+      <div class="content">
+
+        <!-- Sync -->
+        <div class="sync-row">
+          <div class="sync-btn">↻ Sync</div>
+        </div>
+
+        <!-- Quick stats -->
+        <div class="stats-row">
+          <div class="stat-pill">
+            <span class="stat-value">8,420</span>
+            <span class="stat-label">Steps</span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-value">7h 12</span>
+            <span class="stat-label">Sleep</span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-value">58</span>
+            <span class="stat-label">HRV</span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-value">52</span>
+            <span class="stat-label">RHR</span>
+          </div>
+        </div>
+
+        <!-- Readiness card -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#d4a04a" stroke-width="1.8" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Readiness
+            </div>
+          </div>
+          <div class="readiness-body">
+            <div class="readiness-score">72</div>
+            <div class="readiness-meta">
+              <div class="readiness-label">Fair</div>
+              <div class="readiness-sub">Mild recovery deficit</div>
+              <div class="readiness-bars">
+                <div class="rbar">
+                  <div class="rbar-label">Sleep</div>
+                  <div class="rbar-track"><div class="rbar-fill" style="width:78%"></div></div>
+                </div>
+                <div class="rbar">
+                  <div class="rbar-label">HRV</div>
+                  <div class="rbar-track"><div class="rbar-fill" style="width:62%"></div></div>
+                </div>
+                <div class="rbar">
+                  <div class="rbar-label">Resting HR</div>
+                  <div class="rbar-track"><div class="rbar-fill" style="width:84%"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Activity chart -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#d4a04a" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+              Activity
+            </div>
+            <div class="card-chevron">▼</div>
+          </div>
+          <div class="chart-body">
+            <div class="chart-placeholder">
+              <div class="bar" style="height:30%;background:rgba(212,160,74,0.25)"></div>
+              <div class="bar" style="height:55%;background:rgba(212,160,74,0.35)"></div>
+              <div class="bar" style="height:40%;background:rgba(212,160,74,0.25)"></div>
+              <div class="bar" style="height:70%;background:rgba(212,160,74,0.45)"></div>
+              <div class="bar" style="height:50%;background:rgba(212,160,74,0.35)"></div>
+              <div class="bar" style="height:85%;background:#d4a04a"></div>
+              <div class="bar" style="height:60%;background:rgba(212,160,74,0.4)"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mood & Energy — confirmed -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <!-- mood icon 4 (Good) inline tiny -->
+              <svg viewBox="0 0 24 24" width="14" height="14"><circle cx="12" cy="12" r="10" fill="none" stroke="#d4a04a" stroke-width="1.5"/><circle cx="8.5" cy="9.5" r="1" fill="#d4a04a"/><circle cx="15.5" cy="9.5" r="1" fill="#d4a04a"/><path d="M 8 14.5 Q 12 17 16 14.5" fill="none" stroke="#d4a04a" stroke-width="1.5" stroke-linecap="round"/></svg>
+              Mood &amp; Energy
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:11px;color:var(--text-muted)">Mood 4 · Energy 3</span>
+              <span class="card-chevron">▼</span>
+            </div>
+          </div>
+          <div class="mood-summary">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#d4a04a" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span class="mood-summary-text">Logged today — Mood 4/5 · Energy 3/5</span>
+            <span style="margin-left:auto;font-size:10px;color:var(--text-muted)">Edit</span>
+          </div>
+        </div>
+
+        <!-- Water / Nutrition chart placeholder -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#d4a04a" stroke-width="1.8" stroke-linecap="round"><path d="M12 2L6 10a6 6 0 0 0 12 0z"/></svg>
+              Water &amp; Nutrition
+            </div>
+            <div class="card-chevron">▼</div>
+          </div>
+          <div class="chart-body">
+            <div class="chart-placeholder">
+              <div class="bar" style="height:45%;background:rgba(127,170,188,0.3)"></div>
+              <div class="bar" style="height:80%;background:rgba(127,170,188,0.5)"></div>
+              <div class="bar" style="height:60%;background:rgba(127,170,188,0.4)"></div>
+              <div class="bar" style="height:90%;background:#7FAABC"></div>
+              <div class="bar" style="height:55%;background:rgba(127,170,188,0.4)"></div>
+              <div class="bar" style="height:70%;background:rgba(127,170,188,0.45)"></div>
+              <div class="bar" style="height:40%;background:rgba(127,170,188,0.3)"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- More stats -->
+        <div class="more-stats">
+          <span class="more-stats-label">More Stats</span>
+          <span class="card-chevron">▼</span>
+        </div>
+
+      </div><!-- /content -->
+
+      <!-- Tab bar -->
+      <div class="tabbar">
+        <!-- Dashboard (active) — person icon -->
+        <div class="tab active">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="5" r="2.5"/>
+            <path d="M 6 21 L 6 14 Q 6 9 12 9 Q 18 9 18 14 L 18 21"/>
+          </svg>
+        </div>
+        <!-- Calendar -->
+        <div class="tab">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <line x1="3" y1="9" x2="21" y2="9"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+          </svg>
+        </div>
+        <!-- Log — feather icon -->
+        <div class="tab">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="20" x2="20" y2="4"/>
+            <path d="M 20 4 Q 14 4 10 8 Q 6 12 6 18"/>
+            <path d="M 20 4 Q 20 10 16 14 Q 12 18 6 18"/>
+          </svg>
+        </div>
+        <!-- Trends -->
+        <div class="tab">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+            <polyline points="17 6 23 6 23 12"/>
+          </svg>
+        </div>
+      </div>
+
+    </div><!-- /screen -->
+  </div><!-- /phone -->
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SCREEN 2 — LOG / MOOD & ENERGY
+════════════════════════════════════════════ -->
+<div>
+  <div class="label">Log — Mood &amp; Energy</div>
+  <div class="phone">
+    <div class="screen">
+
+      <!-- Header -->
+      <div class="goe-header">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" height="28">
+          <g transform="translate(40, 40)">
+            <path d="M 28 -14 A 30 30 0 1 0 26 15" fill="none" stroke="#e8c47a" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="0" y1="0" x2="28" y2="0" stroke="#e8c47a" stroke-width="1.8" stroke-linecap="round"/>
+          </g>
+          <g transform="translate(140, 40)">
+            <circle cx="0" cy="0" r="30" fill="none" stroke="#e8c47a" stroke-width="1.8"/>
+          </g>
+          <g transform="translate(240, 40)">
+            <line x1="-20" y1="-26" x2="20" y2="-26" stroke="#e8c47a" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="-20" y1="0" x2="12" y2="0" stroke="#e8c47a" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="-20" y1="26" x2="20" y2="26" stroke="#e8c47a" stroke-width="1.8" stroke-linecap="round"/>
+            <circle cx="18" cy="0" r="2.5" fill="#e8c47a"/>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Content -->
+      <div class="content">
+
+        <!-- Mood & Energy card — open, mood 4 + energy 3 selected -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <svg viewBox="0 0 24 24" width="14" height="14"><circle cx="12" cy="12" r="10" fill="none" stroke="#d4a04a" stroke-width="1.5"/><circle cx="8.5" cy="9.5" r="1" fill="#d4a04a"/><circle cx="15.5" cy="9.5" r="1" fill="#d4a04a"/><path d="M 8 14.5 Q 12 17 16 14.5" fill="none" stroke="#d4a04a" stroke-width="1.5" stroke-linecap="round"/></svg>
+              Mood &amp; Energy
+            </div>
+            <span class="card-chevron">▲</span>
+          </div>
+          <div class="me-body">
+            <div class="me-grid">
+
+              <!-- MOOD column -->
+              <div class="me-col">
+                <span class="me-col-label">Mood</span>
+                <div class="icon-row">
+                  <!-- Mood 1 — Rough #c45a4a -->
+                  <button class="icon-btn mood-btn-1">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="10" fill="none" stroke="#c45a4a" stroke-width="1.5"/><circle cx="8.5" cy="9.5" r="1" fill="#c45a4a"/><circle cx="15.5" cy="9.5" r="1" fill="#c45a4a"/><path d="M 7.5 17 Q 12 13 16.5 17" fill="none" stroke="#c45a4a" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  </button>
+                  <!-- Mood 2 — Meh #b47050 -->
+                  <button class="icon-btn mood-btn-2">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="10" fill="none" stroke="#b47050" stroke-width="1.5"/><circle cx="8.5" cy="9.5" r="1" fill="#b47050"/><circle cx="15.5" cy="9.5" r="1" fill="#b47050"/><path d="M 8 16.5 Q 12 14.5 16 16.5" fill="none" stroke="#b47050" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  </button>
+                  <!-- Mood 3 — Okay #b8a878 -->
+                  <button class="icon-btn mood-btn-3">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="10" fill="none" stroke="#b8a878" stroke-width="1.5"/><circle cx="8.5" cy="9.5" r="1" fill="#b8a878"/><circle cx="15.5" cy="9.5" r="1" fill="#b8a878"/><line x1="8" y1="15.5" x2="16" y2="15.5" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  </button>
+                  <!-- Mood 4 — Good #d4a04a (ACTIVE) -->
+                  <button class="icon-btn mood-btn-4 active">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="10" fill="none" stroke="#d4a04a" stroke-width="1.5"/><circle cx="8.5" cy="9.5" r="1" fill="#d4a04a"/><circle cx="15.5" cy="9.5" r="1" fill="#d4a04a"/><path d="M 8 14.5 Q 12 17 16 14.5" fill="none" stroke="#d4a04a" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  </button>
+                  <!-- Mood 5 — Great #e8c47a -->
+                  <button class="icon-btn mood-btn-5">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="10" fill="none" stroke="#e8c47a" stroke-width="1.5"/><circle cx="8.5" cy="9.5" r="1" fill="#e8c47a"/><circle cx="15.5" cy="9.5" r="1" fill="#e8c47a"/><path d="M 7.5 14 Q 12 19 16.5 14" fill="none" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- ENERGY column -->
+              <div class="me-col">
+                <span class="me-col-label">Energy</span>
+                <div class="icon-row">
+                  <!-- Energy 1 — Drained #7FAABC (moon) -->
+                  <button class="icon-btn energy-btn-1">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path d="M 15 4 A 8 8 0 1 0 15 20 A 6 6 0 0 1 15 4" fill="none" stroke="#7FAABC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </button>
+                  <!-- Energy 2 — Low #7FAABC (half sun) -->
+                  <button class="icon-btn energy-btn-2">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="14" r="8" fill="none" stroke="#7FAABC" stroke-width="1.5"/><path d="M 12 6 L 12 2" stroke="#7FAABC" stroke-width="1.5" stroke-linecap="round"/><path d="M 6.3 8.3 L 4 6" stroke="#7FAABC" stroke-width="1.5" stroke-linecap="round"/><path d="M 17.7 8.3 L 20 6" stroke="#7FAABC" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  </button>
+                  <!-- Energy 3 — Okay #b8a878 (full sun) ACTIVE -->
+                  <button class="icon-btn energy-btn-3 active">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="5" fill="none" stroke="#b8a878" stroke-width="1.5"/><line x1="12" y1="1" x2="12" y2="4" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/><line x1="12" y1="20" x2="12" y2="23" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/><line x1="1" y1="12" x2="4" y2="12" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/><line x1="20" y1="12" x2="23" y2="12" stroke="#b8a878" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  </button>
+                  <!-- Energy 4 — Charged #e8c47a (lightning) -->
+                  <button class="icon-btn energy-btn-4">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path d="M 13 2 L 4 14 L 11 14 L 11 22 L 20 10 L 13 10 Z" fill="none" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </button>
+                  <!-- Energy 5 — Wired #c45a4a (flame) -->
+                  <button class="icon-btn energy-btn-5">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path d="M 12 22 C 12 22 4 16 4 10 C 4 5 8 2 12 2 C 16 2 20 5 20 10 C 20 16 12 22 12 22 Z" fill="none" stroke="#c45a4a" stroke-width="1.5"/><path d="M 12 18 C 12 18 8 14 8 11 C 8 8.5 10 7 12 7 C 14 7 16 8.5 16 11 C 16 14 12 18 12 18 Z" fill="#c45a4a" opacity="0.3"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Save button -->
+            <button class="save-btn">Save</button>
+          </div>
+        </div>
+
+        <!-- Water — collapsed -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7FAABC" stroke-width="1.8" stroke-linecap="round"><path d="M12 2L6 10a6 6 0 0 0 12 0z"/></svg>
+              Water
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:11px;color:var(--text-muted)">2,200 ml</span>
+              <span class="card-chevron">▼</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Strength — collapsed -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#d4a04a" stroke-width="1.8" stroke-linecap="round"><path d="M6 4v4M18 4v4M2 8h4l2 8h8l2-8h4M4 16h16"/></svg>
+              Strength
+            </div>
+            <span class="card-chevron">▼</span>
+          </div>
+        </div>
+
+        <!-- Food — collapsed -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#d4a04a" stroke-width="1.8" stroke-linecap="round"><path d="M12 2a9 9 0 1 0 0 18A9 9 0 0 0 12 2z"/><path d="M12 6v6l4 2"/></svg>
+              Nutrition
+            </div>
+            <span class="card-chevron">▼</span>
+          </div>
+        </div>
+
+      </div><!-- /content -->
+
+      <!-- Tab bar -->
+      <div class="tabbar">
+        <!-- Dashboard — person icon -->
+        <div class="tab">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="5" r="2.5"/>
+            <path d="M 6 21 L 6 14 Q 6 9 12 9 Q 18 9 18 14 L 18 21"/>
+          </svg>
+        </div>
+        <!-- Calendar -->
+        <div class="tab">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <line x1="3" y1="9" x2="21" y2="9"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+          </svg>
+        </div>
+        <!-- Log — feather icon (ACTIVE) -->
+        <div class="tab active">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="20" x2="20" y2="4"/>
+            <path d="M 20 4 Q 14 4 10 8 Q 6 12 6 18"/>
+            <path d="M 20 4 Q 20 10 16 14 Q 12 18 6 18"/>
+          </svg>
+        </div>
+        <!-- Trends -->
+        <div class="tab">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+            <polyline points="17 6 23 6 23 12"/>
+          </svg>
+        </div>
+      </div>
+
+    </div><!-- /screen -->
+  </div><!-- /phone -->
+</div>
+
+</body>
+</html>
