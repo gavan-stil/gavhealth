@@ -102,6 +102,7 @@ class ActivityResponse(BaseModel):
     source: str
     external_id: str | None = None
     notes: str | None = None
+    workout_split: str | None = None
 
     model_config = {"from_attributes": True}
 

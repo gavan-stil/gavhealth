@@ -114,23 +114,41 @@ async def list_activities(
     db: AsyncSession = Depends(get_db),
     _key: str = Depends(verify_api_key),
 ):
-    q = select(ActivityLog).order_by(ActivityLog.activity_date.desc())
-    count_q = select(func.count()).select_from(ActivityLog)
-
+    filters = []
+    params: dict = {"limit": limit, "offset": offset}
     if start_date:
-        q = q.where(ActivityLog.activity_date >= start_date)
-        count_q = count_q.where(ActivityLog.activity_date >= start_date)
+        filters.append("a.activity_date >= :start_date")
+        params["start_date"] = start_date
     if end_date:
-        q = q.where(ActivityLog.activity_date <= end_date)
-        count_q = count_q.where(ActivityLog.activity_date <= end_date)
+        filters.append("a.activity_date <= :end_date")
+        params["end_date"] = end_date
     if activity_type:
-        q = q.where(ActivityLog.activity_type == activity_type)
-        count_q = count_q.where(ActivityLog.activity_type == activity_type)
+        filters.append("a.activity_type = :activity_type")
+        params["activity_type"] = activity_type
 
-    total = (await db.execute(count_q)).scalar_one()
-    rows = (await db.execute(q.limit(limit).offset(offset))).scalars().all()
+    where = ("WHERE " + " AND ".join(filters)) if filters else ""
 
-    return PaginatedResponse(data=rows, total=total, limit=limit, offset=offset)
+    total = (await db.execute(
+        text(f"SELECT COUNT(*) FROM activity_logs a {where}"),
+        params,
+    )).scalar_one()
+
+    rows = await db.execute(
+        text(f"""
+            SELECT a.id, a.activity_date, a.activity_type, a.duration_mins,
+                   a.distance_km, a.avg_pace_secs, a.avg_hr, a.max_hr,
+                   a.calories_burned, a.elevation_m, a.source, a.external_id, a.notes,
+                   ss.session_label AS workout_split
+            FROM activity_logs a
+            LEFT JOIN strength_sessions ss ON ss.activity_log_id = a.id
+            {where}
+            ORDER BY a.activity_date DESC
+            LIMIT :limit OFFSET :offset
+        """),
+        params,
+    )
+    data = [ActivityResponse.model_validate(dict(r)) for r in rows.mappings()]
+    return PaginatedResponse(data=data, total=total, limit=limit, offset=offset)
 
 
 # ---------------------------------------------------------------------------
