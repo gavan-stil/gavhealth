@@ -65,7 +65,7 @@ export function useFoodNutrition() {
 
   // ── Load saved meals + today's log on mount ──────────────────────────────
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA');
 
     apiFetch<SavedMeal[]>('/api/saved-meals')
       .then(setSavedMeals)
@@ -105,7 +105,7 @@ export function useFoodNutrition() {
       protein_g: item.protein_g,
       carbs_g: item.carbs_g,
       fat_g: item.fat_g,
-      log_date: new Date().toISOString().split('T')[0],
+      log_date: new Date().toLocaleDateString('en-CA'),
     };
     setTodayLog(prev => [...prev, tempEntry]);
 

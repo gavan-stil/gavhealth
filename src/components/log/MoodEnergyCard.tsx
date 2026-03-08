@@ -120,7 +120,8 @@ export default function MoodEnergyCard({ open, onToggle }: Props) {
 
   // Load today's existing log on mount
   useEffect(() => {
-    apiFetch<Array<{ mood: number; energy: number }>>('/api/mood?days=1')
+    const today = new Date().toLocaleDateString('en-CA');
+    apiFetch<Array<{ mood: number; energy: number }>>(`/api/mood?start_date=${today}&end_date=${today}`)
       .then(data => {
         if (data.length > 0) {
           setMood(data[0].mood);
