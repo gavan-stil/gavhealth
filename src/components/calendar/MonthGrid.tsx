@@ -226,15 +226,14 @@ export default function MonthGrid({
                 }}
               >
                 {summary.map((s) => {
-                  const text = wkPillText(s.category, s.dots);
+                  const text = singleCategory ? wkPillText(s.category, s.dots) : "";
                   return (
                     <div
                       key={s.category}
                       style={{
                         height: 14,
                         borderRadius: 3,
-                        border: `1px solid ${s.color}`,
-                        background: "transparent",
+                        background: s.color,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -242,17 +241,19 @@ export default function MonthGrid({
                         overflow: "hidden",
                       }}
                     >
-                      <span
-                        style={{
-                          font: "700 7px/1 'JetBrains Mono', monospace",
-                          color: s.color,
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
-                        {text}
-                      </span>
+                      {text && (
+                        <span
+                          style={{
+                            font: "700 7px/1 'JetBrains Mono', monospace",
+                            color: "#fff",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {text}
+                        </span>
+                      )}
                     </div>
                   );
                 })}
