@@ -6,7 +6,6 @@ type Props = {
   month: number; // 0-indexed
   data: CalendarData;
   activeCategories: Set<CategoryName>;
-  showDuration: boolean;
   subToggles: Record<string, boolean>;
   singleCategory: CategoryName | null;
   showWk: boolean;
@@ -48,18 +47,19 @@ function todayKey(): string {
   return toKey(new Date());
 }
 
-/** Text inside an activity bar */
-function barText(dot: CategoryDot, showDuration: boolean): string {
-  if (!showDuration) return "";
+/** Split icon for a strength bar */
+function barIcon(dot: CategoryDot): string {
   if (dot.category === "strength") {
-    const icon =
-      dot.workoutSplit === "push" ? "▲"
+    return dot.workoutSplit === "push" ? "▲"
       : dot.workoutSplit === "pull" ? "▼"
       : dot.workoutSplit === "legs" ? "//"
       : "";
-    const dur = dot.duration ?? "";
-    return icon ? `${icon} ${dur}`.trim() : dur;
   }
+  return "";
+}
+
+/** Duration label inside an activity bar (always shown) */
+function barLabel(dot: CategoryDot): string {
   return dot.duration ?? "";
 }
 
@@ -135,7 +135,6 @@ export default function MonthGrid({
   month,
   data,
   activeCategories,
-  showDuration,
   subToggles,
   singleCategory,
   showWk,
@@ -143,7 +142,7 @@ export default function MonthGrid({
 }: Props) {
   const weeks = buildWeeks(year, month);
   const today = todayKey();
-  const cols = showWk ? "repeat(7, 1fr) 56px" : "repeat(7, 1fr)";
+  const cols = showWk ? "repeat(7, 1fr) 50px" : "repeat(7, 1fr)";
 
   return (
     <div>
@@ -204,7 +203,6 @@ export default function MonthGrid({
                   inMonth={inMonth}
                   isToday={isToday}
                   dots={dots}
-                  showDuration={showDuration}
                   singleCategory={singleCategory}
                   subToggles={subToggles}
                   onClick={() => inMonth && onDaySelect(key)}
@@ -244,7 +242,7 @@ export default function MonthGrid({
                       {text && (
                         <span
                           style={{
-                            font: "700 7px/1 'JetBrains Mono', monospace",
+                            font: "500 7px/1 'Inter', sans-serif",
                             color: "#fff",
                             whiteSpace: "nowrap",
                             overflow: "hidden",
@@ -273,7 +271,6 @@ function DayCell({
   inMonth,
   isToday,
   dots,
-  showDuration,
   singleCategory,
   subToggles,
   onClick,
@@ -282,7 +279,6 @@ function DayCell({
   inMonth: boolean;
   isToday: boolean;
   dots: CategoryDot[];
-  showDuration: boolean;
   singleCategory: CategoryName | null;
   subToggles: Record<string, boolean>;
   onClick: () => void;
@@ -293,26 +289,26 @@ function DayCell({
       style={{
         background: "none",
         border: "none",
-        padding: "3px 2px",
+        padding: "4px 1px 3px",
         width: "100%",
         cursor: inMonth ? "pointer" : "default",
         display: "flex",
         flexDirection: "column",
-        alignItems: "stretch",
+        alignItems: "center",
         gap: "2px",
         minHeight: 72,
-        opacity: inMonth ? 1 : 0.3,
+        opacity: inMonth ? 1 : 0.2,
       }}
     >
       {/* Day number */}
       <span
         style={{
-          font: "600 14px/1 'JetBrains Mono', monospace",
-          letterSpacing: "-0.5px",
+          font: "600 13px/1 'JetBrains Mono', monospace",
           color: isToday ? "var(--ochre)" : inMonth ? "var(--text-secondary)" : "var(--text-muted)",
           borderBottom: isToday ? "2px solid var(--ochre)" : "none",
           paddingBottom: isToday ? "1px" : "0",
-          alignSelf: "center",
+          marginBottom: 1,
+          flexShrink: 0,
         }}
       >
         {dayNum}
@@ -343,39 +339,56 @@ function DayCell({
             ))
         : /* Normal mode: full-width bars */
           dots.map((d) => {
-            const text = barText(d, showDuration);
+            const icon = barIcon(d);
+            const label = barLabel(d);
             const hasMarker = d.isLetsGo || d.isInterval || d.saunaHasDevotion;
             return (
               <div
                 key={d.category}
                 style={{
+                  width: "calc(100% - 2px)",
                   height: 14,
                   borderRadius: 3,
                   background: d.color,
                   display: "flex",
                   alignItems: "center",
-                  position: "relative",
+                  justifyContent: "center",
+                  gap: 2,
                   paddingInline: 3,
                   overflow: "hidden",
                   flexShrink: 0,
                 }}
               >
-                <span
-                  style={{
-                    font: "700 7px/1 'JetBrains Mono', monospace",
-                    color: "#fff",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    flex: 1,
-                  }}
-                >
-                  {text}
-                </span>
+                {icon && (
+                  <span
+                    style={{
+                      font: "700 9px/1 monospace",
+                      color: "rgba(255,255,255,0.95)",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {icon}
+                  </span>
+                )}
+                {label && (
+                  <span
+                    style={{
+                      font: "500 8px/1 'Inter', sans-serif",
+                      color: "rgba(255,255,255,0.88)",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      flex: 1,
+                      textAlign: "center",
+                    }}
+                  >
+                    {label}
+                  </span>
+                )}
                 {hasMarker && (
                   <span
                     style={{
-                      font: "700 6px/1 'JetBrains Mono', monospace",
+                      font: "700 6px/1 monospace",
                       color: "rgba(255,255,255,0.85)",
                       flexShrink: 0,
                     }}

@@ -230,10 +230,8 @@ export default function CalendarPage() {
                 borderBottom: "1px solid var(--border-subtle)",
                 paddingInline: "var(--space-md)",
                 paddingBlock: "var(--space-xs)",
-                font: "600 11px/1 'Inter', sans-serif",
-                letterSpacing: "0.5px",
-                textTransform: "uppercase",
-                color: "var(--text-muted)",
+                font: "600 14px/1 'Inter', sans-serif",
+                color: "var(--text-secondary)",
               }}
             >
               {MONTH_NAMES[block.month]} {block.year}
@@ -245,7 +243,6 @@ export default function CalendarPage() {
                 year={block.year}
                 month={block.month}
                 activeCategories={activeCategories}
-                showDuration={showDuration}
                 singleCategory={singleCategory}
                 subToggles={resolvedSubToggles}
                 showWk={showWk}
