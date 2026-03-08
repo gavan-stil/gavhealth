@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useTrendsData } from "@/hooks/useTrendsData";
 import type { TimeRange } from "@/hooks/useTrendsData";
 import { useStrengthTrends } from "@/hooks/useStrengthTrends";
-import TimeRangeSelector from "@/components/trends/TimeRangeSelector";
 import RecoverySparklines from "@/components/trends/RecoverySparklines";
 import PerformanceOverlay from "@/components/trends/PerformanceOverlay";
 import CorrelationSummary from "@/components/trends/CorrelationSummary";
@@ -104,7 +103,7 @@ function TrendsSkeleton() {
 /* ── Page ── */
 
 export default function TrendsPage() {
-  const [days, setDays] = useState<TimeRange>(30);
+  const [days] = useState<TimeRange>(30);
   const { data, loading, error, refetch } = useTrendsData(days);
   const strengthTrends = useStrengthTrends(days);
 
@@ -117,8 +116,6 @@ export default function TrendsPage() {
         gap: "var(--space-md)",
       }}
     >
-      <TimeRangeSelector value={days} onChange={setDays} />
-
       {loading ? (
         <TrendsSkeleton />
       ) : !data ? (

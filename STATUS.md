@@ -14,7 +14,8 @@ All 9 tasks shipped. App is live, logging flows work end-to-end.
 
 ## Active Task
 
-None — backlog next.
+**T14 Sprint** — System updates, polish, and bug fixes.
+Full task list: `tasks/T14-sprint.md`
 
 ---
 

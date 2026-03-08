@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { Info } from "lucide-react";
 import type { ReadinessData } from "@/hooks/useDashboard";
 
 function scoreColor(score: number): string {
@@ -17,13 +19,26 @@ function formatComponent(v: number): string {
   return `${v}`;
 }
 
+const TOOLTIPS: Record<string, string> = {
+  SLEEP: "Score from sleep duration & efficiency",
+  RHR: "Resting heart rate vs your baseline",
+  LOAD: "Training load from recent activity",
+  REST: "Days since last hard session",
+};
+
 export default function ReadinessCard({ data }: { data: ReadinessData }) {
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+
   const breakdownItems = [
     { label: "SLEEP", value: data.components.sleep },
     { label: "RHR", value: data.components.rhr },
     { label: "LOAD", value: data.components.load },
     { label: "REST", value: data.components.rest },
   ];
+
+  const toggleTooltip = (label: string) => {
+    setActiveTooltip(activeTooltip === label ? null : label);
+  };
 
   return (
     <div
@@ -72,7 +87,7 @@ export default function ReadinessCard({ data }: { data: ReadinessData }) {
         }}
       >
         {breakdownItems.map((item) => (
-          <div key={item.label} style={{ textAlign: "center" }}>
+          <div key={item.label} style={{ textAlign: "center", position: "relative" }}>
             <div
               className="small-number"
               style={{ color: componentColor(item.value) }}
@@ -84,10 +99,51 @@ export default function ReadinessCard({ data }: { data: ReadinessData }) {
               style={{
                 color: "var(--text-muted)",
                 marginTop: "var(--space-xs)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 3,
               }}
             >
               {item.label}
+              <button
+                onClick={() => toggleTooltip(item.label)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  color: activeTooltip === item.label ? "var(--ochre)" : "var(--text-muted)",
+                }}
+              >
+                <Info size={10} />
+              </button>
             </div>
+            {activeTooltip === item.label && (
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: "calc(100% + 6px)",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--border-default)",
+                  borderRadius: "var(--radius-sm)",
+                  padding: "6px 10px",
+                  fontSize: 11,
+                  color: "var(--text-secondary)",
+                  zIndex: 10,
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                  maxWidth: 180,
+                  whiteSpace: "normal",
+                  textAlign: "left",
+                }}
+              >
+                {TOOLTIPS[item.label]}
+              </div>
+            )}
           </div>
         ))}
       </div>

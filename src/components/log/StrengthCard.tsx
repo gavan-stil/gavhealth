@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { Dumbbell, Check, X, Plus, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Dumbbell, Check, X, Plus, AlertCircle, Square, CheckSquare, Pencil } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
+import type { Exercise } from '@/types/trends';
 
 type LoadType = 'kg' | 'bw' | 'bw+';
-type WorkoutSet = { load_type: LoadType; kg: number; reps: number };
+type WorkoutSet = { load_type: LoadType; kg: number; reps: number; completed?: boolean };
 type WorkoutExercise = { name: string; superset: boolean; sets: WorkoutSet[] };
 
 type StrengthState = 'empty' | 'parsing' | 'parsed' | 'confirmed' | 'saving' | 'error';
@@ -46,11 +47,11 @@ function groupSetsToExercises(rawSets: RawSet[]): WorkoutExercise[] {
 }
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  return new Date().toLocaleDateString('en-CA');
 }
 
-function buildStartTime(timeInput: string) {
-  return `${today()}T${timeInput}:00`;
+function buildStartTime(dateInput: string, timeInput: string) {
+  return `${dateInput}T${timeInput}:00`;
 }
 
 function Stepper({ value, onChange, step, min }: { value: number; onChange: (v: number) => void; step: number; min: number }) {
@@ -111,13 +112,21 @@ function LoadTypePill({ value, onChange }: { value: LoadType; onChange: (v: Load
 }
 
 function ExerciseCard({
-  exercise, exerciseIndex, onUpdate, onRemove,
+  exercise, exerciseIndex, onUpdate, onRemove, exerciseList,
 }: {
   exercise: WorkoutExercise;
   exerciseIndex: number;
   onUpdate: (idx: number, ex: WorkoutExercise) => void;
   onRemove: (idx: number) => void;
+  exerciseList: Exercise[];
 }) {
+  const [inputFocused, setInputFocused] = useState(false);
+
+  const filteredExercises = exercise.name.length > 0
+    ? exerciseList.filter(e => e.name.toLowerCase().includes(exercise.name.toLowerCase())).slice(0, 8)
+    : [];
+  const showDropdown = inputFocused && filteredExercises.length > 0;
+
   const updateSet = (setIdx: number, patch: Partial<WorkoutSet>) => {
     const newSets = exercise.sets.map((s, i) => i === setIdx ? { ...s, ...patch } : s);
     onUpdate(exerciseIndex, { ...exercise, sets: newSets });
@@ -142,10 +151,12 @@ function ExerciseCard({
       padding: 'var(--space-md)',
       display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', position: 'relative' }}>
         <input
           value={exercise.name}
           onChange={e => onUpdate(exerciseIndex, { ...exercise, name: e.target.value })}
+          onFocus={() => setInputFocused(true)}
+          onBlur={() => setTimeout(() => setInputFocused(false), 150)}
           placeholder="Exercise name"
           style={{
             flex: 1, background: 'transparent', border: 'none',
@@ -174,6 +185,35 @@ function ExerciseCard({
         >
           <X size={14} />
         </button>
+        {showDropdown && (
+          <div style={{
+            position: 'absolute', top: '100%', left: 0, right: 60,
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-default)',
+            borderRadius: 'var(--radius-sm)',
+            zIndex: 20, overflow: 'hidden',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          }}>
+            {filteredExercises.map(e => (
+              <button
+                key={e.id}
+                onMouseDown={() => {
+                  onUpdate(exerciseIndex, { ...exercise, name: e.name });
+                  setInputFocused(false);
+                }}
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left',
+                  padding: '8px var(--space-md)',
+                  background: 'transparent', border: 'none', cursor: 'pointer',
+                  font: '400 13px/1.4 Inter, sans-serif', color: 'var(--text-primary)',
+                  borderBottom: '1px solid var(--border-subtle)',
+                }}
+              >
+                {e.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {exercise.sets.map((set, si) => (
@@ -197,11 +237,20 @@ function ExerciseCard({
           <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>×</span>
           <Stepper value={set.reps} onChange={reps => updateSet(si, { reps })} step={1} min={1} />
           <button
+            onClick={() => updateSet(si, { completed: !set.completed })}
+            style={{
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              color: set.completed ? 'var(--signal-good)' : 'var(--text-muted)', padding: 2,
+            }}
+          >
+            {set.completed ? <CheckSquare size={14} /> : <Square size={14} />}
+          </button>
+          <button
             onClick={() => removeSet(si)}
             disabled={exercise.sets.length <= 1}
             style={{
               background: 'transparent', border: 'none', cursor: 'pointer',
-              color: 'var(--text-muted)', padding: 2, marginLeft: 'auto',
+              color: 'var(--text-muted)', padding: 2,
               opacity: exercise.sets.length <= 1 ? 0.3 : 1,
             }}
           >
@@ -242,14 +291,25 @@ export default function StrengthCard({
   const [lastDate, setLastDate] = useState<string | null>(null);
   const [noLastSession, setNoLastSession] = useState(false);
   const [matchMessage, setMatchMessage] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState(today);
   const [startTime, setStartTime] = useState(() => {
     const now = new Date();
     return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   });
   const [duration, setDuration] = useState(45);
+  const [notes, setNotes] = useState('');
+  const [notesEditing, setNotesEditing] = useState(false);
   const [brainDumpInput, setBrainDumpInput] = useState('');
   const [parsedLabel, setParsedLabel] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [exerciseList, setExerciseList] = useState<Exercise[]>([]);
+  const [cancelConfirm, setCancelConfirm] = useState(false);
+
+  useEffect(() => {
+    apiFetch<Exercise[]>('/api/exercises')
+      .then(data => setExerciseList(data))
+      .catch(() => {});
+  }, []);
 
   const loadLastSession = async () => {
     try {
@@ -295,9 +355,9 @@ export default function StrengthCard({
         body: JSON.stringify({
           workout_split: selectedSplit,
           exercises,
-          start_time: buildStartTime(startTime),
+          start_time: buildStartTime(startDate, startTime),
           duration_minutes: duration,
-          notes: null,
+          notes: notes.trim() || null,
         }),
       });
       if (activityId) {
@@ -350,9 +410,9 @@ export default function StrengthCard({
         body: JSON.stringify({
           workout_split: selectedSplit,
           exercises,
-          start_time: buildStartTime(startTime),
+          start_time: buildStartTime(startDate, startTime),
           duration_minutes: duration,
-          notes: null,
+          notes: notes.trim() || null,
         }),
       });
       if (activityId) {
@@ -391,6 +451,9 @@ export default function StrengthCard({
     setDuration(45);
     setMatchMessage(null);
     setErrorMsg('');
+    setCancelConfirm(false);
+    setNotes('');
+    setNotesEditing(false);
   };
 
   return (
@@ -500,6 +563,7 @@ export default function StrengthCard({
                       exerciseIndex={i}
                       onUpdate={updateExercise}
                       onRemove={removeExercise}
+                      exerciseList={exerciseList}
                     />
                   ))}
 
@@ -518,11 +582,20 @@ export default function StrengthCard({
                     <Plus size={14} /> Add Exercise
                   </button>
 
+                  {/* Running totals */}
+                  {exercises.length > 0 && (
+                    <div style={{ font: '400 12px/1.4 Inter, sans-serif', color: 'var(--text-muted)', textAlign: 'center' }}>
+                      {exercises.length} {exercises.length === 1 ? 'exercise' : 'exercises'}{' · '}
+                      {exercises.reduce((a, e) => a + e.sets.length, 0)} sets{' · '}
+                      {exercises.reduce((a, e) => a + e.sets.reduce((s, set) => set.load_type === 'bw' ? s : s + set.kg * set.reps, 0), 0).toLocaleString()} kg
+                    </div>
+                  )}
+
                   {/* Start time + Duration */}
                   <div style={{ display: 'flex', gap: 'var(--space-md)' }}>
                     <div style={{ flex: 1 }}>
                       <label style={{ font: '600 10px/1 Inter, sans-serif', letterSpacing: '1.2px', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginBottom: 'var(--space-xs)', display: 'block' }}>
-                        Start Time
+                        Time Started
                       </label>
                       <input
                         type="time"
@@ -536,6 +609,19 @@ export default function StrengthCard({
                           font: '600 14px/1 JetBrains Mono, monospace', letterSpacing: '-0.5px',
                         }}
                       />
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={e => setStartDate(e.target.value)}
+                        style={{
+                          width: '100%', background: 'var(--bg-elevated)',
+                          border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)',
+                          padding: 'var(--space-sm) var(--space-md)',
+                          color: 'var(--text-primary)',
+                          font: '600 14px/1 JetBrains Mono, monospace', letterSpacing: '-0.5px',
+                          marginTop: 'var(--space-xs)',
+                        }}
+                      />
                     </div>
                     <div style={{ flex: 1 }}>
                       <label style={{ font: '600 10px/1 Inter, sans-serif', letterSpacing: '1.2px', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginBottom: 'var(--space-xs)', display: 'block' }}>
@@ -544,6 +630,55 @@ export default function StrengthCard({
                       <Stepper value={duration} onChange={setDuration} step={5} min={5} />
                     </div>
                   </div>
+
+                  {/* Session notes */}
+                  {notesEditing ? (
+                    <div style={{ display: 'flex', gap: 'var(--space-xs)', alignItems: 'flex-start' }}>
+                      <textarea
+                        autoFocus
+                        rows={3}
+                        value={notes}
+                        onChange={e => setNotes(e.target.value)}
+                        placeholder="Session notes…"
+                        style={{
+                          flex: 1, resize: 'none',
+                          background: 'var(--bg-elevated)',
+                          border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)',
+                          padding: 'var(--space-sm) var(--space-md)',
+                          color: 'var(--text-primary)',
+                          font: '400 13px/1.5 Inter, sans-serif',
+                        }}
+                      />
+                      <button
+                        onClick={() => setNotesEditing(false)}
+                        style={{
+                          background: 'transparent', border: 'none', cursor: 'pointer',
+                          color: 'var(--signal-good)', padding: 4, marginTop: 2,
+                        }}
+                      >
+                        <Check size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setNotesEditing(true)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 'var(--space-xs)',
+                        background: 'transparent', border: 'none', cursor: 'pointer',
+                        padding: 0, textAlign: 'left', width: '100%',
+                      }}
+                    >
+                      <span style={{
+                        flex: 1,
+                        font: '400 13px/1.4 Inter, sans-serif',
+                        color: notes.trim() ? 'var(--text-secondary)' : 'var(--text-muted)',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>
+                        {notes.trim() || 'Add session notes…'}
+                      </span>
+                      <Pencil size={14} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+                    </button>
+                  )}
 
                   {/* Save */}
                   <button
@@ -560,6 +695,51 @@ export default function StrengthCard({
                   >
                     {state === 'saving' ? 'Saving…' : 'Save Session'}
                   </button>
+
+                  {/* Cancel session */}
+                  {exercises.length > 0 && !cancelConfirm && (
+                    <button
+                      onClick={() => setCancelConfirm(true)}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        font: '400 12px/1 Inter, sans-serif', color: 'var(--text-muted)',
+                        alignSelf: 'center',
+                      }}
+                    >
+                      Cancel session
+                    </button>
+                  )}
+                  {cancelConfirm && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                      <span style={{ font: '400 13px/1.4 Inter, sans-serif', color: 'var(--text-secondary)' }}>
+                        Cancel session?
+                      </span>
+                      <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                        <button
+                          onClick={() => { resetForm(); setState('empty'); onToggle(); }}
+                          style={{
+                            padding: '6px 16px', borderRadius: 'var(--radius-pill)',
+                            background: 'transparent', border: '1px solid var(--border-default)',
+                            font: '600 12px/1 Inter, sans-serif', color: 'var(--text-secondary)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Yes, cancel
+                        </button>
+                        <button
+                          onClick={() => setCancelConfirm(false)}
+                          style={{
+                            padding: '6px 16px', borderRadius: 'var(--radius-pill)',
+                            background: 'var(--rust)', border: 'none',
+                            font: '600 12px/1 Inter, sans-serif', color: 'var(--bg-base)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Keep going
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {state === 'error' && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', color: 'var(--ember)' }}>

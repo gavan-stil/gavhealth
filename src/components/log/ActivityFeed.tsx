@@ -225,13 +225,53 @@ export default function ActivityFeed() {
 
   const isWorkout = (type: string) => type === 'workout' || type === 'strength';
 
+  type FeedFilter = 'all' | 'run' | 'ride' | 'weights' | 'sauna';
+  const [filter, setFilter] = useState<FeedFilter>('all');
+
+  const filteredItems = filter === 'all' ? items
+    : filter === 'weights' ? items.filter(i => isWorkout(i.type))
+    : items.filter(i => i.type === filter);
+
+  const PILLS: { label: string; value: FeedFilter }[] = [
+    { label: 'All', value: 'all' },
+    { label: 'Run', value: 'run' },
+    { label: 'Ride', value: 'ride' },
+    { label: 'Weights', value: 'weights' },
+    { label: 'Sauna', value: 'sauna' },
+  ];
+
   return (
     <>
       <div style={{
         display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)',
         padding: 'var(--space-lg)',
       }}>
-        {items.map(item => (
+        {/* Filter pills */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 'var(--space-xs)' }}>
+          {PILLS.map(pill => {
+            const active = filter === pill.value;
+            return (
+              <button
+                key={pill.value}
+                onClick={() => setFilter(pill.value)}
+                style={{
+                  padding: '4px 12px',
+                  borderRadius: 'var(--radius-pill)',
+                  border: '1px solid var(--border-default)',
+                  background: active ? 'var(--ochre)' : 'transparent',
+                  color: active ? 'var(--bg-base)' : 'var(--text-muted)',
+                  font: '600 11px/1.4 Inter, sans-serif',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {pill.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {filteredItems.map(item => (
           <div
             key={item.id}
             style={{

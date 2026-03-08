@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Smile, Check } from 'lucide-react';
+import { Smile, Check, Frown, Minus, SmilePlus, BatteryLow, Battery, Zap, Flame } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 
-const MOOD_EMOJI = ['😞', '😕', '😐', '🙂', '😄'];
-const ENERGY_EMOJI = ['🪫', '😴', '⚡', '🔥', '💥'];
+const MOOD_ICONS: LucideIcon[] = [Frown, Frown, Minus, Smile, SmilePlus];
+const ENERGY_ICONS: LucideIcon[] = [BatteryLow, Battery, Zap, Flame, Flame];
 
 const cardStyle: React.CSSProperties = {
   background: 'var(--bg-card)',
@@ -54,7 +55,7 @@ export default function MoodEnergyCard({ open, onToggle }: Props) {
   }, [mood, energy, canSave]);
 
   const headerLabel = saveState === 'confirmed' && mood !== null && energy !== null
-    ? `${MOOD_EMOJI[mood - 1] ?? ''} ${ENERGY_EMOJI[energy - 1] ?? ''}`.trim()
+    ? `Mood ${mood} · Energy ${energy}`
     : '';
 
   return (
@@ -79,7 +80,7 @@ export default function MoodEnergyCard({ open, onToggle }: Props) {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
           {headerLabel && (
-            <span style={{ fontSize: 16 }}>{headerLabel}</span>
+            <span className="label-text" style={{ color: 'var(--text-secondary)' }}>{headerLabel}</span>
           )}
           <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{open ? '▲' : '▼'}</span>
         </div>
@@ -113,13 +114,13 @@ export default function MoodEnergyCard({ open, onToggle }: Props) {
             </div>
           ) : (
             <>
-              {/* 2-col emoji grid */}
+              {/* 2-col icon grid */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
                 {/* Mood column */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
                   <span className="label-text" style={{ color: 'var(--text-muted)' }}>MOOD</span>
                   <div style={{ display: 'flex', gap: 4 }}>
-                    {MOOD_EMOJI.map((emoji, i) => {
+                    {MOOD_ICONS.map((Icon, i) => {
                       const val = i + 1;
                       const active = mood === val;
                       return (
@@ -129,7 +130,9 @@ export default function MoodEnergyCard({ open, onToggle }: Props) {
                           style={{
                             width: 40,
                             height: 40,
-                            fontSize: 20,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                             border: `1px solid ${active ? 'var(--ochre)' : 'var(--border-default)'}`,
                             borderRadius: 'var(--radius-sm)',
                             background: 'transparent',
@@ -138,9 +141,10 @@ export default function MoodEnergyCard({ open, onToggle }: Props) {
                             opacity: active ? 1 : 0.45,
                             transition: 'all 0.15s',
                             padding: 0,
+                            color: active ? 'var(--ochre)' : 'var(--text-secondary)',
                           }}
                         >
-                          {emoji}
+                          <Icon size={20} />
                         </button>
                       );
                     })}
@@ -151,7 +155,7 @@ export default function MoodEnergyCard({ open, onToggle }: Props) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
                   <span className="label-text" style={{ color: 'var(--text-muted)' }}>ENERGY</span>
                   <div style={{ display: 'flex', gap: 4 }}>
-                    {ENERGY_EMOJI.map((emoji, i) => {
+                    {ENERGY_ICONS.map((Icon, i) => {
                       const val = i + 1;
                       const active = energy === val;
                       return (
@@ -161,7 +165,9 @@ export default function MoodEnergyCard({ open, onToggle }: Props) {
                           style={{
                             width: 40,
                             height: 40,
-                            fontSize: 20,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                             border: `1px solid ${active ? 'var(--ochre)' : 'var(--border-default)'}`,
                             borderRadius: 'var(--radius-sm)',
                             background: 'transparent',
@@ -170,9 +176,10 @@ export default function MoodEnergyCard({ open, onToggle }: Props) {
                             opacity: active ? 1 : 0.45,
                             transition: 'all 0.15s',
                             padding: 0,
+                            color: active ? 'var(--ochre)' : 'var(--text-secondary)',
                           }}
                         >
-                          {emoji}
+                          <Icon size={20} />
                         </button>
                       );
                     })}
