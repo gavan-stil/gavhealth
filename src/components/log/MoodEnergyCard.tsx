@@ -5,7 +5,7 @@ import { apiFetch } from '@/lib/api';
 
 /* ── SVG Icon Components ── */
 
-function MoodIcon({ value, size = 18 }: { value: number; size?: number }) {
+export function MoodIcon({ value, size = 18 }: { value: number; size?: number }) {
   const colors = ['#c45a4a', '#b47050', '#b8a878', '#d4a04a', '#e8c47a'];
   const c = colors[value - 1] ?? colors[2];
   const common = { fill: 'none', stroke: c, strokeWidth: 1.5, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
@@ -28,7 +28,7 @@ function MoodIcon({ value, size = 18 }: { value: number; size?: number }) {
   );
 }
 
-function EnergyIcon({ value, size = 18 }: { value: number; size?: number }) {
+export function EnergyIcon({ value, size = 18 }: { value: number; size?: number }) {
   const colors = ['#7FAABC', '#7FAABC', '#b8a878', '#e8c47a', '#c45a4a'];
   const c = colors[value - 1] ?? colors[2];
   const common = { fill: 'none', stroke: c, strokeWidth: 1.5, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };

@@ -108,7 +108,7 @@ export default function DashboardPage() {
       )}
 
       {/* Quick stats */}
-      <QuickStatsRow stats={v2.todayStats} />
+      <QuickStatsRow stats={v2.todayStats} moodEntries={v2.mood.data} />
 
       {/* Readiness */}
       {readiness.loading ? (
