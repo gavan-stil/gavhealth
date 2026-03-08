@@ -40,6 +40,14 @@ type RawRhr = {
   rhr_bpm: number;
 };
 
+type RawStrengthSession = {
+  id: number;
+  session_date: string;
+  activity_log_id: number | null;
+  total_sets: number;
+  total_reps: number;
+};
+
 /* ── Internal helpers ── */
 
 type DayEntry = {
@@ -74,12 +82,13 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
   const end = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
   const dateRange = `start_date=${start}&end_date=${end}&limit=200`;
 
-  const [activityRes, sleepRes, saunaRes, weightRes, rhrRes] = await Promise.all([
+  const [activityRes, sleepRes, saunaRes, weightRes, rhrRes, strengthSessionsRes] = await Promise.all([
     apiFetch<{ data: RawActivity[] }>(`/api/activity?${dateRange}`).catch(() => ({ data: [] as RawActivity[] })),
     apiFetch<{ data: RawSleep[] }>(`/api/sleep?${dateRange}`).catch(() => ({ data: [] as RawSleep[] })),
     apiFetch<{ data: RawSauna[] }>(`/api/sauna?${dateRange}`).catch(() => ({ data: [] as RawSauna[] })),
     apiFetch<{ data: RawWeight[] }>(`/api/weight?${dateRange}`).catch(() => ({ data: [] as RawWeight[] })),
     apiFetch<{ data: RawRhr[] }>(`/api/rhr?${dateRange}`).catch(() => ({ data: [] as RawRhr[] })),
+    apiFetch<{ data: RawStrengthSession[] }>(`/api/strength/sessions?${dateRange}`).catch(() => ({ data: [] as RawStrengthSession[] })),
   ]);
 
   const allActivities = activityRes.data || [];
@@ -87,6 +96,12 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
   const saunaRecords = saunaRes.data || [];
   const weightRecords = weightRes.data || [];
   const rhrRecords = rhrRes.data || [];
+
+  // Map session_date → session for fast lookup
+  const strengthSessionsByDate = new Map<string, RawStrengthSession>();
+  for (const s of (strengthSessionsRes.data || [])) {
+    strengthSessionsByDate.set(s.session_date, s);
+  }
 
   const activities = allActivities.filter((a) => a.activity_type !== "daily_summary");
   const runs = activities.filter((a) => a.activity_type === "run");
@@ -171,10 +186,11 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
     if (a.workout_split === "push") workoutSplit = "push";
     else if (a.workout_split === "pull") workoutSplit = "pull";
     else if (a.workout_split === "legs") workoutSplit = "legs";
+    const session = strengthSessionsByDate.get(a.activity_date);
     addEntry(a.activity_date, {
       category: "strength",
       duration: durStr,
-      subMetrics: { sets: "—" },
+      subMetrics: { sets: session ? `${session.total_sets}` : "—" },
       isLetsGo: a.effort === "lets_go",
       workoutSplit,
     });

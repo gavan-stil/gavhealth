@@ -224,14 +224,15 @@ export default function MonthGrid({
                 }}
               >
                 {summary.map((s) => {
-                  const text = singleCategory ? wkPillText(s.category, s.dots) : "";
+                  const text = wkPillText(s.category, s.dots);
                   return (
                     <div
                       key={s.category}
                       style={{
                         height: 14,
                         borderRadius: 3,
-                        background: s.color,
+                        background: "transparent",
+                        border: `1px solid ${s.color}`,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -243,7 +244,7 @@ export default function MonthGrid({
                         <span
                           style={{
                             font: "500 7px/1 'Inter', sans-serif",
-                            color: "#fff",
+                            color: s.color,
                             whiteSpace: "nowrap",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
