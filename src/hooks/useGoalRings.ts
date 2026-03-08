@@ -2,13 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/api';
 
 interface SleepEntry {
-  date: string;
+  sleep_date: string;
   sleep_score: number | null;
 }
 
 interface ActivityEntry {
   activity_type: string;
-  date: string;
+  activity_date: string;
   notes: string | null;
 }
 
@@ -46,7 +46,7 @@ export default function useGoalRings(): GoalRingsData {
         // Sleep score — most recent entry
         const sleepEntries = sleepRes.data ?? sleepRes;
         const todaySleep = Array.isArray(sleepEntries)
-          ? sleepEntries.find(s => s.date === todayLocal)
+          ? sleepEntries.find(s => s.sleep_date === todayLocal)
           : null;
         setSleepScore(todaySleep?.sleep_score ?? (Array.isArray(sleepEntries) && sleepEntries.length > 0 ? sleepEntries[0].sleep_score : null));
 
@@ -54,7 +54,7 @@ export default function useGoalRings(): GoalRingsData {
         const activities = activityRes.data ?? activityRes;
         if (Array.isArray(activities)) {
           const summary = activities.find(
-            a => a.activity_type === 'daily_summary' && a.date === todayLocal,
+            a => a.activity_type === 'daily_summary' && a.activity_date === todayLocal,
           );
           setSteps(summary ? parseSteps(summary.notes) : null);
         } else {
