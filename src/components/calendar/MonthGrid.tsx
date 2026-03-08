@@ -134,8 +134,6 @@ export default function MonthGrid({
   month,
   data,
   activeCategories,
-  subToggles,
-  singleCategory,
   showWk,
   onDaySelect,
 }: Props) {
@@ -260,53 +258,35 @@ export default function MonthGrid({
                         }}
                       >
                         {dot && (
-                          singleCategory === s.category
-                            ? /* Sub-metric mode: stacked values */
-                              <div style={{ display: "flex", flexDirection: "column", gap: "1px", alignItems: "center" }}>
-                                {dot.subMetrics &&
-                                  Object.entries(dot.subMetrics)
-                                    .filter(([id]) => subToggles[id] !== false)
-                                    .map(([id, val]) => (
-                                      <span
-                                        key={id}
-                                        style={{
-                                          font: "500 8px/1 'JetBrains Mono', monospace",
-                                          color: dot.color,
-                                        }}
-                                      >
-                                        {val}
-                                      </span>
-                                    ))}
-                              </div>
-                            : /* Bar mode: full-width coloured bar */
-                              <div
-                                style={{
-                                  width: "calc(100% - 2px)",
-                                  height: 14,
-                                  borderRadius: 3,
-                                  background: dot.color,
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  gap: 2,
-                                  paddingInline: 3,
-                                  overflow: "hidden",
-                                }}
-                              >
-                                {icon && (
-                                  <span style={{ font: "700 9px/1 monospace", color: "rgba(255,255,255,0.95)", flexShrink: 0 }}>
-                                    {icon}
-                                  </span>
-                                )}
-                                {label && (
-                                  <span style={{ font: "500 8px/1 'Inter', sans-serif", color: "rgba(255,255,255,0.88)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, textAlign: "center" }}>
-                                    {label}
-                                  </span>
-                                )}
-                                {hasMarker && (
-                                  <span style={{ font: "700 6px/1 monospace", color: "rgba(255,255,255,0.85)", flexShrink: 0 }}>▲</span>
-                                )}
-                              </div>
+                          /* Always show coloured bar — same in single-category and multi mode */
+                          <div
+                            style={{
+                              width: "calc(100% - 2px)",
+                              height: 14,
+                              borderRadius: 3,
+                              background: dot.color,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: 2,
+                              paddingInline: 3,
+                              overflow: "hidden",
+                            }}
+                          >
+                            {icon && (
+                              <span style={{ font: "700 9px/1 monospace", color: "rgba(255,255,255,0.95)", flexShrink: 0 }}>
+                                {icon}
+                              </span>
+                            )}
+                            {label && (
+                              <span style={{ font: "500 8px/1 'Inter', sans-serif", color: "rgba(255,255,255,0.88)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, textAlign: "center" }}>
+                                {label}
+                              </span>
+                            )}
+                            {hasMarker && (
+                              <span style={{ font: "700 6px/1 monospace", color: "rgba(255,255,255,0.85)", flexShrink: 0 }}>▲</span>
+                            )}
+                          </div>
                         )}
                       </div>
                     );

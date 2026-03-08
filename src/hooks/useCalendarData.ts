@@ -88,7 +88,7 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
     apiFetch<{ data: RawSauna[] }>(`/api/sauna?${dateRange}`).catch(() => ({ data: [] as RawSauna[] })),
     apiFetch<{ data: RawWeight[] }>(`/api/weight?${dateRange}`).catch(() => ({ data: [] as RawWeight[] })),
     apiFetch<{ data: RawRhr[] }>(`/api/rhr?${dateRange}`).catch(() => ({ data: [] as RawRhr[] })),
-    apiFetch<{ data: RawStrengthSession[] }>(`/api/strength/sessions?${dateRange}`).catch(() => ({ data: [] as RawStrengthSession[] })),
+    apiFetch<RawStrengthSession[]>(`/api/strength/sessions?${dateRange}`).catch(() => [] as RawStrengthSession[]),
   ]);
 
   const allActivities = activityRes.data || [];
@@ -97,10 +97,15 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
   const weightRecords = weightRes.data || [];
   const rhrRecords = rhrRes.data || [];
 
-  // Map session_date → session for fast lookup
-  const strengthSessionsByDate = new Map<string, RawStrengthSession>();
-  for (const s of (strengthSessionsRes.data || [])) {
-    strengthSessionsByDate.set(s.session_date, s);
+  // Map session_date → summed totals (multiple sessions can share a date)
+  const strengthSessionsByDate = new Map<string, { total_sets: number }>();
+  for (const s of (strengthSessionsRes || [])) {
+    const existing = strengthSessionsByDate.get(s.session_date);
+    if (existing) {
+      existing.total_sets += s.total_sets;
+    } else {
+      strengthSessionsByDate.set(s.session_date, { total_sets: s.total_sets });
+    }
   }
 
   const activities = allActivities.filter((a) => a.activity_type !== "daily_summary");
