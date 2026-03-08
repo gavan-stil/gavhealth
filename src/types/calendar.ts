@@ -10,6 +10,7 @@ export type CategoryDot = {
   isLetsGo?: boolean;       // effort === 'lets_go' → show ▲
   isInterval?: boolean;     // run name contains interval/tempo/sprint/repeat/fartlek → show ▲
   saunaHasDevotion?: boolean; // did_devotions === true → show ▲
+  workoutSplit?: 'push' | 'pull' | 'legs'; // strength session split type
 };
 
 /** Key: YYYY-MM-DD, Value: array of category dots present that day */

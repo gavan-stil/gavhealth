@@ -9,12 +9,12 @@ type Props = {
   showDuration: boolean;
   subToggles: Record<string, boolean>;
   singleCategory: CategoryName | null;
+  showWk: boolean;
   onDaySelect: (date: string) => void;
 };
 
 const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
 
-/** Return YYYY-MM-DD for a Date */
 function toKey(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -22,11 +22,8 @@ function toKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-/** Build week rows for the month grid. Each row = 7 day slots + summary. */
 function buildWeeks(year: number, month: number) {
-  // First day of month
   const first = new Date(year, month, 1);
-  // dayOfWeek: Mon=0 .. Sun=6
   const startDow = (first.getDay() + 6) % 7;
   const weeks: { date: Date; inMonth: boolean }[][] = [];
   let current = new Date(year, month, 1 - startDow);
@@ -35,16 +32,11 @@ function buildWeeks(year: number, month: number) {
     const week: { date: Date; inMonth: boolean }[] = [];
     for (let i = 0; i < 7; i++) {
       const d = new Date(current);
-      week.push({
-        date: d,
-        inMonth: d.getMonth() === month && d.getFullYear() === year,
-      });
+      week.push({ date: d, inMonth: d.getMonth() === month && d.getFullYear() === year });
       current.setDate(current.getDate() + 1);
     }
     weeks.push(week);
-    // Stop after we've passed the last day of the month
     if (current.getMonth() !== month || current.getFullYear() !== year) {
-      // Check if we started a new month
       if (weeks.length >= 4) break;
     }
     if (weeks.length >= 6) break;
@@ -56,13 +48,66 @@ function todayKey(): string {
   return toKey(new Date());
 }
 
-/** Aggregate weekly summary: count of entries per category for the week */
+/** Text inside an activity bar */
+function barText(dot: CategoryDot, showDuration: boolean): string {
+  if (!showDuration) return "";
+  if (dot.category === "strength") {
+    const icon =
+      dot.workoutSplit === "push" ? "▲"
+      : dot.workoutSplit === "pull" ? "▼"
+      : dot.workoutSplit === "legs" ? "//"
+      : "";
+    const dur = dot.duration ?? "";
+    return icon ? `${icon} ${dur}`.trim() : dur;
+  }
+  return dot.duration ?? "";
+}
+
+/** Aggregate text for WK outline pills */
+function wkPillText(category: CategoryName, dots: CategoryDot[]): string {
+  if (dots.length === 0) return "";
+
+  if (category === "strength" || category === "sauna") {
+    let total = 0;
+    for (const d of dots) {
+      const n = parseInt(d.duration ?? "0", 10);
+      if (!isNaN(n)) total += n;
+    }
+    if (total === 0) return `${dots.length}×`;
+    if (total >= 60) return `${Math.floor(total / 60)}h${total % 60 > 0 ? `${total % 60}m` : ""}`;
+    return `${total}m`;
+  }
+
+  if (category === "running" || category === "ride") {
+    let total = 0;
+    for (const d of dots) {
+      const dist = parseFloat(d.subMetrics?.dist ?? d.subMetrics?.distance ?? "0");
+      if (!isNaN(dist)) total += dist;
+    }
+    if (total === 0) return `${dots.length}×`;
+    return `${Math.round(total)}km`;
+  }
+
+  if (category === "sleep") {
+    let sum = 0;
+    for (const d of dots) {
+      const h = parseFloat(d.duration ?? "0");
+      if (!isNaN(h)) sum += h;
+    }
+    const avg = sum / dots.length;
+    return `${avg.toFixed(1)}h`;
+  }
+
+  return `${dots.length}×`;
+}
+
+/** Aggregate weekly summary: dots per category */
 function weekSummary(
   week: { date: Date; inMonth: boolean }[],
   data: CalendarData,
   activeCategories: Set<CategoryName>,
-): { category: CategoryName; color: string; count: number }[] {
-  const counts = new Map<CategoryName, { color: string; count: number }>();
+): { category: CategoryName; color: string; dots: CategoryDot[] }[] {
+  const map = new Map<CategoryName, { color: string; dots: CategoryDot[] }>();
 
   for (const { date, inMonth } of week) {
     if (!inMonth) continue;
@@ -71,18 +116,18 @@ function weekSummary(
     if (!dots) continue;
     for (const dot of dots) {
       if (!activeCategories.has(dot.category)) continue;
-      const existing = counts.get(dot.category);
+      const existing = map.get(dot.category);
       if (existing) {
-        existing.count++;
+        existing.dots.push(dot);
       } else {
-        counts.set(dot.category, { color: dot.color, count: 1 });
+        map.set(dot.category, { color: dot.color, dots: [dot] });
       }
     }
   }
 
   return CATEGORY_ORDER
-    .filter((c) => counts.has(c))
-    .map((c) => ({ category: c, ...counts.get(c)! }));
+    .filter((c) => map.has(c))
+    .map((c) => ({ category: c, ...map.get(c)! }));
 }
 
 export default function MonthGrid({
@@ -93,21 +138,17 @@ export default function MonthGrid({
   showDuration,
   subToggles,
   singleCategory,
+  showWk,
   onDaySelect,
 }: Props) {
   const weeks = buildWeeks(year, month);
   const today = todayKey();
+  const cols = showWk ? "repeat(7, 1fr) 56px" : "repeat(7, 1fr)";
 
   return (
     <div>
       {/* Header row */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(7, 1fr) 56px",
-          gap: "1px",
-        }}
-      >
+      <div style={{ display: "grid", gridTemplateColumns: cols, gap: "1px" }}>
         {DAY_LABELS.map((l, i) => (
           <div
             key={i}
@@ -123,18 +164,20 @@ export default function MonthGrid({
             {l}
           </div>
         ))}
-        <div
-          style={{
-            textAlign: "center",
-            font: "600 10px/1 'Inter', sans-serif",
-            letterSpacing: "1.2px",
-            textTransform: "uppercase",
-            color: "var(--text-muted)",
-            padding: "var(--space-xs) 0",
-          }}
-        >
-          Wk
-        </div>
+        {showWk && (
+          <div
+            style={{
+              textAlign: "center",
+              font: "600 10px/1 'Inter', sans-serif",
+              letterSpacing: "1.2px",
+              textTransform: "uppercase",
+              color: "var(--text-muted)",
+              padding: "var(--space-xs) 0",
+            }}
+          >
+            Wk
+          </div>
+        )}
       </div>
 
       {/* Week rows */}
@@ -145,7 +188,7 @@ export default function MonthGrid({
             key={wi}
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(7, 1fr) 56px",
+              gridTemplateColumns: cols,
               gap: "1px",
               borderBottom: "1px solid var(--border-subtle)",
             }}
@@ -153,9 +196,7 @@ export default function MonthGrid({
             {week.map(({ date, inMonth }, di) => {
               const key = toKey(date);
               const isToday = key === today;
-              const dots = (data[key] ?? []).filter((d) =>
-                activeCategories.has(d.category),
-              );
+              const dots = (data[key] ?? []).filter((d) => activeCategories.has(d.category));
               return (
                 <DayCell
                   key={di}
@@ -170,47 +211,53 @@ export default function MonthGrid({
                 />
               );
             })}
-            {/* Weekly summary */}
-            <div
-              style={{
-                background: "var(--bg-card)",
-                padding: "2px 4px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "1px",
-                justifyContent: "center",
-                minHeight: 48,
-              }}
-            >
-              {summary.map((s) => (
-                <div
-                  key={s.category}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "3px",
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 5,
-                      height: 5,
-                      borderRadius: "50%",
-                      background: s.color,
-                      flexShrink: 0,
-                    }}
-                  />
-                  <span
-                    style={{
-                      font: "500 8px/1 'JetBrains Mono', monospace",
-                      color: "var(--text-tertiary)",
-                    }}
-                  >
-                    {s.count}
-                  </span>
-                </div>
-              ))}
-            </div>
+
+            {/* Weekly summary column */}
+            {showWk && (
+              <div
+                style={{
+                  background: "var(--bg-card)",
+                  padding: "4px 3px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "2px",
+                  justifyContent: "center",
+                  minHeight: 72,
+                }}
+              >
+                {summary.map((s) => {
+                  const text = wkPillText(s.category, s.dots);
+                  return (
+                    <div
+                      key={s.category}
+                      style={{
+                        height: 14,
+                        borderRadius: 3,
+                        border: `1px solid ${s.color}`,
+                        background: "transparent",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        paddingInline: 2,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <span
+                        style={{
+                          font: "700 7px/1 'JetBrains Mono', monospace",
+                          color: s.color,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {text}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
       })}
@@ -249,9 +296,9 @@ function DayCell({
         cursor: inMonth ? "pointer" : "default",
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
+        alignItems: "stretch",
         gap: "2px",
-        minHeight: 48,
+        minHeight: 72,
         opacity: inMonth ? 1 : 0.3,
       }}
     >
@@ -260,78 +307,83 @@ function DayCell({
         style={{
           font: "600 14px/1 'JetBrains Mono', monospace",
           letterSpacing: "-0.5px",
-          color: isToday
-            ? "var(--ochre)"
-            : inMonth
-            ? "var(--text-secondary)"
-            : "var(--text-muted)",
+          color: isToday ? "var(--ochre)" : inMonth ? "var(--text-secondary)" : "var(--text-muted)",
           borderBottom: isToday ? "2px solid var(--ochre)" : "none",
           paddingBottom: isToday ? "1px" : "0",
+          alignSelf: "center",
         }}
       >
         {dayNum}
       </span>
 
-      {/* Dots / sub-metrics */}
+      {/* Bars / sub-metrics */}
       {singleCategory && dots.length > 0
-        ? /* Single-category mode: show sub-metric values */
+        ? /* Single-category mode: sub-metric values */
           dots
             .filter((d) => d.category === singleCategory)
             .map((d) => (
-              <div key={d.category} style={{ display: "flex", flexDirection: "column", gap: "1px", alignItems: "center" }}>
+              <div
+                key={d.category}
+                style={{ display: "flex", flexDirection: "column", gap: "1px", alignItems: "center" }}
+              >
                 {d.subMetrics &&
                   Object.entries(d.subMetrics)
                     .filter(([id]) => subToggles[id] !== false)
                     .map(([id, val]) => (
                       <span
                         key={id}
-                        style={{
-                          font: "500 8px/1 'JetBrains Mono', monospace",
-                          color: d.color,
-                        }}
+                        style={{ font: "500 8px/1 'JetBrains Mono', monospace", color: d.color }}
                       >
                         {val}
                       </span>
                     ))}
               </div>
             ))
-        : /* Normal mode: dots + optional duration + markers */
-          dots.map((d) => (
-            <div
-              key={d.category}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "1px",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+        : /* Normal mode: full-width bars */
+          dots.map((d) => {
+            const text = barText(d, showDuration);
+            const hasMarker = d.isLetsGo || d.isInterval || d.saunaHasDevotion;
+            return (
+              <div
+                key={d.category}
+                style={{
+                  height: 14,
+                  borderRadius: 3,
+                  background: d.color,
+                  display: "flex",
+                  alignItems: "center",
+                  position: "relative",
+                  paddingInline: 3,
+                  overflow: "hidden",
+                  flexShrink: 0,
+                }}
+              >
                 <span
                   style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: "50%",
-                    background: d.color,
-                    flexShrink: 0,
+                    font: "700 7px/1 'JetBrains Mono', monospace",
+                    color: "#fff",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    flex: 1,
                   }}
-                />
-                {showDuration && d.duration && (
+                >
+                  {text}
+                </span>
+                {hasMarker && (
                   <span
                     style={{
-                      font: "500 9px/1 'JetBrains Mono', monospace",
-                      color: "var(--text-tertiary)",
+                      font: "700 6px/1 'JetBrains Mono', monospace",
+                      color: "rgba(255,255,255,0.85)",
+                      flexShrink: 0,
                     }}
                   >
-                    {d.duration}
+                    ▲
                   </span>
                 )}
               </div>
-              {(d.isLetsGo || d.isInterval || d.saunaHasDevotion) && (
-                <span style={{ fontSize: 6, color: d.color, lineHeight: 1 }}>▲</span>
-              )}
-            </div>
-          ))}
+            );
+          })}
     </button>
   );
 }

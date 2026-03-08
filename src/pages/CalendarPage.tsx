@@ -1,8 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useCalendarData } from "@/hooks/useCalendarData";
-import type { CategoryName } from "@/types/calendar";
+import type { CategoryName, CalendarData } from "@/types/calendar";
 import { CATEGORY_ORDER, SUB_TOGGLE_DEFS } from "@/types/calendar";
-import MonthHeader from "@/components/calendar/MonthHeader";
 import ToggleBar from "@/components/calendar/ToggleBar";
 import SubToggleBar from "@/components/calendar/SubToggleBar";
 import MonthGrid from "@/components/calendar/MonthGrid";
@@ -11,23 +10,21 @@ import StatsSection from "@/components/calendar/StatsSection";
 import PatternsSection from "@/components/calendar/PatternsSection";
 import SyncButton from "@/components/SyncButton";
 
-export default function CalendarPage() {
-  const now = new Date();
-  const [currentMonth, setCurrentMonth] = useState({
-    year: now.getFullYear(),
-    month: now.getMonth(),
-  });
+const MONTH_NAMES = [
+  "January","February","March","April","May","June",
+  "July","August","September","October","November","December",
+];
 
-  const { data, loading, error, refetch } = useCalendarData(currentMonth.year, currentMonth.month);
+export default function CalendarPage() {
+  const { blocks, loading, loadingPrev, error, loadPrevMonth, refetch } = useCalendarData();
 
   const [activeCategories, setActiveCategories] = useState<Set<CategoryName>>(
-    () => new Set<CategoryName>(['strength'])
+    () => new Set<CategoryName>(["strength"]),
   );
-
   const [showDuration, setShowDuration] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showPatterns, setShowPatterns] = useState(false);
-
+  const [showWk, setShowWk] = useState(true);
   const [subToggles, setSubToggles] = useState<Record<string, boolean>>({});
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -36,19 +33,14 @@ export default function CalendarPage() {
     return null;
   }, [activeCategories]);
 
-  const handlePrev = useCallback(() => {
-    setCurrentMonth((prev) => {
-      if (prev.month === 0) return { year: prev.year - 1, month: 11 };
-      return { year: prev.year, month: prev.month - 1 };
-    });
-  }, []);
+  /** Merged data across all loaded months for day-detail lookup */
+  const combinedData = useMemo<CalendarData>(() => {
+    const r: CalendarData = {};
+    for (const b of blocks) Object.assign(r, b.data);
+    return r;
+  }, [blocks]);
 
-  const handleNext = useCallback(() => {
-    setCurrentMonth((prev) => {
-      if (prev.month === 11) return { year: prev.year + 1, month: 0 };
-      return { year: prev.year, month: prev.month + 1 };
-    });
-  }, []);
+  const latestBlock = blocks[blocks.length - 1];
 
   const handleToggleCategory = useCallback((cat: CategoryName) => {
     setActiveCategories((prev) => {
@@ -83,9 +75,9 @@ export default function CalendarPage() {
   }, []);
 
   const selectedDots = useMemo(() => {
-    if (!selectedDate || !data[selectedDate]) return [];
-    return data[selectedDate].filter((d) => activeCategories.has(d.category));
-  }, [selectedDate, data, activeCategories]);
+    if (!selectedDate || !combinedData[selectedDate]) return [];
+    return combinedData[selectedDate].filter((d) => activeCategories.has(d.category));
+  }, [selectedDate, combinedData, activeCategories]);
 
   const resolvedSubToggles = useMemo(() => {
     if (!singleCategory) return {};
@@ -97,104 +89,172 @@ export default function CalendarPage() {
     return result;
   }, [singleCategory, subToggles]);
 
-  if (loading) {
-    return (
+  return (
+    <div style={{ paddingBottom: 100 }}>
+      {/* Sticky top bar: Load earlier | Wk toggle | Sync */}
       <div
         style={{
-          padding: "var(--space-xl) var(--space-lg)",
-          color: "var(--text-muted)",
-          font: "400 13px/1.4 'Inter', sans-serif",
-          textAlign: "center",
+          position: "sticky",
+          top: 0,
+          zIndex: 20,
+          background: "var(--bg-base)",
+          borderBottom: "1px solid var(--border-subtle)",
+          height: 43,
+          display: "flex",
+          alignItems: "center",
+          paddingInline: "var(--space-md)",
+          gap: "var(--space-sm)",
         }}
       >
-        Loading calendar data…
-      </div>
-    );
-  }
-
-  return (
-    <div
-      style={{
-        padding: "var(--space-md) var(--space-md) 100px",
-        display: "flex",
-        flexDirection: "column",
-        gap: "var(--space-md)",
-        maxWidth: 420,
-        margin: "0 auto",
-      }}
-    >
-      {error && (
-        <div
+        <button
+          onClick={loadPrevMonth}
+          disabled={loadingPrev}
           style={{
-            padding: "var(--space-sm) var(--space-md)",
-            background: "rgba(196,90,74,0.15)",
+            flex: 1,
+            height: 28,
             borderRadius: "var(--radius-sm)",
-            font: "400 11px/1.3 'Inter', sans-serif",
-            color: "#c45a4a",
+            border: "1px solid var(--border-subtle)",
+            background: "none",
+            font: "500 11px/1 'Inter', sans-serif",
+            color: loadingPrev ? "var(--text-muted)" : "var(--text-secondary)",
+            cursor: loadingPrev ? "default" : "pointer",
           }}
         >
-          {error}
-        </div>
-      )}
+          {loadingPrev ? "Loading…" : "← Load earlier"}
+        </button>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <MonthHeader
-          year={currentMonth.year}
-          month={currentMonth.month}
-          onPrev={handlePrev}
-          onNext={handleNext}
-        />
+        <button
+          onClick={() => setShowWk((p) => !p)}
+          style={{
+            height: 28,
+            paddingInline: 10,
+            borderRadius: "var(--radius-sm)",
+            border: `1px solid ${showWk ? "var(--ochre)" : "var(--border-subtle)"}`,
+            background: showWk ? "rgba(180,112,80,0.12)" : "none",
+            font: "600 11px/1 'Inter', sans-serif",
+            color: showWk ? "var(--ochre)" : "var(--text-muted)",
+            cursor: "pointer",
+          }}
+        >
+          Wk
+        </button>
+
         <SyncButton onSuccess={refetch} />
       </div>
 
-      <ToggleBar
-        activeCategories={activeCategories}
-        onToggleCategory={handleToggleCategory}
-        onResetAll={handleResetAll}
-        showDuration={showDuration}
-        onToggleDuration={() => setShowDuration((p) => !p)}
-        showStats={showStats}
-        onToggleStats={() => setShowStats((p) => !p)}
-        showPatterns={showPatterns}
-        onTogglePatterns={() => setShowPatterns((p) => !p)}
-      />
+      <div
+        style={{
+          padding: "var(--space-md)",
+          maxWidth: 420,
+          margin: "0 auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: "var(--space-md)",
+        }}
+      >
+        {error && (
+          <div
+            style={{
+              padding: "var(--space-sm) var(--space-md)",
+              background: "rgba(196,90,74,0.15)",
+              borderRadius: "var(--radius-sm)",
+              font: "400 11px/1.3 'Inter', sans-serif",
+              color: "#c45a4a",
+            }}
+          >
+            {error}
+          </div>
+        )}
 
-      {singleCategory && (
-        <SubToggleBar
-          category={singleCategory}
-          subToggles={resolvedSubToggles}
-          onToggleSub={handleToggleSub}
-        />
-      )}
-
-      {showStats && (
-        <StatsSection
-          data={data}
-          year={currentMonth.year}
-          month={currentMonth.month}
+        <ToggleBar
           activeCategories={activeCategories}
+          onToggleCategory={handleToggleCategory}
+          onResetAll={handleResetAll}
+          showDuration={showDuration}
+          onToggleDuration={() => setShowDuration((p) => !p)}
+          showStats={showStats}
+          onToggleStats={() => setShowStats((p) => !p)}
+          showPatterns={showPatterns}
+          onTogglePatterns={() => setShowPatterns((p) => !p)}
         />
-      )}
 
-      {showPatterns && (
-        <PatternsSection
-          data={data}
-          year={currentMonth.year}
-          month={currentMonth.month}
-          activeCategories={activeCategories}
-        />
-      )}
+        {singleCategory && (
+          <SubToggleBar
+            category={singleCategory}
+            subToggles={resolvedSubToggles}
+            onToggleSub={handleToggleSub}
+          />
+        )}
 
-      <MonthGrid
-        data={data}
-        year={currentMonth.year}
-        month={currentMonth.month}
-        activeCategories={activeCategories}
-        showDuration={showDuration}
-        singleCategory={singleCategory}
-        subToggles={resolvedSubToggles}
-        onDaySelect={handleDaySelect}
-      />
+        {showStats && latestBlock && (
+          <StatsSection
+            data={latestBlock.data}
+            year={latestBlock.year}
+            month={latestBlock.month}
+            activeCategories={activeCategories}
+          />
+        )}
+
+        {showPatterns && latestBlock && (
+          <PatternsSection
+            data={latestBlock.data}
+            year={latestBlock.year}
+            month={latestBlock.month}
+            activeCategories={activeCategories}
+          />
+        )}
+      </div>
+
+      {/* Month blocks — oldest at top */}
+      {loading ? (
+        <div
+          style={{
+            padding: "var(--space-xl) var(--space-lg)",
+            color: "var(--text-muted)",
+            font: "400 13px/1.4 'Inter', sans-serif",
+            textAlign: "center",
+          }}
+        >
+          Loading…
+        </div>
+      ) : (
+        blocks.map((block) => (
+          <div key={`${block.year}-${block.month}`} style={{ maxWidth: 420, margin: "0 auto" }}>
+            {/* Sticky month label */}
+            <div
+              style={{
+                position: "sticky",
+                top: 43,
+                zIndex: 10,
+                background: "var(--bg-base)",
+                borderBottom: "1px solid var(--border-subtle)",
+                paddingInline: "var(--space-md)",
+                paddingBlock: "var(--space-xs)",
+                font: "600 11px/1 'Inter', sans-serif",
+                letterSpacing: "0.5px",
+                textTransform: "uppercase",
+                color: "var(--text-muted)",
+              }}
+            >
+              {MONTH_NAMES[block.month]} {block.year}
+            </div>
+
+            <div style={{ paddingInline: "var(--space-md)", paddingBottom: "var(--space-md)" }}>
+              <MonthGrid
+                data={block.data}
+                year={block.year}
+                month={block.month}
+                activeCategories={activeCategories}
+                showDuration={showDuration}
+                singleCategory={singleCategory}
+                subToggles={resolvedSubToggles}
+                showWk={showWk}
+                onDaySelect={handleDaySelect}
+              />
+            </div>
+          </div>
+        ))
+      )}
 
       <DayDetailSheet
         date={selectedDate}
