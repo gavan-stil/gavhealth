@@ -156,6 +156,7 @@ function ExerciseCard({
 }) {
   const [inputFocused, setInputFocused] = useState(false);
   const [prevSession, setPrevSession] = useState<ExerciseSession | null>(null);
+  const [editingSet, setEditingSet] = useState<number | null>(null);
 
   useEffect(() => {
     const match = exerciseList.find(e => e.name.toLowerCase() === exercise.name.toLowerCase());
@@ -270,48 +271,85 @@ function ExerciseCard({
         </div>
       )}
 
-      {exercise.sets.map((set, si) => (
-        <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
-          <span style={{ font: '600 10px/1 JetBrains Mono, monospace', color: 'var(--text-muted)', width: 16 }}>
-            {si + 1}
-          </span>
-          <LoadTypePill value={set.load_type} onChange={lt => updateSet(si, { load_type: lt })} />
-          {set.load_type !== 'bw' ? (
-            <>
-              <Stepper value={set.kg} onChange={kg => updateSet(si, { kg })} step={2.5} min={0} />
-              <span style={{ font: '400 12px/1 Inter', color: 'var(--text-muted)' }}>
-                {set.load_type === 'bw+' ? 'extra kg' : 'kg'}
-              </span>
-            </>
-          ) : (
-            <span style={{ font: '400 12px/1 Inter', color: 'var(--text-muted)', padding: '0 var(--space-sm)' }}>
-              bodyweight
+      {exercise.sets.map((set, si) => {
+        const isCompact = set.completed && editingSet !== si;
+        const setLabel = set.load_type === 'bw'
+          ? `BW × ${set.reps}`
+          : set.load_type === 'bw+'
+            ? `+${set.kg}kg × ${set.reps}`
+            : `${set.kg}kg × ${set.reps}`;
+        return (
+          <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
+            <span style={{ font: '600 10px/1 JetBrains Mono, monospace', color: 'var(--text-muted)', width: 16 }}>
+              {si + 1}
             </span>
-          )}
-          <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>×</span>
-          <Stepper value={set.reps} onChange={reps => updateSet(si, { reps })} step={1} min={1} />
-          <button
-            onClick={() => updateSet(si, { completed: !set.completed })}
-            style={{
-              background: 'transparent', border: 'none', cursor: 'pointer',
-              color: set.completed ? 'var(--signal-good)' : 'var(--text-muted)', padding: 2,
-            }}
-          >
-            {set.completed ? <CheckSquare size={14} /> : <Square size={14} />}
-          </button>
-          <button
-            onClick={() => removeSet(si)}
-            disabled={exercise.sets.length <= 1}
-            style={{
-              background: 'transparent', border: 'none', cursor: 'pointer',
-              color: 'var(--text-muted)', padding: 2,
-              opacity: exercise.sets.length <= 1 ? 0.3 : 1,
-            }}
-          >
-            <X size={12} />
-          </button>
-        </div>
-      ))}
+            {isCompact ? (
+              <>
+                <span style={{ font: '400 13px/1.4 Inter, sans-serif', color: 'var(--text-secondary)', flex: 1 }}>
+                  {setLabel}
+                </span>
+                <button
+                  onClick={() => setEditingSet(si)}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2 }}
+                >
+                  <Pencil size={12} />
+                </button>
+                <button
+                  onClick={() => { updateSet(si, { completed: false }); setEditingSet(si); }}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--signal-good)', padding: 2 }}
+                >
+                  <CheckSquare size={14} />
+                </button>
+                <button
+                  onClick={() => removeSet(si)}
+                  disabled={exercise.sets.length <= 1}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2, opacity: exercise.sets.length <= 1 ? 0.3 : 1 }}
+                >
+                  <X size={12} />
+                </button>
+              </>
+            ) : (
+              <>
+                <LoadTypePill value={set.load_type} onChange={lt => updateSet(si, { load_type: lt })} />
+                {set.load_type !== 'bw' ? (
+                  <>
+                    <Stepper value={set.kg} onChange={kg => updateSet(si, { kg })} step={2.5} min={0} />
+                    <span style={{ font: '400 12px/1 Inter', color: 'var(--text-muted)' }}>
+                      {set.load_type === 'bw+' ? 'extra kg' : 'kg'}
+                    </span>
+                  </>
+                ) : (
+                  <span style={{ font: '400 12px/1 Inter', color: 'var(--text-muted)', padding: '0 var(--space-sm)' }}>
+                    bodyweight
+                  </span>
+                )}
+                <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>×</span>
+                <Stepper value={set.reps} onChange={reps => updateSet(si, { reps })} step={1} min={1} />
+                <button
+                  onClick={() => { updateSet(si, { completed: !set.completed }); if (!set.completed) setEditingSet(null); }}
+                  style={{
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    color: set.completed ? 'var(--signal-good)' : 'var(--text-muted)', padding: 2,
+                  }}
+                >
+                  {set.completed ? <CheckSquare size={14} /> : <Square size={14} />}
+                </button>
+                <button
+                  onClick={() => removeSet(si)}
+                  disabled={exercise.sets.length <= 1}
+                  style={{
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    color: 'var(--text-muted)', padding: 2,
+                    opacity: exercise.sets.length <= 1 ? 0.3 : 1,
+                  }}
+                >
+                  <X size={12} />
+                </button>
+              </>
+            )}
+          </div>
+        );
+      })}
 
       <button
         onClick={addSet}
