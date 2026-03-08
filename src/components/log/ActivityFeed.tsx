@@ -72,12 +72,15 @@ function formatDuration(mins: number) {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
+type FeedFilter = 'all' | 'run' | 'ride' | 'weights' | 'sauna';
+
 export default function ActivityFeed() {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [strengthSheetActivityId, setStrengthSheetActivityId] = useState<number | null>(null);
+  const [filter, setFilter] = useState<FeedFilter>('all');
 
   // Strength session state
   const [strengthSessions, setStrengthSessions] = useState<StrengthSession[]>([]);
@@ -224,9 +227,6 @@ export default function ActivityFeed() {
   }
 
   const isWorkout = (type: string) => type === 'workout' || type === 'strength';
-
-  type FeedFilter = 'all' | 'run' | 'ride' | 'weights' | 'sauna';
-  const [filter, setFilter] = useState<FeedFilter>('all');
 
   const filteredItems = filter === 'all' ? items
     : filter === 'weights' ? items.filter(i => isWorkout(i.type))
