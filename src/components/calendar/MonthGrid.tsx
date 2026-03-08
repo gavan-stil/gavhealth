@@ -12,7 +12,7 @@ type Props = {
   onDaySelect: (date: string) => void;
 };
 
-const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
+const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
 
 function toKey(d: Date): string {
   const y = d.getFullYear();
@@ -23,7 +23,7 @@ function toKey(d: Date): string {
 
 function buildWeeks(year: number, month: number) {
   const first = new Date(year, month, 1);
-  const startDow = (first.getDay() + 6) % 7;
+  const startDow = first.getDay();
   const weeks: { date: Date; inMonth: boolean }[][] = [];
   let current = new Date(year, month, 1 - startDow);
 
