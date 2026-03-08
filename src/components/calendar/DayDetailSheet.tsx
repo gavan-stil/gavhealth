@@ -163,16 +163,17 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
         const exMap = new Map<string, RawExercise>();
         allEx.forEach((e) => exMap.set(e.name.toLowerCase(), e));
 
-        /* Only show sessions linked to a Withings activity (activity_log_id set).
-           Fall back to all sessions only if none are linked (e.g. pure manual logging). */
-        const linked = rawSessions.filter((s) => s.activity_log_id !== null);
-        const sessionsToUse = linked.length > 0 ? linked : rawSessions;
+        /* Prefer sessions with exercises logged; fall back to all.
+           (activity_log_id is null for all sessions currently, so can't use that.) */
+        const withEx = rawSessions.filter((s) => s.exercises.length > 0);
+        const sessionsToUse = withEx.length > 0 ? withEx : rawSessions;
 
         /* collect unique exercise IDs across sessions to show */
         const ids = new Set<number>();
         sessionsToUse.forEach((s) =>
           s.exercises.forEach((r) => {
-            const ex = exMap.get(parseEx(r).name.toLowerCase());
+            // Use full name (e.g. "ring skull crush - arms") — matches exMap key format
+            const ex = exMap.get(r.toLowerCase());
             if (ex) ids.add(ex.id);
           })
         );
@@ -193,9 +194,10 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
         const details: SessionDetail[] = sessionsToUse.map((s) => {
           const rows: ExRow[] = [];
           s.exercises.forEach((r) => {
-            const { name } = parseEx(r);
-            const ex = exMap.get(name.toLowerCase());
+            // Full name for lookup (matches exMap key); parseEx only for display name
+            const ex = exMap.get(r.toLowerCase());
             if (!ex) return;
+            const { name } = parseEx(r);
             const entry = histMap.get(ex.id)?.find(
               (h) => h.session_date.slice(0, 10) === date
             );
