@@ -15,6 +15,7 @@ dist/
 
 # Vite
 *.local
+.vite/
 
 # Raw data exports (large files)
 archive/data/
