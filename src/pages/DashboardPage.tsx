@@ -2,6 +2,8 @@ import { useRef, useState, useCallback } from "react";
 import { Loader2 } from "lucide-react";
 import useDashboard from "@/hooks/useDashboard";
 import useDashboardV2 from "@/hooks/useDashboardV2";
+import useGoalRings from "@/hooks/useGoalRings";
+import GoalRingsRow from "@/components/dashboard/GoalRingsRow";
 import ReadinessCard from "@/components/dashboard/ReadinessCard";
 import VitalsCard from "@/components/dashboard/VitalsCard";
 import StreaksCard from "@/components/dashboard/StreaksCard";
@@ -19,6 +21,7 @@ const PULL_THRESHOLD = 60;
 export default function DashboardPage() {
   const { readiness, vitals, streaks } = useDashboard();
   const v2 = useDashboardV2();
+  const goalRings = useGoalRings();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const startY = useRef(0);
@@ -30,7 +33,8 @@ export default function DashboardPage() {
     vitals.refetch();
     streaks.refetch();
     v2.refetch();
-  }, [readiness, vitals, streaks, v2]);
+    goalRings.refetch();
+  }, [readiness, vitals, streaks, v2, goalRings]);
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     const el = containerRef.current;
@@ -109,6 +113,15 @@ export default function DashboardPage() {
 
       {/* Quick stats */}
       <QuickStatsRow stats={v2.todayStats} moodEntries={v2.mood.data} />
+
+      {/* Goal rings */}
+      <GoalRingsRow
+        sleepScore={goalRings.sleepScore}
+        steps={goalRings.steps}
+        proteinG={v2.todayStats.protein_g}
+        readinessScore={readiness.data?.score ?? null}
+        loading={goalRings.loading || readiness.loading}
+      />
 
       {/* Readiness */}
       {readiness.loading ? (

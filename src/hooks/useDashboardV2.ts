@@ -27,6 +27,7 @@ export interface WaterEntry {
 export interface FoodEntry {
   log_date: string;
   calories_kcal: number;
+  protein_g: number;
 }
 
 interface FoodApiResponse {
@@ -39,6 +40,7 @@ export interface TodayStats {
   energy: number | null;
   water_ml: number;
   calories_kcal: number;
+  protein_g: number;
 }
 
 function useFetch<T>(path: string) {
@@ -87,12 +89,16 @@ export default function useDashboardV2() {
   const todayKcal = food.data
     ? food.data.filter(f => f.log_date === todayLocal).reduce((sum, f) => sum + f.calories_kcal, 0)
     : 0;
+  const todayProtein = food.data
+    ? food.data.filter(f => f.log_date === todayLocal).reduce((sum, f) => sum + (f.protein_g ?? 0), 0)
+    : 0;
 
   const todayStats: TodayStats = {
     mood: todayMood?.mood ?? null,
     energy: todayMood?.energy ?? null,
     water_ml: todayWater,
     calories_kcal: todayKcal,
+    protein_g: todayProtein,
   };
 
   return { activities, mood, water, food, todayStats, refetch };
