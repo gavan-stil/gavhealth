@@ -23,9 +23,6 @@
 
 ## Medium (frontend + small backend)
 
-- [ ] **1g** — Weights session: date field under "Time started". Defaults to current day. User can change.
-  - `buildStartTime()` currently uses `today()` + time input — extend to take a date input too
-- [ ] **1h** — Weights session: session notes field. Icon to add/save, icon to edit.
 - [ ] **1.7** — Water: delete individual water log entries `[B: needs DELETE /api/water/:id]`
 - [ ] **3** — Calendar: (a) workout split icons — downward pyramid for pull, upward pyramid for push, // for legs, next to the dot; (b) activity type shown as full-width cylinder bar (taking whole day row), activity text inside bar — style ref: iPhone native calendar screenshot
 - [ ] **1.1-sessions** — Activity feed: unlinked strength sessions (no linked Withings activity) appear in feed `[B: needs GET /api/strength/sessions with unlinking flag]`
@@ -54,6 +51,8 @@
 - [x] **4** — Dashboard: readiness score tap-tooltips on SLEEP/RHR/LOAD/REST (2026-03-08)
 - [x] **1b** — Weights session: cancel confirmation (separate button below list → inline [Yes, cancel] / [Keep going]; closes card on confirm) (2026-03-08)
 - [x] **1f** — Weights session: completed sets collapse to compact read-only; Pencil icon re-opens for editing (2026-03-08)
+- [x] **1g** — Weights session: date field under "Time started"; defaults to current day (2026-03-08)
+- [x] **1h** — Weights session: session notes field with edit/save icons (2026-03-08)
 - [x] **1c** — Weights session: previous session affordance in ExerciseCard (name match → fetch history → "Last: 80kg top · 5 sets · 1 Mar") (2026-03-08)
 - [x] **1d** — Weights session: broad-match exercise autocomplete dropdown (2026-03-08)
 - [x] **1e** — Weights session: per-set tick button (green check + stays visible) (2026-03-08)
