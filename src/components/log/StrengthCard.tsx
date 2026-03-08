@@ -11,6 +11,35 @@ type StrengthState = 'empty' | 'parsing' | 'parsed' | 'confirmed' | 'saving' | '
 type CardMode = 'builder' | 'braindump';
 type SplitName = 'push' | 'pull' | 'legs' | 'abs';
 
+const DRAFT_KEY = 'strength_draft';
+
+type StrengthDraft = {
+  mode: CardMode;
+  selectedSplit: SplitName;
+  exercises: WorkoutExercise[];
+  startDate: string;
+  startTime: string;
+  duration: number;
+  notes: string;
+  brainDumpInput: string;
+  parsedLabel: string | null;
+  strengthState: 'empty' | 'parsed';
+  savedAt: number;
+};
+
+function readDraft(): StrengthDraft | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw) as StrengthDraft;
+    if (Date.now() - d.savedAt > 24 * 60 * 60 * 1000) {
+      localStorage.removeItem(DRAFT_KEY);
+      return null;
+    }
+    return d;
+  } catch { return null; }
+}
+
 const SPLITS: SplitName[] = ['push', 'pull', 'legs', 'abs'];
 const DEFAULT_SET: WorkoutSet = { load_type: 'kg', kg: 20, reps: 8 };
 
@@ -304,6 +333,41 @@ export default function StrengthCard({
   const [errorMsg, setErrorMsg] = useState('');
   const [exerciseList, setExerciseList] = useState<Exercise[]>([]);
   const [cancelConfirm, setCancelConfirm] = useState(false);
+  const [savedDraft, setSavedDraft] = useState<StrengthDraft | null>(() => readDraft());
+
+  // Persist draft whenever meaningful state changes
+  useEffect(() => {
+    if (state === 'confirmed' || state === 'saving') return;
+    const hasContent = exercises.length > 0 || brainDumpInput.trim().length > 0;
+    if (!hasContent) return;
+    const draft: StrengthDraft = {
+      mode, selectedSplit, exercises, startDate, startTime, duration, notes,
+      brainDumpInput, parsedLabel,
+      strengthState: state === 'parsed' ? 'parsed' : 'empty',
+      savedAt: Date.now(),
+    };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  }, [mode, selectedSplit, exercises, startDate, startTime, duration, notes, brainDumpInput, parsedLabel, state]);
+
+  const restoreDraft = () => {
+    if (!savedDraft) return;
+    setMode(savedDraft.mode);
+    setSelectedSplit(savedDraft.selectedSplit);
+    setExercises(savedDraft.exercises);
+    setStartDate(savedDraft.startDate);
+    setStartTime(savedDraft.startTime);
+    setDuration(savedDraft.duration);
+    setNotes(savedDraft.notes);
+    setBrainDumpInput(savedDraft.brainDumpInput);
+    setParsedLabel(savedDraft.parsedLabel);
+    setState(savedDraft.strengthState);
+    setSavedDraft(null);
+  };
+
+  const discardDraft = () => {
+    localStorage.removeItem(DRAFT_KEY);
+    setSavedDraft(null);
+  };
 
   useEffect(() => {
     apiFetch<Exercise[]>('/api/exercises')
@@ -372,6 +436,8 @@ export default function StrengthCard({
           : 'Saved — no Withings match found'
         );
       }
+      localStorage.removeItem(DRAFT_KEY);
+      setSavedDraft(null);
       setState('confirmed');
       setTimeout(() => {
         setState('empty');
@@ -422,6 +488,8 @@ export default function StrengthCard({
         });
         setMatchMessage('Linked to Workout ✓');
       }
+      localStorage.removeItem(DRAFT_KEY);
+      setSavedDraft(null);
       setState('confirmed');
       setTimeout(() => {
         setState('empty');
@@ -454,6 +522,8 @@ export default function StrengthCard({
     setCancelConfirm(false);
     setNotes('');
     setNotesEditing(false);
+    localStorage.removeItem(DRAFT_KEY);
+    setSavedDraft(null);
   };
 
   return (
@@ -479,6 +549,44 @@ export default function StrengthCard({
 
       {open && (
         <div style={{ padding: '0 var(--space-lg) var(--space-lg)' }}>
+          {savedDraft && state !== 'confirmed' && (
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-sm)',
+              padding: 'var(--space-sm) var(--space-md)',
+              marginBottom: 'var(--space-md)',
+            }}>
+              <span style={{ font: '400 13px/1.4 Inter, sans-serif', color: 'var(--text-secondary)' }}>
+                Resume session in progress?
+              </span>
+              <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                <button
+                  onClick={discardDraft}
+                  style={{
+                    background: 'transparent', border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-pill)', padding: '4px 12px',
+                    font: '600 12px/1 Inter, sans-serif', color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Discard
+                </button>
+                <button
+                  onClick={restoreDraft}
+                  style={{
+                    background: 'var(--rust)', border: 'none',
+                    borderRadius: 'var(--radius-pill)', padding: '4px 12px',
+                    font: '600 12px/1 Inter, sans-serif', color: 'var(--bg-base)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Resume
+                </button>
+              </div>
+            </div>
+          )}
           {state === 'confirmed' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', color: 'var(--signal-good)' }}>

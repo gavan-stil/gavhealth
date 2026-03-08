@@ -14,7 +14,8 @@ All 9 tasks shipped. App is live, logging flows work end-to-end.
 
 ## Active Task
 
-**T14 Sprint** — System updates, polish, and bug fixes.
+**T14 Sprint** — Medium items next.
+Quick Wins: all done. Medium items (1a, 1c, 1f, 1g✅, 1h✅, 1.7, 3, 1.1-sessions) in progress.
 Full task list: `tasks/T14-sprint.md`
 
 ---
@@ -80,3 +81,4 @@ Full list with notes: `tasks/backlog.md`
 | `specs/{dashboard,calendar,log,trends}.md` | Feature specs per route |
 | `DECISIONS.md` | Architectural decisions with rationale (D001–D006) |
 | `tasks/README.md` | Task execution protocol |
+| `SESSION.md` | Per-session scratchpad — overwrite each session, delete when done |

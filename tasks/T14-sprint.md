@@ -23,7 +23,6 @@
 
 ## Medium (frontend + small backend)
 
-- [ ] **1a** — Weights session: persist unsaved session state (navigating away before Save does not lose the session)
 - [ ] **1c** — Weights session: for any exercise (loaded or new) that matches a previous exercise name → show a "preview previous session" affordance. Detail shows what weight/sets/reps were logged last time.
 - [ ] **1f** — Weights session: edit a previously completed set (feather icon)
 - [ ] **1g** — Weights session: date field under "Time started". Defaults to current day. User can change.
@@ -51,6 +50,7 @@
 
 ## Done
 
+- [x] **1a** — Weights session: persist unsaved session state to localStorage; "Resume session?" banner on return (2026-03-08)
 - [x] **2.1** — Trends: remove 30/60/90 day toggle (2026-03-08)
 - [x] **1.4** — Mood/energy: replace emojis with lucide icons; collapsed header shows "Mood X · Energy Y" (2026-03-08)
 - [x] **4** — Dashboard: readiness score tap-tooltips on SLEEP/RHR/LOAD/REST (2026-03-08)
