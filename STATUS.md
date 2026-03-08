@@ -15,7 +15,7 @@ All 9 tasks shipped. App is live, logging flows work end-to-end.
 ## Active Task
 
 **T14 Sprint** — Medium items next.
-Quick Wins: all done. Medium items (1a, 1c, 1f, 1g✅, 1h✅, 1.7, 3, 1.1-sessions) in progress.
+Quick Wins: all done. Medium items done: 1a✅ 1c✅. Remaining: 1f, 1g✅, 1h✅, 1.7🔒, 3, 1.1-sessions🔒.
 Full task list: `tasks/T14-sprint.md`
 
 ---
@@ -26,6 +26,7 @@ Full task list: `tasks/T14-sprint.md`
 
 | Task | Date | Summary |
 |------|------|---------|
+| T14 1a+1c | 2026-03-08 | Strength session: localStorage draft persistence + resume banner (1a); previous session affordance in ExerciseCard (1c) |
 | Water bugs | 2026-03-07 | Fix POST /log/water + /log/mood 500 (asyncpg NULL→timestamptz cast); fix UTC day-boundary bucketing (Brisbane UTC+10) in WaterCard/Dashboard/WaterNutritionChart; add WaterTrendsChart to Trends (daily bars, 3L target line, green/ochre) |
 | T13 | 2026-03-07 | Food logging gaps: remove stale NutritionCard, fix × opacity, protein trends chart (weekly bars, 180g target line, green/ochre colouring) |
 | Bugs | 2026-03-07 | Fix strength sheet overlay hidden behind TabBar (z-index 91→111); fix Trends exercise filter (backend categories chest/back/arms/shoulders → push/pull, not name-match) |
