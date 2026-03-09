@@ -40,12 +40,10 @@ const barStyle: CSSProperties = {
   left: 0,
   right: 0,
   height: 'calc(64px + env(safe-area-inset-bottom, 0px))',
-  paddingBottom: 'env(safe-area-inset-bottom, 0px)',
   background: 'var(--bg-elevated)',
   borderTop: '1px solid var(--border-default)',
   display: 'flex',
-  alignItems: 'stretch',
-  justifyContent: 'space-around',
+  alignItems: 'flex-start',
   zIndex: 100,
 };
 
@@ -54,11 +52,12 @@ const tabStyle: CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   flex: 1,
-  height: '100%',
+  height: '64px',
   background: 'none',
   border: 'none',
   cursor: 'pointer',
   WebkitTapHighlightColor: 'transparent',
+  touchAction: 'manipulation',
   padding: 0,
 };
 
