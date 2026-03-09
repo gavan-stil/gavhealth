@@ -5,23 +5,25 @@ import type { TodayStats, MoodEntry } from '@/hooks/useDashboardV2';
 const WATER_TARGET = 3000; // ml
 const KCAL_TARGET = 2500;
 
-/* ── Tiny 7-day mood sparkline ── */
+/* ── Tiny 7-day sparkline ── */
 
-function MoodSparkline({ entries }: { entries: MoodEntry[] }) {
-  if (entries.length < 2) return null;
-  const last7 = entries.slice(0, 7).reverse(); // oldest→newest
+function Sparkline({ values, color }: { values: (number | null)[]; color: string }) {
+  const valid = values.filter((v): v is number => v !== null);
+  if (valid.length < 2) return null;
   const w = 60;
   const h = 20;
   const padY = 2;
-  const range = 4; // mood 1-5
-  const step = w / (last7.length - 1);
+  const range = 4; // 1-5 scale
+  const step = w / (values.length - 1);
 
-  const points = last7
-    .map((e, i) => {
+  const points = values
+    .map((v, i) => {
+      if (v === null) return null;
       const x = i * step;
-      const y = padY + ((5 - e.mood) / range) * (h - padY * 2);
+      const y = padY + ((5 - v) / range) * (h - padY * 2);
       return `${x},${y}`;
     })
+    .filter(Boolean)
     .join(' ');
 
   return (
@@ -29,7 +31,7 @@ function MoodSparkline({ entries }: { entries: MoodEntry[] }) {
       <polyline
         points={points}
         fill="none"
-        stroke="var(--ochre)"
+        stroke={color}
         strokeWidth={1.5}
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -37,6 +39,18 @@ function MoodSparkline({ entries }: { entries: MoodEntry[] }) {
       />
     </svg>
   );
+}
+
+function MoodSparkline({ entries }: { entries: MoodEntry[] }) {
+  if (entries.length < 2) return null;
+  const last7 = entries.slice(0, 7).reverse();
+  return <Sparkline values={last7.map(e => e.mood)} color="var(--ochre)" />;
+}
+
+function EnergySparkline({ entries }: { entries: MoodEntry[] }) {
+  if (entries.length < 2) return null;
+  const last7 = entries.slice(0, 7).reverse();
+  return <Sparkline values={last7.map(e => e.energy)} color="var(--ochre)" />;
 }
 
 /* ── Progress bar (thin horizontal) ── */
@@ -130,6 +144,7 @@ export default function QuickStatsRow({ stats, moodEntries }: Props) {
         <span className="stat-number" style={{ color: 'var(--ochre)', fontSize: 18 }}>
           {stats.energy !== null ? `${stats.energy}/5` : '—'}
         </span>
+        {moodEntries && moodEntries.length >= 2 && <EnergySparkline entries={moodEntries} />}
         <span className="label-text" style={{ color: 'var(--text-muted)' }}>Energy</span>
       </Tile>
 

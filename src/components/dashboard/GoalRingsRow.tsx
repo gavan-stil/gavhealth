@@ -75,8 +75,14 @@ function GoalRing({ label, value, target, color, format, icon }: RingConfig) {
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
       <svg width={91} height={91} viewBox="0 0 120 120">
         <defs>
-          <filter id={`shadow-${label}`} x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor="rgba(0,0,0,0.6)" />
+          <filter id={`glow-${label}`} x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="5" result="blur" />
+            <feFlood floodColor="rgba(255,255,255,0.85)" result="color" />
+            <feComposite in="color" in2="blur" operator="in" result="glow" />
+            <feMerge>
+              <feMergeNode in="glow" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
           </filter>
         </defs>
 
@@ -101,22 +107,39 @@ function GoalRing({ label, value, target, color, format, icon }: RingConfig) {
 
         {/* Overflow arc (Apple Watch wrap) */}
         {overflowPct > 0 && (
-          <circle
-            cx="60" cy="60" r="50"
-            fill="none"
-            stroke={color}
-            strokeWidth="8"
-            strokeLinecap="round"
-            strokeDasharray={CIRC}
-            strokeDashoffset={overflowOffset}
-            opacity={0.85}
-            filter={`url(#shadow-${label})`}
-            style={{
-              transform: 'rotate(-90deg)',
-              transformOrigin: '60px 60px',
-              transition: animated ? 'stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s' : 'none',
-            }}
-          />
+          <>
+            {/* Gap separator — card bg color, slightly wider, sits between base and overflow */}
+            <circle
+              cx="60" cy="60" r="50"
+              fill="none"
+              stroke="var(--bg-card)"
+              strokeWidth="13"
+              strokeLinecap="round"
+              strokeDasharray={CIRC}
+              strokeDashoffset={overflowOffset}
+              style={{
+                transform: 'rotate(-90deg)',
+                transformOrigin: '60px 60px',
+                transition: animated ? 'stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s' : 'none',
+              }}
+            />
+            {/* Overflow arc on top with white glow */}
+            <circle
+              cx="60" cy="60" r="50"
+              fill="none"
+              stroke={color}
+              strokeWidth="8"
+              strokeLinecap="round"
+              strokeDasharray={CIRC}
+              strokeDashoffset={overflowOffset}
+              filter={`url(#glow-${label})`}
+              style={{
+                transform: 'rotate(-90deg)',
+                transformOrigin: '60px 60px',
+                transition: animated ? 'stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s' : 'none',
+              }}
+            />
+          </>
         )}
 
         {/* Icon — centered at (60, 39) in the upper interior */}
