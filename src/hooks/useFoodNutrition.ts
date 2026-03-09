@@ -56,25 +56,26 @@ function calcTotals(entries: FoodLogEntry[]): MacroTotals {
   );
 }
 
-export function useFoodNutrition() {
+export function useFoodNutrition(date: string) {
   const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([]);
   const [todayLog, setTodayLog] = useState<FoodLogEntry[]>([]);
   const [parseInput, setParseInput] = useState('');
   const [parsedItems, setParsedItems] = useState<ParsedItem[]>([]);
   const [parseState, setParseState] = useState<ParseState>('idle');
 
-  // ── Load saved meals + today's log on mount ──────────────────────────────
+  // ── Load saved meals on mount; reload log whenever date changes ──────────
   useEffect(() => {
-    const today = new Date().toLocaleDateString('en-CA');
-
     apiFetch<SavedMeal[]>('/api/saved-meals')
       .then(setSavedMeals)
       .catch(() => {});
+  }, []);
 
-    apiFetch<{ data: FoodApiEntry[] }>(`/api/food?start_date=${today}&end_date=${today}`)
+  useEffect(() => {
+    setTodayLog([]);
+    apiFetch<{ data: FoodApiEntry[] }>(`/api/food?start_date=${date}&end_date=${date}`)
       .then(res => setTodayLog((res.data ?? []).map(toLogEntry)))
       .catch(() => {});
-  }, []);
+  }, [date]);
 
   const totals: MacroTotals = calcTotals(todayLog);
 
@@ -105,7 +106,7 @@ export function useFoodNutrition() {
       protein_g: item.protein_g,
       carbs_g: item.carbs_g,
       fat_g: item.fat_g,
-      log_date: new Date().toLocaleDateString('en-CA'),
+      log_date: date,
     };
     setTodayLog(prev => [...prev, tempEntry]);
 
@@ -120,6 +121,7 @@ export function useFoodNutrition() {
             protein_g: item.protein_g,
             carbs_g: item.carbs_g,
             fat_g: item.fat_g,
+            log_date: date,
           }),
         },
       );
@@ -131,7 +133,7 @@ export function useFoodNutrition() {
       // Roll back on failure
       setTodayLog(prev => prev.filter(e => e.id !== tempId));
     }
-  }, []);
+  }, [date]);
 
   const removeLogEntry = useCallback(async (id: number) => {
     setTodayLog(prev => prev.filter(e => e.id !== id)); // optimistic

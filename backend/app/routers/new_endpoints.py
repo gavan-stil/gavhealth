@@ -126,7 +126,7 @@ class FoodItemLog(BaseModel):
     protein_g: float
     carbs_g: float
     fat_g: float
-    logged_at: str | None = None
+    log_date: str | None = None  # YYYY-MM-DD; defaults to today if omitted
 
 
 # ---------------------------------------------------------------------------
@@ -566,19 +566,23 @@ async def delete_saved_meal(id: int, db: AsyncSession = Depends(get_db)):
 # meal_label='snack' satisfies CHECK ('breakfast','lunch','dinner','snack','post-workout')
 @router.post("/log/food/item")
 async def log_food_item(body: FoodItemLog, db: AsyncSession = Depends(get_db)):
+    # Resolve log_date before query to avoid asyncpg NULL-cast bug
+    from datetime import date as date_type
+    log_date_val = date_type.fromisoformat(body.log_date) if body.log_date else date_type.today()
     result = await db.execute(
         text("""
             INSERT INTO food_logs
                 (description_raw, meal_label, log_date,
                  protein_g, carbs_g, fat_g, calories_kcal, confidence, source)
             VALUES
-                (:name, 'snack', CURRENT_DATE,
+                (:name, 'snack', :log_date,
                  :protein_g, :carbs_g, :fat_g, :calories_kcal, 'high', 'manual')
             RETURNING id, description_raw, log_date, calories_kcal,
                       protein_g, carbs_g, fat_g
         """),
         {
             "name": body.name,
+            "log_date": log_date_val,
             "protein_g": body.protein_g,
             "carbs_g": body.carbs_g,
             "fat_g": body.fat_g,
@@ -829,17 +833,33 @@ async def log_mood(body: MoodLogCreate, db: AsyncSession = Depends(get_db)):
 @router.get("/mood")
 async def get_mood(
     days: int = Query(default=1, ge=1, le=365),
+    start_date: str | None = Query(default=None),
+    end_date: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        text("""
-            SELECT id, logged_at, mood, energy
-            FROM mood_logs
-            WHERE logged_at >= NOW() - (:days * INTERVAL '1 day')
-            ORDER BY logged_at DESC
-        """),
-        {"days": days},
-    )
+    from datetime import date as date_type, timedelta
+    if start_date and end_date:
+        start = date_type.fromisoformat(start_date)
+        end = date_type.fromisoformat(end_date) + timedelta(days=1)
+        result = await db.execute(
+            text("""
+                SELECT id, logged_at, mood, energy
+                FROM mood_logs
+                WHERE logged_at >= :start AND logged_at < :end
+                ORDER BY logged_at DESC
+            """),
+            {"start": start, "end": end},
+        )
+    else:
+        result = await db.execute(
+            text("""
+                SELECT id, logged_at, mood, energy
+                FROM mood_logs
+                WHERE logged_at >= NOW() - (:days * INTERVAL '1 day')
+                ORDER BY logged_at DESC
+            """),
+            {"days": days},
+        )
     rows = result.mappings().all()
     return [
         {

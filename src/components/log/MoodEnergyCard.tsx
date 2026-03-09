@@ -109,19 +109,22 @@ const cardStyle: React.CSSProperties = {
 interface Props {
   open: boolean;
   onToggle: () => void;
+  date: string;
 }
 
 type SaveState = 'idle' | 'saving' | 'confirmed';
 
-export default function MoodEnergyCard({ open, onToggle }: Props) {
+export default function MoodEnergyCard({ open, onToggle, date }: Props) {
   const [mood, setMood] = useState<number | null>(null);
   const [energy, setEnergy] = useState<number | null>(null);
   const [saveState, setSaveState] = useState<SaveState>('idle');
 
-  // Load today's existing log on mount
+  // Load existing log for the selected date
   useEffect(() => {
-    const today = new Date().toLocaleDateString('en-CA');
-    apiFetch<Array<{ mood: number; energy: number }>>(`/api/mood?start_date=${today}&end_date=${today}`)
+    setMood(null);
+    setEnergy(null);
+    setSaveState('idle');
+    apiFetch<Array<{ mood: number; energy: number }>>(`/api/mood?start_date=${date}&end_date=${date}`)
       .then(data => {
         if (data.length > 0) {
           setMood(data[0].mood);
@@ -130,7 +133,7 @@ export default function MoodEnergyCard({ open, onToggle }: Props) {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [date]);
 
   const canSave = mood !== null && energy !== null && saveState !== 'saving';
 
@@ -140,13 +143,13 @@ export default function MoodEnergyCard({ open, onToggle }: Props) {
     try {
       await apiFetch('/api/log/mood', {
         method: 'POST',
-        body: JSON.stringify({ mood, energy }),
+        body: JSON.stringify({ mood, energy, logged_at: `${date}T12:00:00+10:00` }),
       });
       setSaveState('confirmed');
     } catch {
       setSaveState('idle');
     }
-  }, [mood, energy, canSave]);
+  }, [mood, energy, canSave, date]);
 
   const headerLabel = saveState === 'confirmed' && mood !== null && energy !== null
     ? `Mood ${mood} · Energy ${energy}`
@@ -230,7 +233,7 @@ export default function MoodEnergyCard({ open, onToggle }: Props) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
               <Check size={16} color="var(--ochre)" />
               <span className="label-text" style={{ color: 'var(--text-secondary)' }}>
-                Logged today — Mood {mood}/5 · Energy {energy}/5
+                Logged — Mood {mood}/5 · Energy {energy}/5
               </span>
               <button
                 onClick={() => setSaveState('idle')}

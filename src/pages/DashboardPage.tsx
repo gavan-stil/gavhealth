@@ -15,6 +15,7 @@ import QuickStatsRow from "@/components/dashboard/QuickStatsRow";
 import ActivityChart from "@/components/dashboard/ActivityChart";
 import MoodEnergyChart from "@/components/dashboard/MoodEnergyChart";
 import WaterNutritionChart from "@/components/dashboard/WaterNutritionChart";
+import NutritionTargetChart from "@/components/dashboard/NutritionTargetChart";
 
 const PULL_THRESHOLD = 60;
 
@@ -145,6 +146,12 @@ export default function DashboardPage() {
         waterData={v2.water.data}
         foodData={v2.food.data}
         loading={chartsLoading}
+      />
+
+      {/* Nutrition targets chart */}
+      <NutritionTargetChart
+        foodData={v2.food.data}
+        loading={v2.food.loading}
       />
 
       {/* Collapsed: Vitals + Streaks */}

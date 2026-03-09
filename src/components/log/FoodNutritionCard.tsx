@@ -12,20 +12,22 @@ const fmt  = (n: number) => n.toLocaleString();
 function MacroBar({
   label, value, target, color,
 }: { label: string; value: number; target: number; color: string }) {
+  const over = value > target;
+  const excess = Math.round(value - target);
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
         <span style={{ font: '600 10px/1 Inter,sans-serif', letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
           {label}
         </span>
-        <span style={{ font: '600 12px/1 "JetBrains Mono",monospace', letterSpacing: '-0.3px', color: 'var(--text-secondary)' }}>
-          {Math.round(value)}g
+        <span style={{ font: '600 12px/1 "JetBrains Mono",monospace', letterSpacing: '-0.3px', color: over ? 'var(--signal-good)' : 'var(--text-secondary)' }}>
+          {over ? `+${excess}g` : `${Math.round(value)}g`}
         </span>
       </div>
       <div style={{ height: 5, background: 'var(--bg-elevated)', borderRadius: 99, overflow: 'hidden' }}>
         <div style={{
-          height: '100%', width: `${pct(value, target)}%`,
-          background: color, borderRadius: 99,
+          height: '100%', width: over ? '100%' : `${pct(value, target)}%`,
+          background: over ? 'var(--signal-good)' : color, borderRadius: 99,
           transition: 'width 0.4s cubic-bezier(0.16,1,0.3,1)',
         }} />
       </div>
@@ -37,9 +39,11 @@ function MacroBar({
 export default function FoodNutritionCard({
   open,
   onToggle,
+  date,
 }: {
   open: boolean;
   onToggle: () => void;
+  date: string;
 }) {
   const {
     savedMeals, saveMeal, deleteSavedMeal,
@@ -48,7 +52,7 @@ export default function FoodNutritionCard({
     parseInput, setParseInput,
     parsedItems, parseState,
     triggerParse, clearParse,
-  } = useFoodNutrition();
+  } = useFoodNutrition(date);
 
   // Track which parsed items have been added / saved (local UI state only)
   const [addedIndexes, setAddedIndexes]   = useState<Set<number>>(new Set());
@@ -71,6 +75,8 @@ export default function FoodNutritionCard({
     setDeletingId(null);
   };
 
+  const kcalOver = totals.kcal > FOOD_TARGETS.kcal;
+  const kcalExcess = Math.round(totals.kcal - FOOD_TARGETS.kcal);
   const kcalPct = pct(totals.kcal, FOOD_TARGETS.kcal);
 
   return (
@@ -317,8 +323,8 @@ export default function FoodNutritionCard({
                   <span style={{ flex: 1, font: '400 13px/1 Inter,sans-serif', color: 'var(--text-primary)' }}>
                     {entry.name}
                   </span>
-                  <span style={{ font: '600 12px/1 "JetBrains Mono",monospace', color: 'var(--text-muted)', letterSpacing: '-0.3px' }}>
-                    {entry.calories_kcal} kcal
+                  <span style={{ font: '600 11px/1 "JetBrains Mono",monospace', color: 'var(--text-muted)', letterSpacing: '-0.3px', whiteSpace: 'nowrap' }}>
+                    {entry.calories_kcal} · P{Math.round(entry.protein_g)} C{Math.round(entry.carbs_g)} F{Math.round(entry.fat_g)}
                   </span>
                   <button
                     onClick={() => removeLogEntry(entry.id)}
@@ -333,19 +339,21 @@ export default function FoodNutritionCard({
 
           {/* ── ⑤ TOTALS ── */}
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
-            <span style={{ font: '800 28px/1 "JetBrains Mono",monospace', letterSpacing: '-1.5px', color: 'var(--ochre)' }}>
-              {fmt(totals.kcal)}
+            <span style={{ font: '800 28px/1 "JetBrains Mono",monospace', letterSpacing: '-1.5px', color: kcalOver ? 'var(--signal-good)' : 'var(--ochre)' }}>
+              {kcalOver ? `+${fmt(kcalExcess)}` : fmt(totals.kcal)}
             </span>
             <span style={{ font: '400 13px/1 Inter,sans-serif', color: 'var(--text-muted)' }}>
-              of {fmt(FOOD_TARGETS.kcal)} kcal
+              {kcalOver ? `kcal over target` : `of ${fmt(FOOD_TARGETS.kcal)} kcal`}
             </span>
           </div>
 
           {/* Calorie bar */}
           <div style={{ height: 8, background: 'var(--bg-elevated)', borderRadius: 99, overflow: 'hidden', marginBottom: 14 }}>
             <div style={{
-              height: '100%', width: `${kcalPct}%`,
-              background: 'linear-gradient(90deg, var(--signal-good), var(--ochre))',
+              height: '100%', width: kcalOver ? '100%' : `${kcalPct}%`,
+              background: kcalOver
+                ? 'var(--signal-good)'
+                : 'linear-gradient(90deg, var(--signal-good), var(--ochre))',
               borderRadius: 99,
               transition: 'width 0.4s cubic-bezier(0.16,1,0.3,1)',
             }} />
