@@ -178,6 +178,7 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
         dist: a.distance_km != null ? fmt(a.distance_km, "km") : "—",
         time: a.duration_mins ? fmtInt(a.duration_mins, "m") : "—",
         pace: a.avg_pace_secs != null ? fmt(a.avg_pace_secs / 60, "'/km") : "—",
+        bpm: a.avg_hr != null ? fmtInt(a.avg_hr, "bpm") : "—",
       },
       isLetsGo: a.effort === "lets_go",
       isInterval,
@@ -195,7 +196,10 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
     addEntry(a.activity_date, {
       category: "strength",
       duration: durStr,
-      subMetrics: { sets: session ? `${session.total_sets}` : "—" },
+      subMetrics: {
+        sets: session ? `${session.total_sets}` : "—",
+        bpm: a.avg_hr != null ? fmtInt(a.avg_hr, "bpm") : "—",
+      },
       isLetsGo: a.effort === "lets_go",
       workoutSplit,
     });

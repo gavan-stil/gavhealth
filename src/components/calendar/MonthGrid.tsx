@@ -12,6 +12,16 @@ type Props = {
   onDaySelect: (date: string) => void;
 };
 
+/** Active sub-metric values to display below bar, joined with " · " */
+function buildSubText(dot: CategoryDot, subToggles: Record<string, boolean>): string {
+  if (!dot.subMetrics || Object.keys(subToggles).length === 0) return "";
+  return Object.entries(subToggles)
+    .filter(([, active]) => active)
+    .map(([k]) => dot.subMetrics?.[k])
+    .filter((v): v is string => !!v && v !== "—")
+    .join(" · ");
+}
+
 const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
 
 function toKey(d: Date): string {
@@ -47,12 +57,12 @@ function todayKey(): string {
   return toKey(new Date());
 }
 
-/** Split icon for a strength bar */
+/** Split icon for a strength bar — matches original design icons */
 function barIcon(dot: CategoryDot): string {
   if (dot.category === "strength") {
-    return dot.workoutSplit === "push" ? "▲"
-      : dot.workoutSplit === "pull" ? "▼"
-      : dot.workoutSplit === "legs" ? "//"
+    return dot.workoutSplit === "legs" ? "●"
+      : dot.workoutSplit === "push" ? "▶"
+      : dot.workoutSplit === "pull" ? "▲"
       : "";
   }
   return "";
@@ -134,9 +144,12 @@ export default function MonthGrid({
   month,
   data,
   activeCategories,
+  subToggles,
+  singleCategory,
   showWk,
   onDaySelect,
 }: Props) {
+  void singleCategory; // available for future single-cat layout tweaks
   const weeks = buildWeeks(year, month);
   const today = todayKey();
   const cols = showWk ? "repeat(7, 1fr) 50px" : "repeat(7, 1fr)";
@@ -242,51 +255,71 @@ export default function MonthGrid({
 
                     const icon = dot ? barIcon(dot) : "";
                     const label = dot ? barLabel(dot) : "";
-                    const hasMarker = dot
+                    // Strength uses split icons only — no effort marker
+                    const hasMarker = dot && dot.category !== "strength"
                       ? !!(dot.isLetsGo || dot.isInterval || dot.saunaHasDevotion)
                       : false;
+                    const subText = dot ? buildSubText(dot, subToggles) : "";
 
                     return (
                       <div
                         key={di}
                         style={{
                           padding: "3px 1px",
-                          minHeight: 22,
+                          minHeight: subText ? 34 : 22,
                           display: "flex",
+                          flexDirection: "column",
                           alignItems: "center",
-                          justifyContent: "center",
+                          justifyContent: "flex-start",
+                          paddingTop: 3,
                         }}
                       >
                         {dot && (
-                          /* Always show coloured bar — same in single-category and multi mode */
-                          <div
-                            style={{
-                              width: "calc(100% - 2px)",
-                              height: 14,
-                              borderRadius: 3,
-                              background: dot.color,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              gap: 2,
-                              paddingInline: 3,
-                              overflow: "hidden",
-                            }}
-                          >
-                            {icon && (
-                              <span style={{ font: "700 9px/1 monospace", color: "rgba(255,255,255,0.95)", flexShrink: 0 }}>
-                                {icon}
-                              </span>
+                          <>
+                            {/* Coloured activity bar */}
+                            <div
+                              style={{
+                                width: "calc(100% - 2px)",
+                                height: 14,
+                                borderRadius: 3,
+                                background: dot.color,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: 2,
+                                paddingInline: 3,
+                                overflow: "hidden",
+                              }}
+                            >
+                              {label && (
+                                <span style={{ font: "500 8px/1 'Inter', sans-serif", color: "rgba(255,255,255,0.88)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, textAlign: "center" }}>
+                                  {label}
+                                </span>
+                              )}
+                              {(icon || hasMarker) && (
+                                <span style={{ font: "700 8px/1 monospace", color: "rgba(255,255,255,0.95)", flexShrink: 0 }}>
+                                  {icon || "▲"}
+                                </span>
+                              )}
+                            </div>
+                            {/* Sub-metrics row — shown when sub-toggles active */}
+                            {subText && (
+                              <div
+                                style={{
+                                  font: "400 7px/1.3 'JetBrains Mono', monospace",
+                                  color: "var(--text-muted)",
+                                  marginTop: 2,
+                                  width: "calc(100% - 2px)",
+                                  textAlign: "center",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {subText}
+                              </div>
                             )}
-                            {label && (
-                              <span style={{ font: "500 8px/1 'Inter', sans-serif", color: "rgba(255,255,255,0.88)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, textAlign: "center" }}>
-                                {label}
-                              </span>
-                            )}
-                            {hasMarker && (
-                              <span style={{ font: "700 6px/1 monospace", color: "rgba(255,255,255,0.85)", flexShrink: 0 }}>▲</span>
-                            )}
-                          </div>
+                          </>
                         )}
                       </div>
                     );

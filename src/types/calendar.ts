@@ -20,11 +20,12 @@ export type CalendarData = Record<string, CategoryDot[]>;
 export const SUB_TOGGLE_DEFS: Record<CategoryName, { id: string; label: string }[]> = {
   running: [
     { id: "dist", label: "Dist" },
-    { id: "time", label: "Time" },
     { id: "pace", label: "Pace" },
+    { id: "bpm", label: "BPM" },
   ],
   strength: [
     { id: "sets", label: "Sets" },
+    { id: "bpm", label: "BPM" },
   ],
   ride: [
     { id: "dist", label: "Dist" },
