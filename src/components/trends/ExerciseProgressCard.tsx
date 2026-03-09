@@ -4,30 +4,29 @@ import type { Exercise, ExerciseSession } from "@/types/trends";
 
 /* ── Category map ── */
 
-type Category = "push" | "pull" | "legs" | "abs";
+type Category = "push" | "pull" | "legs" | "abs" | "other";
 
-const EXERCISE_CATEGORIES: Record<string, Category> = {
-  Squat: "legs",
-  "Leg Press": "legs",
-  RDL: "legs",
-  Deadlift: "legs",
-  "Bench Press": "push",
-  OHP: "push",
-  Dips: "push",
-  "Push-ups": "push",
-  "Pull-ups": "pull",
-  Row: "pull",
-  "Chin-ups": "pull",
-  Plank: "abs",
-  Crunch: "abs",
+// Maps backend category → frontend group (for colour + filter)
+const BACKEND_TO_CATEGORY: Record<string, Category> = {
+  chest:     "push",
+  shoulders: "push",
+  arms:      "push",
+  back:      "pull",
+  legs:      "legs",
+  abs:       "abs",
+  core:      "abs",
 };
 
 const CATEGORY_COLORS: Record<Category, string> = {
-  push: "#c45a4a",  // rust
-  pull: "#7FAABC",  // dawn
-  legs: "#d4a04a",  // ochre
-  abs:  "#8a7a6a",  // muted warm
+  push:  "#c45a4a",  // rust
+  pull:  "#7FAABC",  // dawn
+  legs:  "#d4a04a",  // ochre
+  abs:   "#8a7a6a",  // muted warm
+  other: "#6a6a6a",  // neutral
 };
+
+// March 2026 — earliest month with real data
+const DATA_START = new Date(2026, 2, 1); // month is 0-indexed
 
 /* ── Sparkline (SVG polyline) ── */
 
@@ -78,16 +77,20 @@ function Sparkline({ values }: { values: number[] }) {
 /* ── Monthly volume bars ── */
 
 function MonthlyVolumeBars({ history }: { history: ExerciseSession[] }) {
-  // Last 4 calendar months
+  // Calendar months from DATA_START up to current month (max 6)
   const now = new Date();
   const months: { key: string; label: string }[] = [];
-  for (let i = 3; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+  let cursor = new Date(DATA_START.getFullYear(), DATA_START.getMonth(), 1);
+  const end = new Date(now.getFullYear(), now.getMonth(), 1);
+  while (cursor <= end) {
     months.push({
-      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
-      label: d.toLocaleString("default", { month: "short" }),
+      key: `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`,
+      label: cursor.toLocaleString("default", { month: "short" }),
     });
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
   }
+  // Cap at 6 most recent to avoid overflow
+  if (months.length > 6) months.splice(0, months.length - 6);
 
   const volumeByMonth = new Map<string, number>();
   for (const session of history) {
@@ -145,7 +148,7 @@ export default function ExerciseProgressCard({ exercise, days }: Props) {
       .finally(() => setLoading(false));
   }, [exercise.id, days]);
 
-  const category: Category = EXERCISE_CATEGORIES[exercise.name] ?? "legs";
+  const category: Category = BACKEND_TO_CATEGORY[exercise.category] ?? "other";
   const catColor = CATEGORY_COLORS[category];
 
   const cardStyle: React.CSSProperties = {
@@ -176,34 +179,17 @@ export default function ExerciseProgressCard({ exercise, days }: Props) {
     );
   }
 
-  if (error || !history || history.length === 0) {
+  // Error: show minimal error card; empty history: hide entirely (unlinked exercise)
+  if (error) {
     return (
       <div style={cardStyle}>
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)" }}>
-          <span
-            style={{
-              padding: "2px 8px",
-              borderRadius: "var(--radius-pill)",
-              background: `${catColor}22`,
-              color: catColor,
-              fontSize: 9,
-              fontWeight: 700,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-            }}
-          >
-            {category}
-          </span>
-          <span className="body-text" style={{ fontWeight: 600 }}>
-            {exercise.name}
-          </span>
-        </div>
         <span className="label-text" style={{ color: "var(--text-muted)" }}>
-          {error ?? "No data logged yet"}
+          {exercise.name} — {error}
         </span>
       </div>
     );
   }
+  if (!history || history.length === 0) return null;
 
   const topWeights = history.map((h) => h.top_weight_kg);
   const lastIdx = history.length - 1;

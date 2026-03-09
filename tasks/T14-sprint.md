@@ -24,8 +24,8 @@
 ## Medium (frontend + small backend)
 
 - [ ] **1.7** — Water: delete individual water log entries `[B: needs DELETE /api/water/:id]`
-- [ ] **3** — Calendar: (a) workout split icons — downward pyramid for pull, upward pyramid for push, // for legs, next to the dot; (b) activity type shown as full-width cylinder bar (taking whole day row), activity text inside bar — style ref: iPhone native calendar screenshot
-- [ ] **1.1-sessions** — Activity feed: unlinked strength sessions (no linked Withings activity) appear in feed `[B: needs GET /api/strength/sessions with unlinking flag]`
+- [x] **3** — Calendar: row-per-category bars + Option A WK outline pills + workout split icons (▲/▼//) (2026-03-08)
+- [x] **1.1-sessions** — Activity feed: unlinked strength sessions appear as first-class feed cards sorted by date. Rust left border + Link2Off pill. Expand → Delete or Link-to-workout picker. Pure frontend (no new endpoints). (2026-03-09)
 
 ---
 

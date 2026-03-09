@@ -14,7 +14,6 @@
   4. New `GET /api/strength/exercise/:id/history?days=N` — per-exercise session data for drill-down
 - **Strength Trends — frontend** — HTML mockup approved → wire to React on Trends page. Two sections: Workout Volume (cascade weekly→session bars + metric toggles) + Exercise Progress (per-exercise sparkline + cumulative load). Mockup: `archive/strength-trends-mockup.html`.
 - **Sleep dashboard** — Stage bars + consistency % + debt tracker + score trend. Original design reference: `archive/gavhealth[original-design].html` (sleep section). API: `GET /api/sleep?days=N`.
-- **Goal rings** — 4 SVG progress rings (Sleep, Activity, Nutrition, Recovery) as dashboard hero. Replaces or wraps ReadinessCard. Original design reference: `archive/gavhealth[original-design].html` (goal rings section).
 - **Deploy `GET /api/habits`** — Endpoint exists in `new_endpoints.py`, needs deploying to Railway. Unlocks habits history view in HabitsCard.
 
 ---

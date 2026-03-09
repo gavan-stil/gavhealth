@@ -6,13 +6,15 @@ import ExerciseProgressCard from "./ExerciseProgressCard";
 type Filter = "all" | "push" | "pull" | "legs" | "abs";
 
 // Maps backend category values → frontend filter tabs
+// "other" is intentionally absent — those exercises only appear under "all"
 const CATEGORY_TO_FILTER: Record<string, Filter> = {
-  chest: "push",
+  chest:     "push",
   shoulders: "push",
-  arms: "push",
-  back: "pull",
-  legs: "legs",
-  abs: "abs",
+  arms:      "push",
+  back:      "pull",
+  legs:      "legs",
+  abs:       "abs",
+  core:      "abs",
 };
 
 const FILTERS: { key: Filter; label: string }[] = [
@@ -43,7 +45,7 @@ export default function ExerciseProgressSection({ days }: Props) {
       : filter === "all"
       ? exercises
       : exercises.filter(
-          (ex) => (CATEGORY_TO_FILTER[ex.category] ?? "push") === filter
+          (ex) => CATEGORY_TO_FILTER[ex.category] === filter
         );
 
   return (

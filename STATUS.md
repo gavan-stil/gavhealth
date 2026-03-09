@@ -14,10 +14,9 @@ All 9 tasks shipped. App is live, logging flows work end-to-end.
 
 ## Active Task
 
-**T14 Sprint** — Item 3 (Calendar bars) next.
-Quick Wins: all done. Medium items done: 1a✅ 1b✅ 1c✅ 1d✅ 1e✅ 1f✅ 1g✅ 1h✅ 1.3✅ 1.4✅ 2.1✅ 4✅ 1.1-filter✅.
-**Item 3 mockup APPROVED** — ready to build. See `SESSION.md` for full plan.
-Blocked: 1.7🔒, 1.1-sessions🔒.
+**T14 Sprint** — 1.1-sessions ✅ done. Remaining: 1.7🔒, 1.8, 1.2, 2.
+Quick Wins: all done. Medium items done: 1a✅ 1b✅ 1c✅ 1d✅ 1e✅ 1f✅ 1g✅ 1h✅ 1.3✅ 1.4✅ 2.1✅ 4✅ 1.1-filter✅ 3✅ goal-rings✅ day-detail-sheet✅ 1.1-sessions✅.
+Blocked: 1.7🔒.
 Full task list: `tasks/T14-sprint.md`
 
 ---
@@ -28,6 +27,13 @@ Full task list: `tasks/T14-sprint.md`
 
 | Task | Date | Summary |
 |------|------|---------|
+| Goal rings icons + size | 2026-03-09 | +30% ring size (70→91px), icons inside rings: moon/slash/fork/bolt from original design. commit: 46eba65 |
+| Tab bar tap targets v2 | 2026-03-09 | Full 64px height buttons (explicit, not %), alignItems:flex-start, touchAction:manipulation. commit: 5bd5856 |
+| Tab bar tap targets | 2026-03-09 | Expanded hit area to full column width (flex:1) + full bar height. commit: 6bee1ac |
+| Activity card detail sheet | 2026-03-09 | Tap any activity card → bottom sheet with full detail. Workout+linked session: exercise grid (split, body areas, sets×reps, top weight, totals). Effort picker, unlink/re-log/link actions. commit: 429dfe1 |
+| Activity Feed orphans | 2026-03-09 | Unlinked strength sessions now appear as first-class feed cards (rust border + Link2Off pill). Expand to Delete or Link-to-workout. Fetch window 14→30 days. commit: a4362e3 |
+| DayDetailSheet | 2026-03-08 | Full rewrite: strength session cards (expand/collapse, exercise grid, split/body areas), sauna always-open, run/walk/other dot cards. Fixed: exMap lookup key mismatch (full name vs parsed name), client-side date filter (API params unreliable), session dedup by exercises.length > 0. Latest: 9091845 |
+| Goal Rings | 2026-03-08 | 4 SVG progress rings (sleep, steps, protein, recovery) with Apple Watch overflow; new useGoalRings hook + GoalRingsRow component; protein_g added to TodayStats |
 | T14 1a+1c | 2026-03-08 | Strength session: localStorage draft persistence + resume banner (1a); previous session affordance in ExerciseCard (1c) |
 | Water bugs | 2026-03-07 | Fix POST /log/water + /log/mood 500 (asyncpg NULL→timestamptz cast); fix UTC day-boundary bucketing (Brisbane UTC+10) in WaterCard/Dashboard/WaterNutritionChart; add WaterTrendsChart to Trends (daily bars, 3L target line, green/ochre) |
 | T13 | 2026-03-07 | Food logging gaps: remove stale NutritionCard, fix × opacity, protein trends chart (weekly bars, 180g target line, green/ochre colouring) |
@@ -46,11 +52,10 @@ Full history: `tasks/done/` + `CHANGELOG.md`
 
 ## Backlog (top priority first)
 
-1. Sleep dashboard — stage bars, consistency %, debt tracker (ref: `archive/gavhealth[original-design].html`)
-3. Goal rings — 4 SVG rings (Sleep, Activity, Nutrition, Recovery) as dashboard hero
-4. Visual polish pass — card textures, micro-animations, Strava-style tabs
-5. PWA manifest — `manifest.json` + service worker (install as home screen app)
-6. Withings OAuth completion — user action required; sync currently pulls no new data
+1. **Sleep dashboard** — stage bars, consistency %, debt tracker (ref: `archive/gavhealth[original-design].html`)
+2. Visual polish pass — card textures, micro-animations, Strava-style tabs
+3. PWA manifest — `manifest.json` + service worker (install as home screen app)
+4. Withings OAuth completion — user action required; sync currently pulls no new data
 
 Full list with notes: `tasks/backlog.md`
 
