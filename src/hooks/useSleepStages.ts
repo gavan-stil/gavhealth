@@ -17,17 +17,18 @@ export interface SleepStagesData {
   stages: SleepStage[] | null;
 }
 
-export default function useSleepStages() {
+export default function useSleepStages(dateStr?: string) {
   const [data, setData] = useState<SleepStagesData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   const today = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD local
+  const targetDate = dateStr ?? today;
 
   const fetchData = useCallback(() => {
     setLoading(true);
     setError(false);
-    apiFetch<SleepStagesData | null>(`/api/sleep/stages?date=${today}`)
+    apiFetch<SleepStagesData | null>(`/api/sleep/stages?date=${targetDate}`)
       .then((raw) => {
         setData(raw);
         setLoading(false);
@@ -36,7 +37,7 @@ export default function useSleepStages() {
         setError(true);
         setLoading(false);
       });
-  }, [today]);
+  }, [targetDate]);
 
   useEffect(() => {
     fetchData();

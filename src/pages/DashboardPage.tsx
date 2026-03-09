@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import useDashboard from "@/hooks/useDashboard";
 import useDashboardV2 from "@/hooks/useDashboardV2";
 import useGoalRings from "@/hooks/useGoalRings";
@@ -24,12 +24,34 @@ import NutritionTargetChart from "@/components/dashboard/NutritionTargetChart";
 
 const PULL_THRESHOLD = 60;
 
+function todayLocal(): string {
+  return new Date().toLocaleDateString("en-CA");
+}
+
+function stepDate(date: string, delta: number): string {
+  const d = new Date(date + "T00:00:00");
+  d.setDate(d.getDate() + delta);
+  return d.toLocaleDateString("en-CA");
+}
+
+function formatDateLabel(date: string): string {
+  const today = todayLocal();
+  if (date === today) return "Today";
+  const yesterday = stepDate(today, -1);
+  if (date === yesterday) return "Yesterday";
+  const d = new Date(date + "T00:00:00");
+  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
+
 export default function DashboardPage() {
+  const [selectedDate, setSelectedDate] = useState<string>(todayLocal);
+  const isToday = selectedDate === todayLocal();
+
   const { readiness, vitals, streaks } = useDashboard();
   const v2 = useDashboardV2();
   const goalRings = useGoalRings();
-  const sleepStages = useSleepStages();
-  const intradayHR = useIntradayHR();
+  const sleepStages = useSleepStages(selectedDate);
+  const intradayHR = useIntradayHR(selectedDate);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const startY = useRef(0);
@@ -37,6 +59,7 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
 
   const refetchAll = useCallback(() => {
+    setSelectedDate(todayLocal());
     readiness.refetch();
     vitals.refetch();
     streaks.refetch();
@@ -94,8 +117,42 @@ export default function DashboardPage() {
         gap: "var(--space-md)",
       }}
     >
-      {/* Header row with sync button */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      {/* Header row: date stepper + sync button */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-xs)" }}>
+          <button
+            onClick={() => setSelectedDate(d => stepDate(d, -1))}
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--text-muted)",
+              cursor: "pointer",
+              padding: 4,
+              display: "flex",
+              alignItems: "center",
+            }}
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <span className="label-text" style={{ color: "var(--text-secondary)", minWidth: 90, textAlign: "center" }}>
+            {formatDateLabel(selectedDate)}
+          </span>
+          <button
+            onClick={() => setSelectedDate(d => stepDate(d, 1))}
+            disabled={isToday}
+            style={{
+              background: "none",
+              border: "none",
+              color: isToday ? "var(--border-default)" : "var(--text-muted)",
+              cursor: isToday ? "default" : "pointer",
+              padding: 4,
+              display: "flex",
+              alignItems: "center",
+            }}
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
         <SyncButton onSuccess={refetchAll} />
       </div>
 
