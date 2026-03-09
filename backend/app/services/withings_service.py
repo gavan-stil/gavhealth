@@ -244,10 +244,14 @@ async def sync_weight(db: AsyncSession, access_token: str, since_ts: int) -> int
     return count
 
 
+BRISBANE_TZ = timezone(timedelta(hours=10))
+
+
 async def sync_sleep(db: AsyncSession, access_token: str, since_ts: int) -> int:
     """Pull sleep summaries from Withings and upsert into sleep_logs."""
     start_date = datetime.fromtimestamp(since_ts, tz=timezone.utc).strftime("%Y-%m-%d")
-    end_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    # Use Brisbane local date — Withings files sleep under the wake date (local)
+    end_date = datetime.now(BRISBANE_TZ).strftime("%Y-%m-%d")
 
     body = await _withings_get(access_token, WITHINGS_SLEEP_URL, {
         "action": "getsummary",
@@ -561,7 +565,7 @@ async def cleanup_anomalous_rhr(db: AsyncSession) -> dict:
 async def sync_activities(db: AsyncSession, access_token: str, since_ts: int) -> int:
     """Pull activities from Withings and upsert into activity_logs."""
     start_date = datetime.fromtimestamp(since_ts, tz=timezone.utc).strftime("%Y-%m-%d")
-    end_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    end_date = datetime.now(BRISBANE_TZ).strftime("%Y-%m-%d")
 
     body = await _withings_get(access_token, WITHINGS_ACTIVITY_URL, {
         "action": "getactivity",
@@ -773,8 +777,8 @@ async def run_full_sync(db: AsyncSession) -> dict:
                     batch_id=batch_id,
                 ))
 
-        # Sync sleep stages + intraday HR for last 2 days
-        today = datetime.now(timezone.utc).date()
+        # Sync sleep stages + intraday HR for last 2 days (Brisbane local date)
+        today = datetime.now(BRISBANE_TZ).date()
         stages_count = 0
         hr_intraday_count = 0
         for delta in range(2):

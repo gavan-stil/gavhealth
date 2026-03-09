@@ -70,8 +70,9 @@ export default function DashboardPage() {
     v2.refetch();
     goalRings.refetch();
     sleepStages.refetch();
+    sleepHistory.refetch();
     intradayHR.refetch();
-  }, [readiness, vitals, streaks, v2, goalRings, sleepStages, intradayHR]);
+  }, [readiness, vitals, streaks, v2, goalRings, sleepStages, sleepHistory, intradayHR]);
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     const el = containerRef.current;
