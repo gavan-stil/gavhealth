@@ -44,7 +44,7 @@ const barStyle: CSSProperties = {
   background: 'var(--bg-elevated)',
   borderTop: '1px solid var(--border-default)',
   display: 'flex',
-  alignItems: 'center',
+  alignItems: 'stretch',
   justifyContent: 'space-around',
   zIndex: 100,
 };
@@ -53,12 +53,13 @@ const tabStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  minWidth: '44px',
-  minHeight: '44px',
+  flex: 1,
+  height: '100%',
   background: 'none',
   border: 'none',
   cursor: 'pointer',
   WebkitTapHighlightColor: 'transparent',
+  padding: 0,
 };
 
 export default function TabBar() {
