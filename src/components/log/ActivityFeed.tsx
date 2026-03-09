@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertCircle, Dumbbell, Link2Off } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import StrengthCard from './StrengthCard';
@@ -522,8 +523,8 @@ export default function ActivityFeed() {
         })}
       </div>
 
-      {/* Activity detail sheet */}
-      {selectedItem !== null && (
+      {/* Activity detail sheet — portal to body so position:fixed works inside scroll container */}
+      {selectedItem !== null && createPortal(
         <ActivityDetailSheet
           item={selectedItem}
           linkedSession={linkedByActivityId[selectedItem.id] ?? null}
@@ -540,11 +541,12 @@ export default function ActivityFeed() {
           linkingSessionId={linkingSessionId}
           deletingId={deletingId}
           onDelete={handleDelete}
-        />
+        />,
+        document.body
       )}
 
-      {/* Strength sheet overlay */}
-      {strengthSheetActivityId !== null && (
+      {/* Strength sheet overlay — portal to body so position:fixed works inside scroll container */}
+      {strengthSheetActivityId !== null && createPortal(
         <>
           <div
             onClick={() => setStrengthSheetActivityId(null)}
@@ -577,7 +579,8 @@ export default function ActivityFeed() {
               }}
             />
           </div>
-        </>
+        </>,
+        document.body
       )}
     </>
   );
