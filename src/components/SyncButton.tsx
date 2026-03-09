@@ -10,8 +10,13 @@ export default function SyncButton({ onSuccess }: { onSuccess: () => void }) {
     setSyncing(true);
     setSyncError(null);
     try {
-      await apiFetch('/api/withings/sync', { method: 'POST' });
-      onSuccess();
+      const result = await apiFetch<{ status: string; error?: string; total?: number }>('/api/withings/sync', { method: 'POST' });
+      if (result.status === 'error') {
+        setSyncError(result.error ?? 'Sync failed');
+        setTimeout(() => setSyncError(null), 6000);
+      } else {
+        onSuccess();
+      }
     } catch {
       setSyncError('Sync failed — check Withings connection');
       setTimeout(() => setSyncError(null), 4000);

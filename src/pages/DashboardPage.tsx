@@ -196,8 +196,21 @@ export default function DashboardPage() {
       />
 
       {/* Sleep stages */}
-      {!sleepStages.loading && sleepStages.data && (
+      {sleepStages.loading ? null : sleepStages.data ? (
         <SleepCard data={sleepStages.data} onClick={() => setSleepSheetOpen(true)} />
+      ) : (
+        <div style={{
+          background: "var(--bg-card)",
+          border: "1px solid var(--border-default)",
+          borderRadius: "var(--radius-lg)",
+          padding: "var(--space-lg)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}>
+          <span className="label-text" style={{ color: "var(--text-muted)" }}>SLEEP</span>
+          <span className="body-text" style={{ color: "var(--text-muted)" }}>No data — navigate to see a previous night</span>
+        </div>
       )}
 
       {/* Sleep history sheet */}
