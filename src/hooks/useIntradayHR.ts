@@ -33,7 +33,7 @@ export default function useIntradayHR(dateStr?: string) {
     setError(null);
     try {
       const result = await apiFetch<IntradayHRData>(
-        `/hr/intraday?date=${targetDate}`
+        `/api/hr/intraday?date=${targetDate}`
       );
       setData(result);
     } catch (e) {
