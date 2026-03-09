@@ -677,6 +677,28 @@ async def strength_sessions(days: int = Query(default=90), db: AsyncSession = De
 
 
 # ---------------------------------------------------------------------------
+# A3b. PATCH /api/strength/sessions/{id}/unlink
+# Removes the activity_log link from a strength session.
+# ---------------------------------------------------------------------------
+@router.patch("/strength/sessions/{id}/unlink")
+async def unlink_strength_session(id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        text("""
+            UPDATE strength_sessions
+            SET activity_log_id = NULL
+            WHERE id = :id
+            RETURNING id
+        """),
+        {"id": id},
+    )
+    row = result.mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Session not found")
+    await db.commit()
+    return {"ok": True, "id": id}
+
+
+# ---------------------------------------------------------------------------
 # A4. GET /api/strength/exercise/{exercise_id}/history?days=N
 # Returns per-session history for one exercise (sparkline data).
 # Epley 1RM formula: weight × (1 + reps/30)

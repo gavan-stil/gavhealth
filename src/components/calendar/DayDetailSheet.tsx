@@ -35,6 +35,7 @@ type ExRow = {
 
 type SessionDetail = {
   id: number;
+  activityLogId: number | null;
   split: string;
   bodyAreas: string[];
   totalSets: number;
@@ -129,6 +130,7 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
   const [loadingStrength, setLoadingStrength] = useState(false);
   const [expandedKey, setExpandedKey]         = useState<string | null>(null);
   const [showEx, setShowEx]                   = useState<Record<number, boolean>>({});
+  const [unlinking, setUnlinking]             = useState<number | null>(null);
 
   const hasStrength = dots.some((d) => d.category === "strength");
 
@@ -214,6 +216,7 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
           });
           return {
             id: s.id,
+            activityLogId: s.activity_log_id,
             split: deriveSplit(s.exercises),
             bodyAreas: deriveBodyAreas(s.exercises),
             totalSets: s.total_sets,
@@ -241,6 +244,20 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
 
   const toggle = (key: string) =>
     setExpandedKey((prev) => (prev === key ? null : key));
+
+  const handleUnlink = async (sessionId: number) => {
+    setUnlinking(sessionId);
+    try {
+      await apiFetch(`/api/strength/sessions/${sessionId}/unlink`, { method: "PATCH" });
+      setSessions((prev) =>
+        prev.map((s) => s.id === sessionId ? { ...s, activityLogId: null } : s)
+      );
+    } catch (err) {
+      console.error("[DayDetailSheet] unlink error:", err);
+    } finally {
+      setUnlinking(null);
+    }
+  };
 
   const SCOL = CATEGORY_COLORS.strength;
   const nonStrengthDots = dots.filter((d) => d.category !== "strength");
@@ -366,6 +383,32 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
                             {a}
                           </span>
                         ))}
+                      </div>
+                    )}
+
+                    {/* Unlink button — only shown when linked to a Withings activity */}
+                    {s.activityLogId !== null && (
+                      <div style={{ marginTop: 10 }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUnlink(s.id);
+                          }}
+                          disabled={unlinking === s.id}
+                          style={{
+                            font: "500 10px/1 'Inter',sans-serif",
+                            letterSpacing: "0.3px",
+                            padding: "5px 10px",
+                            borderRadius: 6,
+                            border: "1px solid rgba(255,255,255,0.12)",
+                            background: "rgba(255,255,255,0.04)",
+                            color: "var(--text-muted)",
+                            cursor: unlinking === s.id ? "wait" : "pointer",
+                            opacity: unlinking === s.id ? 0.5 : 1,
+                          }}
+                        >
+                          {unlinking === s.id ? "Unlinking…" : "Unlink Withings workout"}
+                        </button>
                       </div>
                     )}
 
