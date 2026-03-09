@@ -57,15 +57,19 @@ function todayKey(): string {
   return toKey(new Date());
 }
 
-/** Split icon for a strength bar — matches original design icons */
+/** Split icon(s) for a strength bar.
+ *  Pull/push: explicit or auto-detected from exercise majority.
+ *  Leg ●: any exercise in session is legs — shown independently alongside pull/push.
+ */
 function barIcon(dot: CategoryDot): string {
-  if (dot.category === "strength") {
-    return dot.workoutSplit === "legs" ? "●"
-      : dot.workoutSplit === "push" ? "▶"
-      : dot.workoutSplit === "pull" ? "▲"
-      : "";
-  }
-  return "";
+  if (dot.category !== "strength") return "";
+  const splitIcon =
+    dot.workoutSplit === "legs" ? "●"
+    : dot.workoutSplit === "push" ? "▶"
+    : dot.workoutSplit === "pull" ? "▼"
+    : "";
+  const legDot = dot.hasLegExercise && dot.workoutSplit !== "legs" ? "●" : "";
+  return splitIcon + legDot;
 }
 
 /** Duration label inside an activity bar */

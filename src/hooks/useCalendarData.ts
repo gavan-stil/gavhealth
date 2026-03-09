@@ -46,6 +46,7 @@ type RawStrengthSession = {
   activity_log_id: number | null;
   total_sets: number;
   total_reps: number;
+  exercises?: string[];
 };
 
 /* ── Internal helpers ── */
@@ -58,6 +59,7 @@ type DayEntry = {
   isInterval?: boolean;
   saunaHasDevotion?: boolean;
   workoutSplit?: "push" | "pull" | "legs";
+  hasLegExercise?: boolean;
 };
 
 function fmt(n: number | undefined | null, unit: string, decimals = 1): string {
@@ -68,6 +70,41 @@ function fmt(n: number | undefined | null, unit: string, decimals = 1): string {
 function fmtInt(n: number | undefined | null, unit: string): string {
   if (n === undefined || n === null) return "—";
   return `${Math.round(n)}${unit}`;
+}
+
+/** Infer push/pull split and leg presence from session exercise list.
+ *  Exercise format: "Name - category" or "Name - cat1 + cat2"
+ *  Pull: majority of exercises include "back" or "arms" category
+ *  Push: majority of exercises include "chest" or "shoulders" category
+ *  hasLegExercise: any exercise includes "legs" category or "leg" in name
+ */
+function inferSplit(exercises: string[]): { split?: "push" | "pull"; hasLegExercise: boolean } {
+  let pullCount = 0;
+  let pushCount = 0;
+  let hasLegExercise = false;
+  const total = exercises.length;
+  if (total === 0) return { hasLegExercise: false };
+
+  for (const ex of exercises) {
+    const dashIdx = ex.lastIndexOf(" - ");
+    const name = dashIdx >= 0 ? ex.slice(0, dashIdx).toLowerCase() : ex.toLowerCase();
+    const catStr = dashIdx >= 0 ? ex.slice(dashIdx + 3).toLowerCase() : "";
+    const cats = catStr.split(/\s*[+&,]\s*/).map((c) => c.trim());
+
+    const isPull = cats.some((c) => c === "back" || c === "arms");
+    const isPush = cats.some((c) => c === "chest" || c === "shoulders");
+    const isLegs = cats.some((c) => c === "legs") || name.includes("leg") || name.includes("squat") || name.includes("lunge") || name.includes("rdl");
+
+    if (isPull) pullCount++;
+    if (isPush) pushCount++;
+    if (isLegs) hasLegExercise = true;
+  }
+
+  let split: "push" | "pull" | undefined;
+  if (pullCount > total / 2) split = "pull";
+  else if (pushCount > total / 2) split = "push";
+
+  return { split, hasLegExercise };
 }
 
 /* ── Exported types ── */
@@ -97,14 +134,15 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
   const weightRecords = weightRes.data || [];
   const rhrRecords = rhrRes.data || [];
 
-  // Map session_date → summed totals (multiple sessions can share a date)
-  const strengthSessionsByDate = new Map<string, { total_sets: number }>();
+  // Map session_date → summed totals + all exercises (multiple sessions can share a date)
+  const strengthSessionsByDate = new Map<string, { total_sets: number; exercises: string[] }>();
   for (const s of (strengthSessionsRes || [])) {
     const existing = strengthSessionsByDate.get(s.session_date);
     if (existing) {
       existing.total_sets += s.total_sets;
+      existing.exercises.push(...(s.exercises ?? []));
     } else {
-      strengthSessionsByDate.set(s.session_date, { total_sets: s.total_sets });
+      strengthSessionsByDate.set(s.session_date, { total_sets: s.total_sets, exercises: s.exercises ?? [] });
     }
   }
 
@@ -193,6 +231,9 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
     else if (a.workout_split === "pull") workoutSplit = "pull";
     else if (a.workout_split === "legs") workoutSplit = "legs";
     const session = strengthSessionsByDate.get(a.activity_date);
+    const inferred = inferSplit(session?.exercises ?? []);
+    // Fall back to auto-detected split if no explicit split is set
+    if (!workoutSplit && inferred.split) workoutSplit = inferred.split;
     addEntry(a.activity_date, {
       category: "strength",
       duration: durStr,
@@ -202,6 +243,7 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
       },
       isLetsGo: a.effort === "lets_go",
       workoutSplit,
+      hasLegExercise: inferred.hasLegExercise,
     });
   }
 
@@ -255,6 +297,7 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
         isInterval: e.isInterval,
         saunaHasDevotion: e.saunaHasDevotion,
         workoutSplit: e.workoutSplit,
+        hasLegExercise: e.hasLegExercise,
       } as CategoryDot;
     });
   }

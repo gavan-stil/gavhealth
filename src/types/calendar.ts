@@ -11,6 +11,7 @@ export type CategoryDot = {
   isInterval?: boolean;     // run name contains interval/tempo/sprint/repeat/fartlek → show ▲
   saunaHasDevotion?: boolean; // did_devotions === true → show ▲
   workoutSplit?: 'push' | 'pull' | 'legs'; // strength session split type
+  hasLegExercise?: boolean;                 // any exercise in session is legs category
 };
 
 /** Key: YYYY-MM-DD, Value: array of category dots present that day */
