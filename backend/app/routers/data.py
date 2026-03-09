@@ -15,6 +15,7 @@ from app.models.health import (
     DexaScan,
     Exercise,
     FoodLog,
+    HrIntraday,
     RhrLog,
     SaunaLog,
     SleepLog,
@@ -31,11 +32,13 @@ from app.schemas.health import (
     ExerciseResponse,
     FoodResponse,
     FoodWeeklyResponse,
+    HrIntradayResponse,
     RhrResponse,
     SaunaResponse,
     SettingsResponse,
     SettingsUpdate,
     SleepResponse,
+    SleepStagesResponse,
     StreakResponse,
     StrengthPRResponse,
     StrengthSetHistoryRow,
@@ -99,6 +102,97 @@ async def list_sleep(
     rows = (await db.execute(q.limit(limit).offset(offset))).scalars().all()
 
     return PaginatedResponse(data=rows, total=total, limit=limit, offset=offset)
+
+
+@router.get("/sleep/stages", response_model=SleepStagesResponse | None)
+async def get_sleep_stages(
+    date: date | None = None,
+    db: AsyncSession = Depends(get_db),
+    _key: str = Depends(verify_api_key),
+):
+    """Return sleep stage segments for a given date (defaults to today).
+
+    If stages are NULL in DB, attempts a live Withings fetch.
+    Returns null if no sleep record exists for that date.
+    """
+    from app.services.withings_service import get_valid_token, sync_sleep_stages
+
+    target_date = date or __import__("datetime").date.today()
+
+    row = (await db.execute(
+        select(SleepLog).where(SleepLog.sleep_date == target_date, SleepLog.source == "withings")
+    )).scalar_one_or_none()
+
+    # If no withings row, also check any source
+    if row is None:
+        row = (await db.execute(
+            select(SleepLog).where(SleepLog.sleep_date == target_date).order_by(SleepLog.id.desc())
+        )).scalar_one_or_none()
+
+    if row is None:
+        return None
+
+    # Live fetch if stages are missing
+    if row.stages is None:
+        try:
+            access_token = await get_valid_token(db)
+            await sync_sleep_stages(db, access_token, target_date.isoformat())
+            await db.flush()
+            # Re-read after write
+            row = (await db.execute(
+                select(SleepLog).where(SleepLog.id == row.id)
+            )).scalar_one_or_none()
+        except Exception:
+            pass  # Return what we have without stages
+
+    return row
+
+
+# ---------------------------------------------------------------------------
+# Intraday HR
+# ---------------------------------------------------------------------------
+@router.get("/hr/intraday", response_model=HrIntradayResponse)
+async def get_hr_intraday(
+    date: date | None = None,
+    db: AsyncSession = Depends(get_db),
+    _key: str = Depends(verify_api_key),
+):
+    """Return hourly HR buckets for a given date (defaults to today Brisbane local).
+
+    Triggers a live Withings fetch if no data exists, or if the date is today and
+    data is present but stale (fewer than 12 hours of readings expected by now).
+    """
+    import datetime as _dt
+    from app.services.withings_service import get_valid_token, sync_intraday_hr
+
+    BRISBANE_OFFSET = _dt.timedelta(hours=10)
+    today_local = (_dt.datetime.now(_dt.timezone.utc) + BRISBANE_OFFSET).date()
+    target_date = date or today_local
+
+    rows = (await db.execute(
+        select(HrIntraday)
+        .where(HrIntraday.log_date == target_date)
+        .order_by(HrIntraday.hour)
+    )).scalars().all()
+
+    # Fetch from Withings if: no data at all, or it's today and we have < 6 buckets
+    should_fetch = len(rows) == 0 or (target_date == today_local and len(rows) < 6)
+
+    if should_fetch:
+        try:
+            access_token = await get_valid_token(db)
+            await sync_intraday_hr(db, access_token, target_date.isoformat())
+            await db.flush()
+            rows = (await db.execute(
+                select(HrIntraday)
+                .where(HrIntraday.log_date == target_date)
+                .order_by(HrIntraday.hour)
+            )).scalars().all()
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning("hr/intraday live fetch failed: %s", exc)
+
+    return HrIntradayResponse(log_date=target_date, buckets=list(rows))
 
 
 # ---------------------------------------------------------------------------

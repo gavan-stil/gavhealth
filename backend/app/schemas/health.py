@@ -70,6 +70,18 @@ class SleepResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class SleepStagesResponse(BaseModel):
+    sleep_date: date
+    bed_time: datetime | None = None
+    wake_time: datetime | None = None
+    total_sleep_hrs: float | None = None
+    sleep_score: float | None = None
+    sleep_hr_avg: float | None = None
+    stages: list | None = None  # [{startdate, enddate, state}]
+
+    model_config = {"from_attributes": True}
+
+
 # ---------------------------------------------------------------------------
 # Activity
 # ---------------------------------------------------------------------------
@@ -314,6 +326,24 @@ class DexaResponse(BaseModel):
     notes: str | None = None
 
     model_config = {"from_attributes": True}
+
+
+# ---------------------------------------------------------------------------
+# Intraday HR
+# ---------------------------------------------------------------------------
+class HrIntradayBucket(BaseModel):
+    hour: int
+    hr_avg: float | None = None
+    hr_min: int | None = None
+    hr_max: int | None = None
+    readings_count: int | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class HrIntradayResponse(BaseModel):
+    log_date: date
+    buckets: list[HrIntradayBucket]
 
 
 # ---------------------------------------------------------------------------

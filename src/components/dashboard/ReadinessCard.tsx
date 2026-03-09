@@ -28,6 +28,7 @@ const TOOLTIPS: Record<string, string> = {
 
 export default function ReadinessCard({ data }: { data: ReadinessData }) {
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+  const [formulaOpen, setFormulaOpen] = useState(false);
 
   const breakdownItems = [
     { label: "SLEEP", value: data.components.sleep },
@@ -63,19 +64,65 @@ export default function ReadinessCard({ data }: { data: ReadinessData }) {
         {data.score}
       </div>
 
-      <p
-        className="body-text"
-        style={{
-          color: "var(--text-secondary)",
-          marginTop: "var(--space-sm)",
-          display: "-webkit-box",
-          WebkitLineClamp: 3,
-          WebkitBoxOrient: "vertical",
-          overflow: "hidden",
-        }}
-      >
-        {data.narrative}
-      </p>
+      <div style={{ position: "relative", marginTop: "var(--space-sm)" }}>
+        <p
+          className="body-text"
+          style={{
+            color: "var(--text-secondary)",
+            display: "-webkit-box",
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+            paddingRight: 20,
+          }}
+        >
+          {data.narrative}
+        </p>
+        <button
+          onClick={() => setFormulaOpen(!formulaOpen)}
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            background: "none",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            color: formulaOpen ? "var(--ochre)" : "var(--text-muted)",
+          }}
+        >
+          <Info size={14} />
+        </button>
+        {formulaOpen && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: "calc(100% + 8px)",
+              right: 0,
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--border-default)",
+              borderRadius: "var(--radius-sm)",
+              padding: "10px 12px",
+              fontSize: 11,
+              color: "var(--text-secondary)",
+              zIndex: 20,
+              boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+              width: 220,
+              lineHeight: 1.6,
+            }}
+          >
+            <div style={{ fontWeight: 700, color: "var(--text-primary)", marginBottom: 6, fontSize: 11, letterSpacing: 1 }}>HOW IT'S CALCULATED</div>
+            <div>70 base</div>
+            <div>± sleep duration <span style={{ color: "var(--text-muted)" }}>(target 7.6hr)</span></div>
+            <div>± deep sleep % <span style={{ color: "var(--text-muted)" }}>(target 43%)</span></div>
+            <div>± RHR vs 7-day avg</div>
+            <div>− load penalty <span style={{ color: "var(--text-muted)" }}>(if ACWR &lt; 1.3)</span></div>
+            <div>− rest penalty <span style={{ color: "var(--text-muted)" }}>(5pts/day after 4 consecutive)</span></div>
+          </div>
+        )}
+      </div>
 
       <div
         style={{

@@ -73,6 +73,24 @@ class SleepLog(Base):
     sleep_score: Mapped[float | None] = mapped_column(Float)
     respiratory_rate: Mapped[float | None] = mapped_column(Float)
     upload_batch_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    stages: Mapped[list | None] = mapped_column(JSONB)
+
+
+# ---------------------------------------------------------------------------
+# hr_intraday  — hourly HR buckets from Withings getintradayactivity
+# ---------------------------------------------------------------------------
+class HrIntraday(Base):
+    __tablename__ = "hr_intraday"
+    __table_args__ = (UniqueConstraint("log_date", "hour", "source", name="uq_hr_intraday_date_hour_source"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    log_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    hour: Mapped[int] = mapped_column(Integer, nullable=False)  # 0–23, local Brisbane time
+    hr_avg: Mapped[float | None] = mapped_column(Float)
+    hr_min: Mapped[int | None] = mapped_column(Integer)
+    hr_max: Mapped[int | None] = mapped_column(Integer)
+    readings_count: Mapped[int | None] = mapped_column(Integer)
+    source: Mapped[str] = mapped_column(String(50), nullable=False, default="withings")
 
 
 # ---------------------------------------------------------------------------

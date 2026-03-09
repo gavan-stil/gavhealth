@@ -1,91 +1,31 @@
-# Session — T14 Item 3: Calendar bars + split icons
+# Session — 2026-03-09 (strength session bugs, closed)
 
-> Status: Mockup APPROVED. Ready to build production code.
+## What was done this session
 
----
+Two bugs fixed in the strength session logging flow. Committed + pushed: **4f81b93**.
 
-## What's approved
+### Bug 1 — ActivityDetailSheet showed wrong exercises
 
-Mockup: `archive/mockup-calendar-item3.html` — review it if needed.
+**Root cause:** `ActivityDetailSheet` compared `linkedSession.id` (from `manual_strength_logs`) against `strength_sessions.id` — two independent ID sequences.
 
-Design decisions (all approved):
-- **Full-width activity bars** — `height: 14px`, `border-radius: 3px`, colored fill, text+icon inside
-- **Split icons inside bar** — solid ▲ push, ▼ pull, // legs (monospace, `font-weight: 700`)
-- **Continuous vertical month scroll** — months stack as `div.month-block`, oldest at top
-- **"Load previous month" button** — sticky at top, prepends month block without scroll jump
-- **Sticky month labels** — `top: 43px` (below button bar)
-- **WK column toggle** — "Wk" button in top bar; hides `.wk-col` + collapses grid to `repeat(7,1fr)`
-- **WK summary pills** — outline-only (no fill), same shape as bars, `border: 1px solid <color>`, colored text (e.g. "1h35 str", "13km run")
+**Fix:**
+- `backend/app/routers/new_endpoints.py`: Added `bridged_session_id` to `/api/log/strength/sessions` SQL + response dict
+- `src/components/log/ActivityFeed.tsx`: Added `bridged_session_id: number | null` to `StrengthSession` interface
+- `src/components/log/ActivityDetailSheet.tsx`: Added `bridged_session_id` to `StrengthSessionForSheet`; changed match from `s.id === linkedSession.id` → `s.id === linkedSession.bridged_session_id`
 
----
+### Bug 2 — Load last session overwrites original linked session
 
-## Production implementation plan
+**Root cause:** `loadLastSession` loaded exercises from a past session but kept the old `startDate` in the draft. On save, backend matched by date → displaced the original linked session.
 
-### Step 1 — curl-verify workout_split
+**Fix:** Added `setStartDate(today())` in `loadLastSession` (`src/components/log/StrengthCard.tsx`).
 
-Check if `/api/activity` already returns `workout_split`. It almost certainly doesn't — need to add it.
+## State
 
-```bash
-curl -s "https://gavhealth-production.up.railway.app/api/activity?limit=5" \
-  -H "X-API-Key: $API_KEY" | jq '.[0]'
-```
+- Build: clean ✅
+- Committed + pushed: 4f81b93 ✅ (Railway redeploys backend automatically)
+- STATUS.md: updated ✅
 
-If missing → backend: add `workout_split` to activity query (join `strength_sessions` → `workout_split` col).
-Update `reference/api.md` with actual shape before touching frontend.
+## Notes
 
-### Step 2 — Types (`src/types/calendar.ts`)
-
-Add to `CategoryDot`:
-```ts
-workoutSplit?: 'push' | 'pull' | 'legs'
-```
-
-### Step 3 — Hook (`src/hooks/useCalendarData.ts`)
-
-- Change from single-month fetch to multi-month: store array of `{ year, month, data }` blocks
-- `loadPrevMonth()` action: prepend a new month block
-- Map `workout_split` from API response onto strength `CategoryDot`
-
-### Step 4 — MonthGrid (`src/components/calendar/MonthGrid.tsx`)
-
-Major changes:
-- Grid: `repeat(7, 1fr) 50px` → add WK column (toggle-able)
-- `minHeight: 48px` → `72px`
-- Replace dot circles with `.act-bar` full-width bars
-- Strength bars: include split icon (▲/▼//) prefix
-- WK column: outline pills per activity type
-- WK toggle button state (local state, no persistence needed)
-
-### Step 5 — Calendar page (`src/pages/Calendar.tsx` or similar)
-
-- Remove month prev/next buttons (or keep for now, they can coexist temporarily)
-- Add "Load previous month" sticky button at top
-- Scroll to current month on load
-
----
-
-## Key file paths
-
-| File | Role |
-|------|------|
-| `src/types/calendar.ts` | `CategoryDot` type — add `workoutSplit` |
-| `src/hooks/useCalendarData.ts` | Data fetch — extend to multi-month |
-| `src/components/calendar/MonthGrid.tsx` | Grid render — full rewrite of cell/bar logic |
-| `src/components/calendar/` | Check for other calendar sub-components |
-| `reference/api.md` | Update with `workout_split` field once curl-verified |
-
----
-
-## Existing toggles to preserve
-
-The production calendar already has sleep/sauna visibility toggles. These must carry through — don't break them when rewriting MonthGrid. Check exactly where they live before touching anything.
-
----
-
-## Done when
-
-- `npm run build` passes
-- Calendar shows full-width bars with split icons on real data
-- WK column toggles on/off
-- "Load previous month" prepends correctly without scroll jump
-- Sleep/sauna toggles still work
+User accidentally linked/unlinked some sessions during testing — data noise, not a concern.
+T14 remaining tasks: 1.7🔒 (blocked), 1.8, 1.2, 2.

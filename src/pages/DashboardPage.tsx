@@ -3,7 +3,11 @@ import { Loader2 } from "lucide-react";
 import useDashboard from "@/hooks/useDashboard";
 import useDashboardV2 from "@/hooks/useDashboardV2";
 import useGoalRings from "@/hooks/useGoalRings";
+import useSleepStages from "@/hooks/useSleepStages";
+import useIntradayHR from "@/hooks/useIntradayHR";
 import GoalRingsRow from "@/components/dashboard/GoalRingsRow";
+import SleepCard from "@/components/dashboard/SleepCard";
+import IntradayHRChart from "@/components/dashboard/IntradayHRChart";
 import ReadinessCard from "@/components/dashboard/ReadinessCard";
 import VitalsCard from "@/components/dashboard/VitalsCard";
 import StreaksCard from "@/components/dashboard/StreaksCard";
@@ -24,6 +28,8 @@ export default function DashboardPage() {
   const { readiness, vitals, streaks } = useDashboard();
   const v2 = useDashboardV2();
   const goalRings = useGoalRings();
+  const sleepStages = useSleepStages();
+  const intradayHR = useIntradayHR();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const startY = useRef(0);
@@ -36,7 +42,9 @@ export default function DashboardPage() {
     streaks.refetch();
     v2.refetch();
     goalRings.refetch();
-  }, [readiness, vitals, streaks, v2, goalRings]);
+    sleepStages.refetch();
+    intradayHR.refetch();
+  }, [readiness, vitals, streaks, v2, goalRings, sleepStages, intradayHR]);
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     const el = containerRef.current;
@@ -124,6 +132,14 @@ export default function DashboardPage() {
         readinessScore={readiness.data?.score ?? null}
         loading={goalRings.loading || readiness.loading}
       />
+
+      {/* Sleep stages */}
+      {!sleepStages.loading && sleepStages.data && (
+        <SleepCard data={sleepStages.data} />
+      )}
+
+      {/* Intraday HR */}
+      <IntradayHRChart data={intradayHR.data} loading={intradayHR.loading} />
 
       {/* Readiness */}
       {readiness.loading ? (

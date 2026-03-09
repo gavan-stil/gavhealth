@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.health import (
     ActivityLog,
+    HrIntraday,
     RhrLog,
     SaunaLog,
     SleepLog,
@@ -297,6 +298,167 @@ async def sync_sleep(db: AsyncSession, access_token: str, since_ts: int) -> int:
         await db.execute(stmt)
         count += 1
 
+    return count
+
+
+async def sync_sleep_stages(db: AsyncSession, access_token: str, sleep_date_str: str) -> bool:
+    """Fetch sleep stage segments from Withings v2/sleep action=get for a given date.
+
+    Uses a window: (sleep_date - 1) at 20:00 local → sleep_date at 14:00 local,
+    expressed as UTC unix timestamps.  Brisbane is UTC+10, no DST.
+
+    Stages array: [{startdate, enddate, state}]
+    state: 0=awake, 1=light, 2=deep, 3=REM
+
+    Returns True if stages were stored, False if no data or error.
+    """
+    from datetime import date as date_type
+
+    try:
+        sleep_date = date_type.fromisoformat(sleep_date_str)
+    except ValueError:
+        logger.warning("sync_sleep_stages: invalid date %s", sleep_date_str)
+        return False
+
+    # Brisbane UTC+10: "night before" window 20:00 local = 10:00 UTC, wake window 14:00 local = 04:00 UTC
+    prev_day = sleep_date - timedelta(days=1)
+    startdate = int(datetime(prev_day.year, prev_day.month, prev_day.day, 10, 0, 0, tzinfo=timezone.utc).timestamp())
+    enddate = int(datetime(sleep_date.year, sleep_date.month, sleep_date.day, 4, 0, 0, tzinfo=timezone.utc).timestamp())
+
+    try:
+        body = await _withings_get(access_token, WITHINGS_SLEEP_URL, {
+            "action": "get",
+            "startdate": startdate,
+            "enddate": enddate,
+            "data_fields": "hr",
+        })
+    except Exception as e:
+        logger.warning("sync_sleep_stages: Withings error for %s: %s", sleep_date_str, e)
+        return False
+
+    series = body.get("series", [])
+    if not series:
+        logger.info("sync_sleep_stages: no stage data from Withings for %s", sleep_date_str)
+        return False
+
+    stages = [
+        {
+            "startdate": seg["startdate"],
+            "enddate": seg["enddate"],
+            "state": seg["state"],
+        }
+        for seg in series
+        if "startdate" in seg and "enddate" in seg and "state" in seg
+    ]
+
+    if not stages:
+        return False
+
+    # Update sleep_logs.stages for the matching row (withings source preferred)
+    result = await db.execute(
+        select(SleepLog).where(
+            SleepLog.sleep_date == sleep_date,
+            SleepLog.source == SOURCE,
+        )
+    )
+    row = result.scalar_one_or_none()
+
+    if row:
+        from sqlalchemy import update as sa_update
+        await db.execute(
+            sa_update(SleepLog)
+            .where(SleepLog.id == row.id)
+            .values(stages=stages)
+        )
+        logger.info("sync_sleep_stages: stored %d segments for %s", len(stages), sleep_date_str)
+        return True
+    else:
+        logger.info("sync_sleep_stages: no sleep_log row for %s — skipping", sleep_date_str)
+        return False
+
+
+async def sync_intraday_hr(db: AsyncSession, access_token: str, date_str: str) -> int:
+    """Fetch minute-level HR data from Withings getintradayactivity and bucket by hour (Brisbane local).
+
+    Brisbane is UTC+10, no DST.  Converts each Unix timestamp to local hour before bucketing.
+    Upserts one row per hour per day into hr_intraday.
+
+    Returns number of hour-buckets stored/updated.
+    """
+    from datetime import date as date_type
+    from collections import defaultdict
+
+    try:
+        log_date = date_type.fromisoformat(date_str)
+    except ValueError:
+        logger.warning("sync_intraday_hr: invalid date %s", date_str)
+        return 0
+
+    # Brisbane UTC+10: cover the calendar day 00:00–23:59 local = 14:00 UTC(prev) – 13:59 UTC(same)
+    BRISBANE_OFFSET = 10 * 3600
+    startdate = int(datetime(log_date.year, log_date.month, log_date.day, 0, 0, 0, tzinfo=timezone.utc).timestamp()) - BRISBANE_OFFSET
+    enddate   = startdate + 86400  # +24h
+
+    try:
+        body = await _withings_get(access_token, WITHINGS_ACTIVITY_URL, {
+            "action": "getintradayactivity",
+            "startdate": startdate,
+            "enddate": enddate,
+            "data_fields": "heart_rate",
+        })
+    except Exception as e:
+        logger.warning("sync_intraday_hr: Withings error for %s: %s", date_str, e)
+        return 0
+
+    series = body.get("series", {})
+    if not series:
+        logger.info("sync_intraday_hr: no intraday data for %s", date_str)
+        return 0
+
+    # Bucket readings by local hour
+    buckets: dict[int, list[int]] = defaultdict(list)
+    for ts_str, reading in series.items():
+        try:
+            ts = int(ts_str)
+        except (ValueError, TypeError):
+            continue
+        hr = reading.get("heart_rate")
+        if hr is None or hr <= 0:
+            continue
+        # Convert to Brisbane local hour
+        local_hour = ((ts + BRISBANE_OFFSET) % 86400) // 3600
+        buckets[local_hour].append(int(hr))
+
+    if not buckets:
+        return 0
+
+    count = 0
+    for hour, readings in buckets.items():
+        hr_avg = round(sum(readings) / len(readings), 1)
+        hr_min = min(readings)
+        hr_max = max(readings)
+
+        stmt = pg_insert(HrIntraday).values(
+            log_date=log_date,
+            hour=hour,
+            hr_avg=hr_avg,
+            hr_min=hr_min,
+            hr_max=hr_max,
+            readings_count=len(readings),
+            source=SOURCE,
+        ).on_conflict_do_update(
+            index_elements=["log_date", "hour", "source"],
+            set_={
+                "hr_avg": hr_avg,
+                "hr_min": hr_min,
+                "hr_max": hr_max,
+                "readings_count": len(readings),
+            },
+        )
+        await db.execute(stmt)
+        count += 1
+
+    logger.info("sync_intraday_hr: stored %d hour-buckets for %s", count, date_str)
     return count
 
 
@@ -610,6 +772,26 @@ async def run_full_sync(db: AsyncSession) -> dict:
                     error_message=str(e),
                     batch_id=batch_id,
                 ))
+
+        # Sync sleep stages + intraday HR for last 2 days
+        today = datetime.now(timezone.utc).date()
+        stages_count = 0
+        hr_intraday_count = 0
+        for delta in range(2):
+            day = today - timedelta(days=delta)
+            try:
+                stored = await sync_sleep_stages(db, access_token, day.isoformat())
+                if stored:
+                    stages_count += 1
+            except Exception as e:
+                logger.warning("sync_sleep_stages error for %s: %s", day, e)
+            try:
+                buckets = await sync_intraday_hr(db, access_token, day.isoformat())
+                hr_intraday_count += buckets
+            except Exception as e:
+                logger.warning("sync_intraday_hr error for %s: %s", day, e)
+        results["sleep_stages"] = stages_count
+        results["hr_intraday"] = hr_intraday_count
 
         # Update sync state and log
         total = sum(v for v in results.values() if isinstance(v, int))
