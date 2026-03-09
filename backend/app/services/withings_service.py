@@ -441,8 +441,9 @@ async def sync_activities(db: AsyncSession, access_token: str, since_ts: int) ->
             "source": SOURCE,
         }
 
-        stmt = pg_insert(ActivityLog).values(**values).on_conflict_do_nothing(
+        stmt = pg_insert(ActivityLog).values(**values).on_conflict_do_update(
             index_elements=["external_id", "source"],
+            set_={k: v for k, v in values.items() if k not in ("external_id", "source", "activity_type", "activity_date")},
         )
         await db.execute(stmt)
         count += 1
