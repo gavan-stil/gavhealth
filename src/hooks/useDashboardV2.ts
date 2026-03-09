@@ -71,7 +71,7 @@ function useFetch<T>(path: string) {
   return { data, loading, error, refetch: fetchData };
 }
 
-export default function useDashboardV2() {
+export default function useDashboardV2(selectedDate?: string) {
   const activities = useFetch<ActivityFeedItem[]>('/api/activities/feed?days=14');
   const mood = useFetch<MoodEntry[]>('/api/mood?days=30');
   const water = useFetch<WaterEntry[]>('/api/water?days=14');
@@ -95,26 +95,26 @@ export default function useDashboardV2() {
     activityRaw.refetch();
   }, [activities.refetch, mood.refetch, water.refetch, food.refetch, activityRaw.refetch]);
 
-  // Today's stats for QuickStatsRow — use local date to avoid UTC day-boundary bug (Brisbane UTC+10)
+  // Stats for the selected date (defaults to today) for QuickStatsRow
   const toLocalDate = (iso: string) => new Date(iso).toLocaleDateString('en-CA');
-  const todayLocal = new Date().toLocaleDateString('en-CA');
-  const todayMood = mood.data?.find(m => toLocalDate(m.logged_at) === todayLocal) ?? null;
-  const todayWater = water.data
-    ? water.data.filter(w => toLocalDate(w.logged_at) === todayLocal).reduce((sum, w) => sum + w.ml, 0)
+  const targetDate = selectedDate ?? new Date().toLocaleDateString('en-CA');
+  const dateMood = mood.data?.find(m => toLocalDate(m.logged_at) === targetDate) ?? null;
+  const dateWater = water.data
+    ? water.data.filter(w => toLocalDate(w.logged_at) === targetDate).reduce((sum, w) => sum + w.ml, 0)
     : 0;
-  const todayKcal = food.data
-    ? food.data.filter(f => f.log_date === todayLocal).reduce((sum, f) => sum + f.calories_kcal, 0)
+  const dateKcal = food.data
+    ? food.data.filter(f => f.log_date === targetDate).reduce((sum, f) => sum + f.calories_kcal, 0)
     : 0;
-  const todayProtein = food.data
-    ? food.data.filter(f => f.log_date === todayLocal).reduce((sum, f) => sum + (f.protein_g ?? 0), 0)
+  const dateProtein = food.data
+    ? food.data.filter(f => f.log_date === targetDate).reduce((sum, f) => sum + (f.protein_g ?? 0), 0)
     : 0;
 
   const todayStats: TodayStats = {
-    mood: todayMood?.mood ?? null,
-    energy: todayMood?.energy ?? null,
-    water_ml: todayWater,
-    calories_kcal: todayKcal,
-    protein_g: todayProtein,
+    mood: dateMood?.mood ?? null,
+    energy: dateMood?.energy ?? null,
+    water_ml: dateWater,
+    calories_kcal: dateKcal,
+    protein_g: dateProtein,
   };
 
   return { activities, mood, water, food, activityData, todayStats, refetch };

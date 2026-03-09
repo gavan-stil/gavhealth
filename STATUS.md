@@ -27,7 +27,7 @@ Full task list: `tasks/T14-sprint.md`
 
 | Task | Date | Summary |
 |------|------|---------|
-| Sleep stages + Intraday HR | 2026-03-09 | Feature A: sleep_logs.stages JSONB + sync_sleep_stages (002 migration, SleepStagesResponse schema, GET /api/sleep/stages, useSleepStages hook, SleepStageBar + SleepCard components). Feature B: hr_intraday table (003 migration), sync_intraday_hr (getintradayactivity → hourly buckets, Brisbane UTC+10), GET /api/hr/intraday, useIntradayHR hook, IntradayHRChart (dawn→clay→ochre color scale). Scheduled syncs at 5:30am + 8:00am. |
+| Sleep stages + Intraday HR | 2026-03-09 | Feature A: sleep_logs.stages JSONB + sync_sleep_stages (002 migration, SleepStagesResponse schema, GET /api/sleep/stages, useSleepStages hook, SleepStageBar + SleepCard components). Feature B: hr_intraday table (003 migration), sync_intraday_hr (getintradayactivity → hourly buckets, Brisbane UTC+10), GET /api/hr/intraday, useIntradayHR hook, IntradayHRChart (dawn→clay→ochre color scale). Scheduled syncs at 5:30am + 8:00am. main.py: ALTER TABLE sleep_logs ADD COLUMN IF NOT EXISTS stages JSONB. Deployed 4f73c9d. |
 | Strength session bugs | 2026-03-09 | Fix 1: ActivityDetailSheet was matching manual_strength_logs.id against strength_sessions.id (diff tables). Now uses bridged_session_id. Fix 2: loadLastSession now calls setStartDate(today()) — prevents stale draft date overwriting original linked session. commit: 4f81b93 |
 | Activity sheet portal fix | 2026-03-09 | createPortal to body for ActivityDetailSheet + StrengthCard overlay — fixes position:fixed inside scroll container. commit: 9e0976a |
 | Goal rings icons + size | 2026-03-09 | +30% ring size (70→91px), icons inside rings: moon/slash/fork/bolt from original design. commit: 46eba65 |

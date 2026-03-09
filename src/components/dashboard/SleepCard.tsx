@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react";
 import type { SleepStagesData } from "@/hooks/useSleepStages";
 import SleepStageBar from "./SleepStageBar";
 
@@ -16,9 +17,10 @@ function fmtHrs(hrs: number | null): string {
 
 interface Props {
   data: SleepStagesData;
+  onClick?: () => void;
 }
 
-export default function SleepCard({ data }: Props) {
+export default function SleepCard({ data, onClick }: Props) {
   const bedTime = fmtTime(data.bed_time);
   const wakeTime = fmtTime(data.wake_time);
   const hasScore = data.sleep_score != null && data.sleep_score > 0;
@@ -26,33 +28,38 @@ export default function SleepCard({ data }: Props) {
 
   return (
     <div
+      onClick={onClick}
       style={{
         background: "var(--bg-card)",
         border: "1px solid var(--border-default)",
         borderRadius: "var(--radius-lg)",
         padding: "var(--space-lg)",
+        cursor: onClick ? "pointer" : undefined,
       }}
     >
       {/* Header row */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--space-md)" }}>
         <span className="label-text" style={{ color: "var(--text-muted)" }}>SLEEP</span>
-        {score != null && (
-          <span
-            style={{
-              background: "color-mix(in srgb, var(--dawn) 15%, transparent)",
-              border: "1px solid color-mix(in srgb, var(--dawn) 40%, transparent)",
-              borderRadius: "var(--radius-pill)",
-              padding: "2px 10px",
-              fontSize: 11,
-              fontWeight: 600,
-              color: "var(--dawn)",
-              letterSpacing: "0.5px",
-              fontFamily: "var(--font-mono)",
-            }}
-          >
-            {score}
-          </span>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {score != null && (
+            <span
+              style={{
+                background: "color-mix(in srgb, var(--dawn) 15%, transparent)",
+                border: "1px solid color-mix(in srgb, var(--dawn) 40%, transparent)",
+                borderRadius: "var(--radius-pill)",
+                padding: "2px 10px",
+                fontSize: 11,
+                fontWeight: 600,
+                color: "var(--dawn)",
+                letterSpacing: "0.5px",
+                fontFamily: "var(--font-mono)",
+              }}
+            >
+              {score}
+            </span>
+          )}
+          {onClick && <ChevronRight size={14} color="var(--text-muted)" />}
+        </div>
       </div>
 
       {/* Main duration */}

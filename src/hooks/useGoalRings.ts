@@ -26,35 +26,41 @@ function parseSteps(notes: string | null): number | null {
   return match ? parseInt(match[1], 10) : null;
 }
 
-export default function useGoalRings(): GoalRingsData {
+export default function useGoalRings(dateStr?: string): GoalRingsData {
   const [sleepScore, setSleepScore] = useState<number | null>(null);
   const [steps, setSteps] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
+  const targetDate = dateStr ?? new Date().toLocaleDateString('en-CA');
+
+  // Calculate how many days back to fetch (at least 1)
+  const daysBack = Math.max(
+    1,
+    Math.ceil((Date.now() - new Date(targetDate + 'T00:00:00').getTime()) / 86400000) + 1,
+  );
+
   const fetchData = useCallback(() => {
     setLoading(true);
     setError(false);
 
-    const todayLocal = new Date().toLocaleDateString('en-CA');
-
     Promise.all([
-      apiFetch<{ data: SleepEntry[] }>('/api/sleep?days=1'),
-      apiFetch<{ data: ActivityEntry[] }>('/api/activity?days=1'),
+      apiFetch<{ data: SleepEntry[] }>(`/api/sleep?days=${daysBack}`),
+      apiFetch<{ data: ActivityEntry[] }>(`/api/activity?days=${daysBack}`),
     ])
       .then(([sleepRes, activityRes]) => {
-        // Sleep score — most recent entry
+        // Sleep score — find entry matching targetDate
         const sleepEntries = sleepRes.data ?? sleepRes;
-        const todaySleep = Array.isArray(sleepEntries)
-          ? sleepEntries.find(s => s.sleep_date === todayLocal)
+        const matchSleep = Array.isArray(sleepEntries)
+          ? sleepEntries.find(s => s.sleep_date === targetDate)
           : null;
-        setSleepScore(todaySleep?.sleep_score ?? (Array.isArray(sleepEntries) && sleepEntries.length > 0 ? sleepEntries[0].sleep_score : null));
+        setSleepScore(matchSleep?.sleep_score ?? null);
 
-        // Steps — parse from daily_summary notes
+        // Steps — parse from daily_summary notes for targetDate
         const activities = activityRes.data ?? activityRes;
         if (Array.isArray(activities)) {
           const summary = activities.find(
-            a => a.activity_type === 'daily_summary' && a.activity_date === todayLocal,
+            a => a.activity_type === 'daily_summary' && a.activity_date === targetDate,
           );
           setSteps(summary ? parseSteps(summary.notes) : null);
         } else {
@@ -67,7 +73,8 @@ export default function useGoalRings(): GoalRingsData {
         setError(true);
         setLoading(false);
       });
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetDate]);
 
   useEffect(() => {
     fetchData();

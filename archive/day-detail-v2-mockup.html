@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=375, initial-scale=1">
+<title>Day Detail v2 — Mockup</title>
+<style>
+  :root {
+    --bg-base: #0f0f0f;
+    --bg-card: #1a1a1a;
+    --bg-elevated: #222;
+    --border-subtle: rgba(255,255,255,0.07);
+    --border-default: rgba(255,255,255,0.13);
+    --text-primary: #f0ede8;
+    --text-secondary: #b8b4ad;
+    --text-muted: #6b6760;
+    --ochre: #c8952a;
+    --signal-green: #4caf79;
+
+    /* category colours */
+    --col-strength: #8b5e3c;
+    --col-running:  #3d7a5f;
+    --col-sleep:    #4a5fa8;
+    --col-weight:   #7a4a8a;
+    --col-sauna:    #a04030;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #111;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+    padding: 32px 16px 80px;
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: var(--text-primary);
+  }
+
+  h2 {
+    font: 600 11px/1 'Inter', sans-serif;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    align-self: flex-start;
+    margin-bottom: -24px;
+  }
+
+  /* ── Phone frame ── */
+  .phone {
+    width: 375px;
+    background: var(--bg-base);
+    border-radius: 28px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  /* ── Bottom sheet ── */
+  .sheet {
+    background: var(--bg-elevated);
+    border-radius: 20px 20px 0 0;
+    padding: 12px 16px 32px;
+  }
+
+  .grab {
+    width: 36px; height: 4px;
+    border-radius: 2px;
+    background: var(--border-default);
+    margin: 0 auto 14px;
+  }
+
+  .sheet-date {
+    font: 600 14px/1.3 'Inter', sans-serif;
+    letter-spacing: -0.3px;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+  }
+
+  /* ── Activity Card ── */
+  .card {
+    background: var(--bg-card);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border-subtle);
+    margin-bottom: 10px;
+  }
+
+  .card-inner {
+    padding: 12px 14px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* Left colour stripe */
+  .card-stripe {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+  }
+  .stripe {
+    width: 3px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .card-body { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+
+  /* Header row */
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .cat-label {
+    font: 700 10px/1 'Inter', sans-serif;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+  }
+  .split-pill {
+    font: 600 9px/1 'Inter', sans-serif;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 20px;
+    border: 1px solid;
+    margin-left: 8px;
+  }
+  .dur-label {
+    font: 400 11px/1 'JetBrains Mono', 'Courier New', monospace;
+    color: var(--text-muted);
+    margin-left: auto;
+  }
+
+  /* Body-area pills */
+  .area-pills {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+  .area-pill {
+    font: 500 9px/1 'Inter', sans-serif;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.06);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle);
+  }
+
+  /* Session totals */
+  .totals {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .total-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+  }
+  .total-val {
+    font: 600 15px/1 'JetBrains Mono', monospace;
+    color: var(--text-primary);
+  }
+  .total-lbl {
+    font: 400 9px/1 'Inter', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+  }
+  .total-sep {
+    width: 1px;
+    height: 28px;
+    background: var(--border-subtle);
+    flex-shrink: 0;
+    margin: 0 4px;
+  }
+
+  /* Expand toggle */
+  .expand-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    padding: 2px 0;
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 10px;
+  }
+  .expand-arrow {
+    font-size: 9px;
+    color: var(--text-muted);
+    transition: transform 0.2s;
+  }
+  .expand-arrow.open { transform: rotate(180deg); }
+  .expand-label {
+    font: 500 10px/1 'Inter', sans-serif;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* Exercise table */
+  .exercises {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-top: 2px;
+  }
+  .ex-row {
+    display: grid;
+    grid-template-columns: 1fr 28px 36px 48px;
+    gap: 4px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border-subtle);
+    align-items: center;
+  }
+  .ex-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .ex-name {
+    font: 400 11px/1.3 'Inter', sans-serif;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ex-sets, .ex-reps, .ex-weight {
+    font: 500 10px/1 'JetBrains Mono', monospace;
+    color: var(--text-primary);
+    text-align: right;
+  }
+  .ex-sets { color: var(--text-muted); }
+
+  /* Run-specific stat row */
+  .run-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+  .run-stat { display: flex; flex-direction: column; gap: 3px; }
+  .run-val {
+    font: 600 16px/1 'JetBrains Mono', monospace;
+    color: var(--text-primary);
+  }
+  .run-lbl {
+    font: 400 9px/1 'Inter', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+  }
+  .run-secondary {
+    display: flex;
+    gap: 16px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  /* ── Apple Wallet stack ── */
+  .wallet {
+    position: relative;
+    /* height enough to show all cards stacked */
+  }
+  .wallet-card {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border-subtle);
+    cursor: pointer;
+    transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.25s;
+  }
+  .wallet-card:not(:first-child) {
+    margin-top: -52px; /* overlap */
+  }
+
+  /* Collapsed card header (for stacked cards not on top) */
+  .card-collapsed {
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card-collapsed .left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* note callout */
+  .note {
+    background: rgba(200,149,42,0.08);
+    border: 1px solid rgba(200,149,42,0.2);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font: 400 11px/1.5 'Inter', sans-serif;
+    color: var(--ochre);
+    margin-top: 4px;
+  }
+  .note strong { font-weight: 600; }
+
+  /* Separator label */
+  .scene-label {
+    font: 600 9px/1 'Inter', sans-serif;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 4px 0;
+  }
+</style>
+</head>
+<body>
+
+<h2>Scenario A — Strength single-select (Mar 8)</h2>
+
+<div class="phone">
+  <!-- fake calendar above -->
+  <div style="height:220px; background:var(--bg-base); display:flex; align-items:flex-end; justify-content:center; padding-bottom:8px;">
+    <span style="font:400 10px/1 'Inter',sans-serif; color:var(--text-muted); letter-spacing:0.5px;">tap a day to open</span>
+  </div>
+
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="sheet-date">Sunday, 8 March</div>
+
+    <!-- ── STRENGTH CARD (expanded) ── -->
+    <div class="card">
+      <div class="card-inner">
+        <div class="card-stripe">
+          <div class="stripe" style="background:var(--col-strength)"></div>
+          <div class="card-body">
+
+            <!-- Header -->
+            <div class="card-header">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span class="cat-label" style="color:var(--col-strength)">Strength</span>
+                <span class="split-pill" style="color:var(--col-strength); border-color:var(--col-strength);">Pull Day</span>
+              </div>
+              <span class="dur-label">21 sets</span>
+            </div>
+
+            <!-- Body area pills -->
+            <div class="area-pills">
+              <span class="area-pill">Back</span>
+              <span class="area-pill">Arms</span>
+              <span class="area-pill">Legs</span>
+            </div>
+
+            <!-- Session totals -->
+            <div class="totals">
+              <div class="total-item">
+                <span class="total-val">21</span>
+                <span class="total-lbl">Sets</span>
+              </div>
+              <div class="total-sep"></div>
+              <div class="total-item">
+                <span class="total-val">9.5</span>
+                <span class="total-lbl">Avg Reps</span>
+              </div>
+              <div class="total-sep"></div>
+              <div class="total-item">
+                <span class="total-val" style="font-size:12px;">BW+</span>
+                <span class="total-lbl">Avg Load</span>
+              </div>
+            </div>
+
+            <!-- Expand toggle (shown open) -->
+            <div class="expand-row">
+              <span class="expand-arrow open">▲</span>
+              <span class="expand-label">7 exercises</span>
+            </div>
+
+            <!-- Exercise rows -->
+            <!-- Name | Sets | Reps | Weight -->
+            <div style="display:grid; grid-template-columns:1fr 28px 36px 52px; gap:4px; padding:0 0 2px;">
+              <span style="font:600 8px/1 'Inter',sans-serif; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">Exercise</span>
+              <span style="font:600 8px/1 'Inter',sans-serif; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); text-align:right;">Sets</span>
+              <span style="font:600 8px/1 'Inter',sans-serif; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); text-align:right;">Reps</span>
+              <span style="font:600 8px/1 'Inter',sans-serif; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); text-align:right;">Load</span>
+            </div>
+            <div class="exercises">
+              <div class="ex-row">
+                <span class="ex-name">Bar pull ups</span>
+                <span class="ex-sets">3</span>
+                <span class="ex-reps">29</span>
+                <span class="ex-weight">BW</span>
+              </div>
+              <div class="ex-row">
+                <span class="ex-name">L-Sit chin ups</span>
+                <span class="ex-sets">3</span>
+                <span class="ex-reps">29</span>
+                <span class="ex-weight">BW</span>
+              </div>
+              <div class="ex-row">
+                <span class="ex-name">Ring pull ups</span>
+                <span class="ex-sets">2</span>
+                <span class="ex-reps">14</span>
+                <span class="ex-weight" style="color:var(--ochre)">+20kg</span>
+              </div>
+              <div class="ex-row">
+                <span class="ex-name">Incline rows</span>
+                <span class="ex-sets">4</span>
+                <span class="ex-reps">47</span>
+                <span class="ex-weight">BW</span>
+              </div>
+              <div class="ex-row">
+                <span class="ex-name">Ring curls</span>
+                <span class="ex-sets">3</span>
+                <span class="ex-reps">33</span>
+                <span class="ex-weight">BW</span>
+              </div>
+              <div class="ex-row">
+                <span class="ex-name">Hip thrust</span>
+                <span class="ex-sets">4</span>
+                <span class="ex-reps">32</span>
+                <span class="ex-weight">BW</span>
+              </div>
+              <div class="ex-row">
+                <span class="ex-name">Single Leg RDLs</span>
+                <span class="ex-sets">2</span>
+                <span class="ex-reps">16</span>
+                <span class="ex-weight">BW</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div><!-- /card -->
+
+    <!-- Note about "highest rep / weight" column -->
+    <div class="note">
+      <strong>⚠ API note:</strong> The sessions endpoint returns exercise names + session totals only. Per-exercise "top reps" and "avg weight" require a new backend endpoint — <code>GET /api/strength/sessions/:id</code> with sets grouped by exercise. Currently unavailable. "Load" above shows <strong>top_weight_kg</strong> from the exercise history endpoint (cross-referenced by date).
+    </div>
+
+  </div>
+</div>
+
+
+<h2>Scenario B — Multi-category (Mar 7 · Strength + Strength + Sleep) — Apple Wallet stack</h2>
+
+<div class="phone">
+  <div style="height:160px; background:var(--bg-base);"></div>
+
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="sheet-date">Saturday, 7 March</div>
+
+    <!-- Wallet stack: 2 strength sessions + sleep peeking -->
+    <div class="wallet">
+
+      <!-- Card 1 — top/front: Strength session A (expanded) -->
+      <div class="wallet-card" style="background:var(--bg-card); position:relative; z-index:3;">
+        <div class="card-inner">
+          <div class="card-stripe">
+            <div class="stripe" style="background:var(--col-strength)"></div>
+            <div class="card-body">
+              <div class="card-header">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span class="cat-label" style="color:var(--col-strength)">Strength</span>
+                  <span class="split-pill" style="color:var(--col-strength); border-color:var(--col-strength);">Pull Day</span>
+                </div>
+                <span class="dur-label">21 sets</span>
+              </div>
+              <div class="area-pills">
+                <span class="area-pill">Back</span>
+                <span class="area-pill">Arms</span>
+                <span class="area-pill">Legs</span>
+              </div>
+              <div class="totals">
+                <div class="total-item"><span class="total-val">21</span><span class="total-lbl">Sets</span></div>
+                <div class="total-sep"></div>
+                <div class="total-item"><span class="total-val">9.5</span><span class="total-lbl">Avg Reps</span></div>
+                <div class="total-sep"></div>
+                <div class="total-item"><span class="total-val" style="font-size:12px;">BW+</span><span class="total-lbl">Avg Load</span></div>
+              </div>
+              <div class="expand-row">
+                <span class="expand-arrow">▼</span>
+                <span class="expand-label">7 exercises — tap to expand</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2 — Strength session B (collapsed, peeking) -->
+      <div class="wallet-card" style="background:#1e1a16; position:relative; z-index:2;">
+        <div class="card-collapsed">
+          <div class="left">
+            <div class="dot" style="background:var(--col-strength)"></div>
+            <span class="cat-label" style="color:var(--col-strength)">Strength</span>
+            <span style="font:400 10px/1 'Inter',sans-serif; color:var(--text-muted); margin-left:6px;">Push + Legs · 19 sets</span>
+          </div>
+          <span style="font:400 9px/1 'JetBrains Mono',monospace; color:var(--text-muted)">▼</span>
+        </div>
+      </div>
+
+      <!-- Card 3 — Sleep (collapsed, peeking further) -->
+      <div class="wallet-card" style="background:#181a22; position:relative; z-index:1;">
+        <div class="card-collapsed">
+          <div class="left">
+            <div class="dot" style="background:var(--col-sleep)"></div>
+            <span class="cat-label" style="color:var(--col-sleep)">Sleep</span>
+            <span style="font:400 10px/1 'Inter',sans-serif; color:var(--text-muted); margin-left:6px;">7.4h · 18% deep</span>
+          </div>
+          <span style="font:400 9px/1 'JetBrains Mono',monospace; color:var(--text-muted)">▼</span>
+        </div>
+      </div>
+
+    </div><!-- /wallet -->
+
+    <div class="note" style="margin-top:10px;">
+      Tap any peeking card to bring it to front. Swipe down to dismiss sheet.
+    </div>
+
+  </div>
+</div>
+
+
+<h2>Scenario C — Run card (Mar 5 · single select)</h2>
+
+<div class="phone">
+  <div style="height:160px; background:var(--bg-base);"></div>
+
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="sheet-date">Thursday, 5 March</div>
+
+    <div class="card">
+      <div class="card-inner">
+        <div class="card-stripe">
+          <div class="stripe" style="background:var(--col-running)"></div>
+          <div class="card-body">
+
+            <div class="card-header">
+              <span class="cat-label" style="color:var(--col-running)">Run</span>
+              <span class="dur-label">33m 48s</span>
+            </div>
+
+            <div class="run-stats">
+              <div class="run-stat">
+                <span class="run-val">3.83<span style="font-size:10px; color:var(--text-muted)">km</span></span>
+                <span class="run-lbl">Distance</span>
+              </div>
+              <div class="run-stat">
+                <span class="run-val">8:49<span style="font-size:10px; color:var(--text-muted)">/km</span></span>
+                <span class="run-lbl">Avg Pace</span>
+              </div>
+              <div class="run-stat">
+                <span class="run-val">164<span style="font-size:10px; color:var(--text-muted)">bpm</span></span>
+                <span class="run-lbl">Avg HR</span>
+              </div>
+            </div>
+
+            <div class="run-secondary">
+              <div class="run-stat">
+                <span style="font:500 12px/1 'JetBrains Mono',monospace; color:var(--text-secondary)">191<span style="font-size:9px; color:var(--text-muted)">bpm</span></span>
+                <span class="run-lbl">Max HR</span>
+              </div>
+              <div class="run-stat">
+                <span style="font:500 12px/1 'JetBrains Mono',monospace; color:var(--text-secondary)">184<span style="font-size:9px; color:var(--text-muted)">cal</span></span>
+                <span class="run-lbl">Calories</span>
+              </div>
+              <div class="run-stat">
+                <span style="font:500 12px/1 'JetBrains Mono',monospace; color:var(--text-muted)">—</span>
+                <span class="run-lbl">Fastest km</span>
+              </div>
+            </div>
+
+            <!-- Splits note -->
+            <div style="padding-top:8px; border-top:1px solid var(--border-subtle);">
+              <span style="font:400 10px/1.4 'Inter',sans-serif; color:var(--text-muted);">
+                Lap splits not stored — Withings doesn't export per-km breakdown.
+              </span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

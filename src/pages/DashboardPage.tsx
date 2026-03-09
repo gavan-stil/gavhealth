@@ -4,9 +4,11 @@ import useDashboard from "@/hooks/useDashboard";
 import useDashboardV2 from "@/hooks/useDashboardV2";
 import useGoalRings from "@/hooks/useGoalRings";
 import useSleepStages from "@/hooks/useSleepStages";
+import useSleepHistory from "@/hooks/useSleepHistory";
 import useIntradayHR from "@/hooks/useIntradayHR";
 import GoalRingsRow from "@/components/dashboard/GoalRingsRow";
 import SleepCard from "@/components/dashboard/SleepCard";
+import SleepHistorySheet from "@/components/dashboard/SleepHistorySheet";
 import IntradayHRChart from "@/components/dashboard/IntradayHRChart";
 import ReadinessCard from "@/components/dashboard/ReadinessCard";
 import VitalsCard from "@/components/dashboard/VitalsCard";
@@ -45,12 +47,14 @@ function formatDateLabel(date: string): string {
 
 export default function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState<string>(todayLocal);
+  const [sleepSheetOpen, setSleepSheetOpen] = useState(false);
   const isToday = selectedDate === todayLocal();
 
   const { readiness, vitals, streaks } = useDashboard();
-  const v2 = useDashboardV2();
-  const goalRings = useGoalRings();
+  const v2 = useDashboardV2(selectedDate);
+  const goalRings = useGoalRings(selectedDate);
   const sleepStages = useSleepStages(selectedDate);
+  const sleepHistory = useSleepHistory(30);
   const intradayHR = useIntradayHR(selectedDate);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -192,7 +196,16 @@ export default function DashboardPage() {
 
       {/* Sleep stages */}
       {!sleepStages.loading && sleepStages.data && (
-        <SleepCard data={sleepStages.data} />
+        <SleepCard data={sleepStages.data} onClick={() => setSleepSheetOpen(true)} />
+      )}
+
+      {/* Sleep history sheet */}
+      {sleepSheetOpen && (
+        <SleepHistorySheet
+          entries={sleepHistory.data}
+          loading={sleepHistory.loading}
+          onClose={() => setSleepSheetOpen(false)}
+        />
       )}
 
       {/* Intraday HR */}

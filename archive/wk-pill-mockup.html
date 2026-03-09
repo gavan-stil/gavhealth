@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=375, initial-scale=1">
+<title>WK Pill — Row-Aligned Design</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0f0f0f;
+    font-family: 'Inter', system-ui, sans-serif;
+    color: #e0e0e0;
+    padding: 20px 12px;
+    max-width: 375px;
+  }
+  h3 {
+    font: 500 10px/1 'Inter', sans-serif;
+    color: #555;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .section { margin-bottom: 32px; }
+
+  /* ── 8-column grid: 7 days + WK ── */
+  .week-wrap {
+    border: 1px solid #1e1e1e;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #111;
+  }
+
+  /* Header */
+  .header-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr) 54px;
+    background: #0e0e0e;
+    border-bottom: 1px solid #1e1e1e;
+  }
+  .hcell {
+    text-align: center;
+    font: 600 9px/1 'Inter', sans-serif;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: #555;
+    padding: 6px 0;
+  }
+  .hcell.wk { color: #777; }
+
+  /* Day-number row: 7 numbers + empty WK cell */
+  .daynum-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr) 54px;
+    border-bottom: 1px solid #1e1e1e;
+    background: #111;
+  }
+  .daynum-cell {
+    text-align: center;
+    font: 600 13px/1 'JetBrains Mono', monospace;
+    color: #999;
+    padding: 5px 0 3px;
+  }
+  .daynum-cell.today { color: #d4a853; border-bottom: 2px solid #d4a853; }
+  .daynum-cell.out   { opacity: 0.18; }
+  .daynum-wk { /* empty right cell */ }
+
+  /* Activity row: one per category, spans full week + WK pill */
+  .activity-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr) 54px;
+    border-bottom: 1px solid #1a1a1a;
+    background: #111;
+    align-items: center;
+  }
+  .activity-row:last-child { border-bottom: none; }
+
+  /* Individual day slot in an activity row */
+  .act-cell {
+    padding: 3px 1px;
+    min-height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* The bar itself */
+  .bar {
+    width: calc(100% - 2px);
+    height: 16px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    overflow: hidden;
+    padding: 0 3px;
+  }
+  .bar-icon {
+    font: 700 7px/1 'Inter', sans-serif;
+    color: rgba(255,255,255,0.85);
+    flex-shrink: 0;
+  }
+  .bar-label {
+    font: 500 7px/1 'JetBrains Mono', monospace;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* WK pill cell — Option A: outline, 8px bold */
+  .wk-cell {
+    padding: 3px 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0e0e0e;
+    border-left: 1px solid #1e1e1e;
+    min-height: 22px;
+  }
+  .pill {
+    width: 100%;
+    height: 16px;
+    border-radius: 3px;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+    overflow: hidden;
+  }
+  .pill span {
+    font: 700 8px/1 'Inter', sans-serif;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Week separator */
+  .week-sep { height: 6px; background: #0f0f0f; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     SINGLE TOGGLE — Running only
+══════════════════════════════════════ -->
+<div class="section">
+  <h3>Single toggle — Running</h3>
+  <div class="week-wrap">
+
+    <!-- Header -->
+    <div class="header-row">
+      <div class="hcell">M</div><div class="hcell">T</div><div class="hcell">W</div>
+      <div class="hcell">T</div><div class="hcell">F</div><div class="hcell">S</div>
+      <div class="hcell">S</div><div class="hcell wk">Wk</div>
+    </div>
+
+    <!-- Week 1 -->
+    <div class="daynum-row">
+      <div class="daynum-cell">3</div><div class="daynum-cell">4</div>
+      <div class="daynum-cell">5</div><div class="daynum-cell">6</div>
+      <div class="daynum-cell">7</div><div class="daynum-cell">8</div>
+      <div class="daynum-cell today">9</div>
+      <div class="daynum-wk"></div>
+    </div>
+    <div class="activity-row">
+      <div class="act-cell"><div class="bar" style="background:#3d7ebf;"><span class="bar-label">5.2km</span></div></div>
+      <div class="act-cell"></div>
+      <div class="act-cell"><div class="bar" style="background:#3d7ebf;"><span class="bar-label">7.1km</span></div></div>
+      <div class="act-cell"></div>
+      <div class="act-cell"><div class="bar" style="background:#3d7ebf;"><span class="bar-label">5.8km</span></div></div>
+      <div class="act-cell"><div class="bar" style="background:#3d7ebf;"><span class="bar-label">10km</span></div></div>
+      <div class="act-cell"></div>
+      <div class="wk-cell">
+        <div class="pill" style="border:1px solid #3d7ebf;">
+          <span style="color:#3d7ebf;">28km</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="week-sep"></div>
+
+    <!-- Week 2 -->
+    <div class="daynum-row">
+      <div class="daynum-cell">10</div><div class="daynum-cell">11</div>
+      <div class="daynum-cell">12</div><div class="daynum-cell">13</div>
+      <div class="daynum-cell">14</div><div class="daynum-cell">15</div>
+      <div class="daynum-cell">16</div>
+      <div class="daynum-wk"></div>
+    </div>
+    <div class="activity-row">
+      <div class="act-cell"><div class="bar" style="background:#3d7ebf;"><span class="bar-label">6km</span></div></div>
+      <div class="act-cell"><div class="bar" style="background:#3d7ebf;"><span class="bar-label">5km</span></div></div>
+      <div class="act-cell"></div>
+      <div class="act-cell"><div class="bar" style="background:#3d7ebf;"><span class="bar-label">8km</span></div></div>
+      <div class="act-cell"></div>
+      <div class="act-cell"><div class="bar" style="background:#3d7ebf;"><span class="bar-label">12km</span></div></div>
+      <div class="act-cell"></div>
+      <div class="wk-cell">
+        <div class="pill" style="border:1px solid #3d7ebf;">
+          <span style="color:#3d7ebf;">31km</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MULTI TOGGLE — Running + Strength + Sleep
+══════════════════════════════════════ -->
+<div class="section">
+  <h3>Multi toggle — Running + Strength + Sleep</h3>
+  <div class="week-wrap">
+
+    <div class="header-row">
+      <div class="hcell">M</div><div class="hcell">T</div><div class="hcell">W</div>
+      <div class="hcell">T</div><div class="hcell">F</div><div class="hcell">S</div>
+      <div class="hcell">S</div><div class="hcell wk">Wk</div>
+    </div>
+
+    <!-- Week 1 -->
+    <div class="daynum-row">
+      <div class="daynum-cell">3</div><div class="daynum-cell">4</div>
+      <div class="daynum-cell">5</div><div class="daynum-cell">6</div>
+      <div class="daynum-cell">7</div><div class="daynum-cell">8</div>
+      <div class="daynum-cell today">9</div>
+      <div class="daynum-wk"></div>
+    </div>
+
+    <!-- Running row -->
+    <div class="activity-row">
+      <div class="act-cell"><div class="bar" style="background:#3d7ebf;"><span class="bar-label">5.2km</span></div></div>
+      <div class="act-cell"></div>
+      <div class="act-cell"><div class="bar" style="background:#3d7ebf;"><span class="bar-label">7.1km</span></div></div>
+      <div class="act-cell"></div>
+      <div class="act-cell"><div class="bar" style="background:#3d7ebf;"><span class="bar-label">5.8km</span></div></div>
+      <div class="act-cell"><div class="bar" style="background:#3d7ebf;"><span class="bar-label">10km</span></div></div>
+      <div class="act-cell"></div>
+      <div class="wk-cell">
+        <div class="pill" style="border:1px solid #3d7ebf;">
+          <span style="color:#3d7ebf;">28km</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Strength row -->
+    <div class="activity-row">
+      <div class="act-cell"><div class="bar" style="background:#c06a2d;"><span class="bar-icon">▲</span><span class="bar-label">48m</span></div></div>
+      <div class="act-cell"><div class="bar" style="background:#c06a2d;"><span class="bar-icon">▼</span><span class="bar-label">55m</span></div></div>
+      <div class="act-cell"></div>
+      <div class="act-cell"><div class="bar" style="background:#c06a2d;"><span class="bar-label">50m</span></div></div>
+      <div class="act-cell"></div>
+      <div class="act-cell"><div class="bar" style="background:#c06a2d;"><span class="bar-icon">//</span><span class="bar-label">60m</span></div></div>
+      <div class="act-cell"></div>
+      <div class="wk-cell">
+        <div class="pill" style="border:1px solid #c06a2d;">
+          <span style="color:#c06a2d;">3h33m</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sleep row -->
+    <div class="activity-row">
+      <div class="act-cell"><div class="bar" style="background:#4a7c6f;"><span class="bar-label">7.4h</span></div></div>
+      <div class="act-cell"><div class="bar" style="background:#4a7c6f;"><span class="bar-label">6.9h</span></div></div>
+      <div class="act-cell"><div class="bar" style="background:#4a7c6f;"><span class="bar-label">8.1h</span></div></div>
+      <div class="act-cell"><div class="bar" style="background:#4a7c6f;"><span class="bar-label">7.2h</span></div></div>
+      <div class="act-cell"><div class="bar" style="background:#4a7c6f;"><span class="bar-label">7.8h</span></div></div>
+      <div class="act-cell"><div class="bar" style="background:#4a7c6f;"><span class="bar-label">6.5h</span></div></div>
+      <div class="act-cell"><div class="bar" style="background:#4a7c6f;"><span class="bar-label">7.0h</span></div></div>
+      <div class="wk-cell">
+        <div class="pill" style="border:1px solid #4a7c6f;">
+          <span style="color:#4a7c6f;">7.3h</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="week-sep"></div>
+
+    <!-- Week 2 -->
+    <div class="daynum-row">
+      <div class="daynum-cell">10</div><div class="daynum-cell">11</div>
+      <div class="daynum-cell">12</div><div class="daynum-cell">13</div>
+      <div class="daynum-cell">14</div><div class="daynum-cell">15</div>
+      <div class="daynum-cell">16</div>
+      <div class="daynum-wk"></div>
+    </div>
+    <div class="activity-row">
+      <div class="act-cell"><div class="bar" style="background:#3d7ebf;"><span class="bar-label">6km</span></div></div>
+      <div class="act-cell"><div class="bar" style="background:#3d7ebf;"><span class="bar-label">5km</span></div></div>
+      <div class="act-cell"></div>
+      <div class="act-cell"><div class="bar" style="background:#3d7ebf;"><span class="bar-label">8km</span></div></div>
+      <div class="act-cell"></div>
+      <div class="act-cell"><div class="bar" style="background:#3d7ebf;"><span class="bar-label">12km</span></div></div>
+      <div class="act-cell"></div>
+      <div class="wk-cell">
+        <div class="pill" style="border:1px solid #3d7ebf;">
+          <span style="color:#3d7ebf;">31km</span>
+        </div>
+      </div>
+    </div>
+    <div class="activity-row">
+      <div class="act-cell"></div>
+      <div class="act-cell"><div class="bar" style="background:#c06a2d;"><span class="bar-icon">▲</span><span class="bar-label">52m</span></div></div>
+      <div class="act-cell"><div class="bar" style="background:#c06a2d;"><span class="bar-icon">▼</span><span class="bar-label">48m</span></div></div>
+      <div class="act-cell"></div>
+      <div class="act-cell"><div class="bar" style="background:#c06a2d;"><span class="bar-icon">//</span><span class="bar-label">55m</span></div></div>
+      <div class="act-cell"></div>
+      <div class="act-cell"></div>
+      <div class="wk-cell">
+        <div class="pill" style="border:1px solid #c06a2d;">
+          <span style="color:#c06a2d;">2h35m</span>
+        </div>
+      </div>
+    </div>
+    <div class="activity-row">
+      <div class="act-cell"><div class="bar" style="background:#4a7c6f;"><span class="bar-label">7.1h</span></div></div>
+      <div class="act-cell"><div class="bar" style="background:#4a7c6f;"><span class="bar-label">7.5h</span></div></div>
+      <div class="act-cell"><div class="bar" style="background:#4a7c6f;"><span class="bar-label">6.8h</span></div></div>
+      <div class="act-cell"><div class="bar" style="background:#4a7c6f;"><span class="bar-label">7.9h</span></div></div>
+      <div class="act-cell"><div class="bar" style="background:#4a7c6f;"><span class="bar-label">7.2h</span></div></div>
+      <div class="act-cell"><div class="bar" style="background:#4a7c6f;"><span class="bar-label">8.0h</span></div></div>
+      <div class="act-cell"><div class="bar" style="background:#4a7c6f;"><span class="bar-label">6.9h</span></div></div>
+      <div class="wk-cell">
+        <div class="pill" style="border:1px solid #4a7c6f;">
+          <span style="color:#4a7c6f;">7.3h</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

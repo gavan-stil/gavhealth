@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GOE Health — How It Works</title>
+  <style>
+    :root {
+      --bg-base: #0d0d0a;
+      --bg-card: #14130f;
+      --bg-card-hover: #1c1b15;
+      --bg-elevated: #1e1d18;
+      --border-default: #222018;
+      --border-subtle: #1a1914;
+      --text-primary: #f0ece4;
+      --text-secondary: #b0a890;
+      --text-tertiary: #9a9080;
+      --text-muted: #7a7060;
+      --ochre: #d4a04a;
+      --ochre-light: #e8c47a;
+      --ochre-dim: #a07830;
+      --clay: #c4856a;
+      --dawn: #7FAABC;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg-base);
+      color: var(--text-secondary);
+      font-family: 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      padding: 24px 16px 80px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 20px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px; margin-bottom: 4px; }
+    .subtitle { font-size: 10px; color: var(--text-muted); letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 28px; }
+
+    /* Legend */
+    .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 24px; }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--text-muted); }
+    .legend-dot { width: 8px; height: 8px; border-radius: 3px; }
+
+    /* Layer */
+    .layer { border-radius: 16px; border: 1px solid var(--border-default); overflow: visible; }
+    .layer-header { padding: 10px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border-default); }
+    .layer-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .layer-title { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
+    .layer-subtitle { font-size: 10px; color: var(--text-muted); margin-left: auto; }
+    .layer-body { padding: 16px; }
+
+    /* Layer: React */
+    .layer-react { background: #0f0e0b; }
+    .layer-react .layer-header { background: rgba(212,160,74,0.05); }
+    .layer-react .layer-dot { background: var(--ochre); box-shadow: 0 0 8px rgba(212,160,74,0.4); }
+    .layer-react .layer-title { color: var(--ochre); }
+
+    /* Layer: Python */
+    .layer-python { background: #0a0f0d; }
+    .layer-python .layer-header { background: rgba(127,170,188,0.05); }
+    .layer-python .layer-dot { background: var(--dawn); box-shadow: 0 0 8px rgba(127,170,188,0.4); }
+    .layer-python .layer-title { color: var(--dawn); }
+
+    /* Layer: DB */
+    .layer-db { background: #0e0a0f; }
+    .layer-db .layer-header { background: rgba(196,133,106,0.05); }
+    .layer-db .layer-dot { background: var(--clay); box-shadow: 0 0 8px rgba(196,133,106,0.4); }
+    .layer-db .layer-title { color: var(--clay); }
+
+    /* Connectors */
+    .connector { display: flex; flex-direction: column; align-items: center; padding: 6px 0; }
+    .connector-line { width: 2px; height: 18px; background: linear-gradient(to bottom, var(--border-default), transparent); }
+    .connector-line-bottom { width: 2px; height: 18px; background: linear-gradient(to bottom, transparent, var(--border-default)); }
+    .connector-label {
+      font-size: 9px; color: var(--text-muted); letter-spacing: 0.8px; text-transform: uppercase;
+      background: var(--bg-elevated); padding: 3px 10px; border-radius: 100px;
+      border: 1px solid var(--border-default);
+    }
+
+    /* Gateway */
+    .gateway {
+      background: var(--bg-elevated); border: 1px solid var(--ochre-dim); border-radius: 8px;
+      padding: 8px 14px; display: inline-flex; align-items: center; gap: 10px;
+      cursor: default; position: relative; margin: 4px 0;
+    }
+    .gateway:hover .tooltip { display: block; }
+    .gateway-label { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--ochre); font-weight: 600; }
+    .gateway-desc { font-size: 9px; color: var(--text-muted); margin-top: 2px; }
+
+    /* Shared row */
+    .shared-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .shared-chip {
+      background: var(--bg-elevated); border: 1px solid var(--border-subtle);
+      border-radius: 6px; padding: 4px 8px; font-size: 9px;
+      color: var(--text-muted); font-family: 'JetBrains Mono', monospace;
+      cursor: default; position: relative;
+    }
+    .shared-chip:hover .tooltip { display: block; }
+
+    /* Pages row */
+    .pages-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .page-node {
+      background: var(--bg-card); border: 1px solid var(--border-default); border-radius: 10px;
+      cursor: pointer; transition: border-color 0.15s, background 0.15s; user-select: none;
+    }
+    .page-node:hover { border-color: var(--ochre-dim); background: var(--bg-card-hover); }
+    .page-node.open { border-color: var(--ochre); }
+    .page-node-header { padding: 10px 10px 8px; }
+    .page-icon { font-size: 16px; margin-bottom: 4px; display: block; }
+    .page-name { font-size: 11px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.3px; }
+    .page-route { font-size: 9px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+    .page-hint { font-size: 9px; color: var(--ochre-dim); margin-top: 5px; }
+
+    /* Detail panel */
+    .detail-panel {
+      display: none; background: var(--bg-elevated);
+      border: 1px solid var(--border-default); border-radius: 10px;
+      padding: 14px; margin-top: 10px;
+    }
+    .detail-panel.open { display: block; }
+    .detail-title { font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+    .detail-intro { font-size: 10px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5; }
+
+    /* Section divider */
+    .divider {
+      font-size: 9px; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase;
+      margin: 12px 0 8px; display: flex; align-items: center; gap: 6px;
+    }
+    .divider::before { content: ''; flex: 0 0 12px; height: 1px; background: var(--border-default); }
+    .divider::after { content: ''; flex: 1; height: 1px; background: var(--border-default); }
+
+    .chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    /* Chips */
+    .chip {
+      display: inline-flex; align-items: center; padding: 4px 8px; border-radius: 6px;
+      font-size: 10px; font-family: 'JetBrains Mono', monospace; cursor: default;
+      position: relative;
+    }
+    .chip:hover .tooltip { display: block; }
+    .chip-component { background: rgba(212,160,74,0.1); border: 1px solid rgba(212,160,74,0.22); color: var(--ochre-light); }
+    .chip-hook       { background: rgba(127,170,188,0.1); border: 1px solid rgba(127,170,188,0.22); color: var(--dawn); }
+    .chip-endpoint   { background: rgba(196,133,106,0.1); border: 1px solid rgba(196,133,106,0.22); color: var(--clay); }
+
+    /* Backend / DB chips */
+    .endpoint-chip {
+      background: rgba(127,170,188,0.07); border: 1px solid rgba(127,170,188,0.18);
+      border-radius: 6px; padding: 5px 9px; font-size: 9px;
+      font-family: 'JetBrains Mono', monospace; color: var(--dawn);
+      cursor: default; position: relative;
+    }
+    .endpoint-chip:hover .tooltip { display: block; }
+    .method { font-size: 8px; font-weight: 700; color: var(--ochre-dim); margin-right: 3px; }
+
+    .table-chip {
+      background: rgba(196,133,106,0.07); border: 1px solid rgba(196,133,106,0.18);
+      border-radius: 6px; padding: 5px 9px; font-size: 9px;
+      font-family: 'JetBrains Mono', monospace; color: var(--clay);
+      cursor: default; position: relative;
+    }
+    .table-chip:hover .tooltip { display: block; }
+
+    .chips-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .detail-label { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+    .layer-note { font-size: 10px; color: var(--text-muted); margin-bottom: 10px; line-height: 1.5; }
+
+    /* Tooltip */
+    .tooltip {
+      display: none; position: absolute; bottom: calc(100% + 8px); left: 50%;
+      transform: translateX(-50%); background: #252318;
+      border: 1px solid var(--border-default); border-radius: 8px;
+      padding: 9px 12px; font-size: 11px; font-family: 'Inter', system-ui, sans-serif;
+      color: var(--text-secondary); z-index: 200; pointer-events: none;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.6); width: 220px;
+      white-space: normal; text-align: left; line-height: 1.5;
+    }
+    .tooltip::after {
+      content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+      border: 5px solid transparent; border-top-color: #252318;
+    }
+
+    /* External box */
+    .external-box {
+      margin-top: 20px; padding: 14px 16px; background: var(--bg-card);
+      border: 1px solid var(--border-subtle); border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>GOE Health — How It Works</h1>
+  <p class="subtitle">Architecture · Components · Data Flow · Database</p>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-dot" style="background:rgba(212,160,74,0.5);border:1px solid var(--ochre);"></div>
+      React UI layer
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:rgba(212,160,74,0.2);"></div>
+      Component (a card or piece of UI)
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:rgba(127,170,188,0.2);"></div>
+      Hook (fetches data)
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:rgba(196,133,106,0.2);"></div>
+      API endpoint / DB table
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════ REACT LAYER -->
+  <div class="layer layer-react">
+    <div class="layer-header">
+      <div class="layer-dot"></div>
+      <span class="layer-title">React Frontend</span>
+      <span class="layer-subtitle">Vite · TypeScript · Mobile-first</span>
+    </div>
+    <div class="layer-body">
+
+      <div class="detail-label" style="margin-bottom:8px;">App Shell — always present on every page</div>
+      <div class="shared-row" style="margin-bottom:18px;">
+        <div class="shared-chip">Layout.tsx
+          <div class="tooltip">The outer wrapper that every page sits inside. Makes sure all content is scrollable and leaves room for the tab bar at the bottom.</div>
+        </div>
+        <div class="shared-chip">TabBar.tsx
+          <div class="tooltip">The 4-button navigation bar fixed to the bottom of the screen. Tapping a button switches between Dashboard, Calendar, Log and Trends. Always visible so you can never get lost.</div>
+        </div>
+        <div class="shared-chip">AuthGate.tsx
+          <div class="tooltip">A security gatekeeper. If you're not logged in, it blocks the whole app and shows a login screen. Once you're in, it gets out of the way completely.</div>
+        </div>
+        <div class="shared-chip">GoeHeader.tsx
+          <div class="tooltip">The header bar at the top of the screen showing the GOE Health logo and current page title.</div>
+        </div>
+        <div class="shared-chip">SyncButton.tsx
+          <div class="tooltip">The sync button that appears on Dashboard and Calendar. Tapping it tells the backend to pull the latest data from your Withings device and update the database.</div>
+        </div>
+        <div class="shared-chip">apiFetch (lib/api.ts)
+          <div class="tooltip">A single shared helper function that every part of the app uses to talk to the backend server. It automatically adds a secret key to every request (so the server knows it's really you), and throws an error the UI can catch if something goes wrong.</div>
+        </div>
+      </div>
+
+      <div class="detail-label" style="margin-bottom:8px;">Pages — tap any page to see its components, hooks, and API calls</div>
+      <div class="pages-row">
+        <div class="page-node" id="node-dashboard" onclick="togglePage('dashboard')">
+          <div class="page-node-header">
+            <span class="page-icon">🏠</span>
+            <div class="page-name">Dashboard</div>
+            <div class="page-route">/</div>
+            <div class="page-hint">tap to expand ↓</div>
+          </div>
+        </div>
+        <div class="page-node" id="node-calendar" onclick="togglePage('calendar')">
+          <div class="page-node-header">
+            <span class="page-icon">📅</span>
+            <div class="page-name">Calendar</div>
+            <div class="page-route">/calendar</div>
+            <div class="page-hint">tap to expand ↓</div>
+          </div>
+        </div>
+        <div class="page-node" id="node-log" onclick="togglePage('log')">
+          <div class="page-node-header">
+            <span class="page-icon">✏️</span>
+            <div class="page-name">Log</div>
+            <div class="page-route">/log</div>
+            <div class="page-hint">tap to expand ↓</div>
+          </div>
+        </div>
+        <div class="page-node" id="node-trends" onclick="togglePage('trends')">
+          <div class="page-node-header">
+            <span class="page-icon">📈</span>
+            <div class="page-name">Trends</div>
+            <div class="page-route">/trends</div>
+            <div class="page-hint">tap to expand ↓</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Dashboard detail -->
+      <div class="detail-panel" id="panel-dashboard">
+        <div class="detail-title">Dashboard Page</div>
+        <div class="detail-intro">Your daily health snapshot. Loads when you open the app. Pull down to refresh everything at once. Each card loads its data independently so a slow card doesn't block the rest.</div>
+
+        <div class="divider">Components (the visible cards)</div>
+        <div class="chip-row">
+          <div class="chip chip-component">GoalRingsRow<div class="tooltip">Three circular rings at the top showing daily progress: Sleep score, Step count, and Protein intake — like Apple's activity rings but for your health goals.</div></div>
+          <div class="chip chip-component">ReadinessCard<div class="tooltip">The big score (0–100) telling you how recovered your body is today. It's computed from sleep quality, resting heart rate trend, and recent training load. The narrative below the score is written by the backend.</div></div>
+          <div class="chip chip-component">QuickStatsRow<div class="tooltip">A compact single row of today's key numbers: mood, energy, water consumed, calories, and protein — updated in real time as you log.</div></div>
+          <div class="chip chip-component">ActivityChart<div class="tooltip">A bar chart of your activities over the last 14 days — runs, workouts, sauna sessions. Each bar is one day.</div></div>
+          <div class="chip chip-component">MoodEnergyChart<div class="tooltip">A line chart of your mood and energy scores over the past 30 days. Useful for spotting patterns — like "I always feel low on Mondays".</div></div>
+          <div class="chip chip-component">WaterNutritionChart<div class="tooltip">A combined chart showing your daily water intake and nutrition (calories/protein) side by side over the last 14 days.</div></div>
+          <div class="chip chip-component">VitalsCard<div class="tooltip">Yesterday's body numbers: weight, total sleep hours, deep sleep percentage, and resting heart rate. Lives inside the "More Stats" collapsed section.</div></div>
+          <div class="chip chip-component">StreaksCard<div class="tooltip">Your current consecutive-day streaks: training, sauna, breathwork, devotions. Also lives inside "More Stats".</div></div>
+          <div class="chip chip-component">CardSkeleton<div class="tooltip">A shimmering grey placeholder shown while a card is loading. Prevents the screen from jumping around as data arrives.</div></div>
+          <div class="chip chip-component">CardError<div class="tooltip">A small error message with a "Retry" button that appears if a card fails to fetch its data.</div></div>
+        </div>
+
+        <div class="divider">Hooks (the data fetchers behind the scenes)</div>
+        <div class="chip-row">
+          <div class="chip chip-hook">useDashboard<div class="tooltip">Manages 3 separate data fetches: Readiness score, Vitals (yesterday's body stats), and Streaks. Each one is independent — if Streaks loads slowly, Readiness still shows.</div></div>
+          <div class="chip chip-hook">useDashboardV2<div class="tooltip">Fetches the chart data: activity feed, mood log, water log, and food log. Also does a calculation in JavaScript — it filters today's entries from the data to build the QuickStatsRow numbers.</div></div>
+          <div class="chip chip-hook">useGoalRings<div class="tooltip">Fetches sleep score and step count from the backend to fill in the three goal rings at the top of the page.</div></div>
+        </div>
+
+        <div class="divider">API calls (requests sent to the backend)</div>
+        <div class="chip-row">
+          <div class="chip chip-endpoint">GET /api/readiness<div class="tooltip">Asks the backend to calculate today's readiness score. Returns a number 0–100 plus a written recommendation.</div></div>
+          <div class="chip chip-endpoint">GET /api/summary/daily<div class="tooltip">Gets yesterday's body stats row: weight, sleep hours, deep sleep hours, and resting heart rate.</div></div>
+          <div class="chip chip-endpoint">GET /api/streaks<div class="tooltip">Gets your current and longest streaks for training, sauna, breathwork, and devotions.</div></div>
+          <div class="chip chip-endpoint">GET /api/activities/feed<div class="tooltip">Gets your last 14 days of activities — runs, workouts, etc. — formatted for display with dates and stats.</div></div>
+          <div class="chip chip-endpoint">GET /api/mood<div class="tooltip">Gets your mood and energy log entries for the last 30 days.</div></div>
+          <div class="chip chip-endpoint">GET /api/water<div class="tooltip">Gets your water log entries for the last 14 days. Each entry is a timestamp + ml amount.</div></div>
+          <div class="chip chip-endpoint">GET /api/food<div class="tooltip">Gets your food log entries for the last 14 days — calories and protein per day.</div></div>
+        </div>
+      </div>
+
+      <!-- ── Calendar detail -->
+      <div class="detail-panel" id="panel-calendar">
+        <div class="detail-title">Calendar Page</div>
+        <div class="detail-intro">A month-by-month dot calendar. Coloured dots on each day represent different activity types. Tap a day to see everything that happened. Scroll up and tap "Load earlier" to fetch older months — each month loads separately and is cached so you don't re-fetch it.</div>
+
+        <div class="divider">Components (the visible pieces)</div>
+        <div class="chip-row">
+          <div class="chip chip-component">MonthGrid<div class="tooltip">The calendar grid itself — 7 columns for days of the week, with coloured dots inside each day cell representing your activity categories.</div></div>
+          <div class="chip chip-component">ToggleBar<div class="tooltip">The filter bar at the top where you switch categories on and off — e.g. show only Strength sessions, or show everything at once.</div></div>
+          <div class="chip chip-component">SubToggleBar<div class="tooltip">A second filter bar that appears when you've selected a single category. Lets you drill into sub-types — like filtering by specific muscle groups within Strength.</div></div>
+          <div class="chip chip-component">DayDetailSheet<div class="tooltip">The slide-up panel that appears when you tap a day. Shows all the activities and logs recorded for that exact date.</div></div>
+          <div class="chip chip-component">StatsSection<div class="tooltip">A summary panel showing statistics for the current month — total sessions per category, average duration, etc. Shown when you toggle the Stats button.</div></div>
+          <div class="chip chip-component">PatternsSection<div class="tooltip">Highlights patterns in your data for the current month — e.g. which days of the week you train most consistently.</div></div>
+          <div class="chip chip-component">MonthHeader<div class="tooltip">The sticky label (e.g. "March 2026") that stays pinned to the top as you scroll through a month's grid.</div></div>
+        </div>
+
+        <div class="divider">Hooks (data fetchers)</div>
+        <div class="chip-row">
+          <div class="chip chip-hook">useCalendarData<div class="tooltip">Fetches one month of calendar dots at a time. When you tap "Load earlier" it fetches the previous month and prepends it to the list. Each loaded month is stored in memory so navigating back doesn't re-fetch it.</div></div>
+        </div>
+
+        <div class="divider">API calls</div>
+        <div class="chip-row">
+          <div class="chip chip-endpoint">GET /api/calendar<div class="tooltip">Returns all events for a given month organised by date. Each date key has a list of dot objects — category name, colour, and any detail data for that event type.</div></div>
+        </div>
+      </div>
+
+      <!-- ── Log detail -->
+      <div class="detail-panel" id="panel-log">
+        <div class="detail-title">Log Page</div>
+        <div class="detail-intro">Two sub-tabs. "Log" tab: cards where you record today's data — water, food, strength, mood, sauna, habits. "Activity" tab: a scrollable feed of all your recent activities. Most logging uses natural language (you type it, the backend parses it).</div>
+
+        <div class="divider">Components — Log tab</div>
+        <div class="chip-row">
+          <div class="chip chip-component">WaterCard<div class="tooltip">Log water intake in ml. Shows today's total with a progress ring. Has quick-add buttons for common amounts (250ml, 500ml etc.).</div></div>
+          <div class="chip chip-component">FoodNutritionCard<div class="tooltip">Type food in plain English — "2 eggs and toast" — and the backend uses AI to figure out the calories and macros. You review them before saving.</div></div>
+          <div class="chip chip-component">StrengthCard<div class="tooltip">Log a strength session in plain language — describe what you lifted and the backend parses it into sets, reps, and weight for each exercise.</div></div>
+          <div class="chip chip-component">MoodEnergyCard<div class="tooltip">Two sliders (1–10) to log how you're feeling and your energy level right now. Saved with a timestamp.</div></div>
+          <div class="chip chip-component">SaunaCard<div class="tooltip">One-tap to log a sauna session. Optional duration field if you want to record how long.</div></div>
+          <div class="chip chip-component">HabitsCard<div class="tooltip">Checkboxes for daily habits: breathwork and devotions. Ticking them counts toward your streaks on the Dashboard.</div></div>
+          <div class="chip chip-component">NutritionCard<div class="tooltip">Shows today's running nutrition totals — calories, protein, carbs, fat — updated live as you log food entries.</div></div>
+        </div>
+
+        <div class="divider">Components — Activity tab</div>
+        <div class="chip-row">
+          <div class="chip chip-component">ActivityFeed<div class="tooltip">A scrollable list of all your recent activities — synced from Withings and manually logged. Tap any card to open full details.</div></div>
+          <div class="chip chip-component">ActivityDetailSheet<div class="tooltip">The slide-up panel with full details for a tapped activity — heart rate zones, duration, distance, notes.</div></div>
+        </div>
+
+        <div class="divider">Hooks (data fetchers)</div>
+        <div class="chip-row">
+          <div class="chip chip-hook">useActivityFeed<div class="tooltip">Fetches the list of recent activities for the Activity tab. Handles loading, error, and data states.</div></div>
+          <div class="chip chip-hook">useFoodNutrition<div class="tooltip">Handles submitting new food log entries and fetching today's running nutrition totals.</div></div>
+        </div>
+
+        <div class="divider">API calls</div>
+        <div class="chip-row">
+          <div class="chip chip-endpoint">POST /api/water<div class="tooltip">Saves a new water entry. You send how many ml, the server timestamps it and saves to the database.</div></div>
+          <div class="chip chip-endpoint">GET /api/water<div class="tooltip">Gets today's water entries to show the current total on the WaterCard.</div></div>
+          <div class="chip chip-endpoint">POST /api/food/log<div class="tooltip">Saves a food entry with its nutrition numbers. If you typed it in natural language, the parsing happened before this call — this just saves the final result.</div></div>
+          <div class="chip chip-endpoint">GET /api/food<div class="tooltip">Gets today's food entries for the running nutrition totals display.</div></div>
+          <div class="chip chip-endpoint">POST /api/strength/log<div class="tooltip">Saves a strength session — which exercises, how many sets, reps, and how much weight.</div></div>
+          <div class="chip chip-endpoint">POST /api/mood<div class="tooltip">Saves your mood and energy scores. Auto-timestamps the moment you tap Save.</div></div>
+          <div class="chip chip-endpoint">POST /api/sauna<div class="tooltip">Saves a sauna session with optional duration.</div></div>
+          <div class="chip chip-endpoint">GET /api/activities/feed<div class="tooltip">Gets the activity list for the Activity tab.</div></div>
+        </div>
+      </div>
+
+      <!-- ── Trends detail -->
+      <div class="detail-panel" id="panel-trends">
+        <div class="detail-title">Trends Page</div>
+        <div class="detail-intro">Long-range charts showing patterns across 30 days. When you open this page, 6 API calls fire simultaneously — sleep, heart rate, sauna, nutrition, activity, and water all load in parallel. Even if one fails, the rest still display.</div>
+
+        <div class="divider">Components (the visible charts)</div>
+        <div class="chip-row">
+          <div class="chip chip-component">RecoverySparklines<div class="tooltip">Small inline charts (sparklines) for your recovery metrics over time: sleep duration, sleep quality, resting heart rate, and sauna frequency. Each metric is a tiny line you can scan at a glance.</div></div>
+          <div class="chip chip-component">PerformanceOverlay<div class="tooltip">Overlays performance data on top of recovery metrics so you can visually spot correlations — e.g. does heavier training week lead to worse sleep?</div></div>
+          <div class="chip chip-component">CorrelationSummary<div class="tooltip">Plain-English insights about what seems connected in your data — e.g. "More sleep → higher readiness next day". Calculated client-side from the trend data.</div></div>
+          <div class="chip chip-component">NutritionTrendsChart<div class="tooltip">A weekly bar chart of your average daily protein vs the 180g target. Shows how consistent your nutrition has been week by week.</div></div>
+          <div class="chip chip-component">WaterTrendsChart<div class="tooltip">A 28-day bar chart of daily water intake vs the 3L target. Bars turn from ochre to green on days you hit the goal.</div></div>
+          <div class="chip chip-component">WorkoutVolumeChart<div class="tooltip">Charts your total training volume (sets × reps × weight) over time so you can see if your overall load is trending up or down.</div></div>
+          <div class="chip chip-component">ExerciseProgressSection<div class="tooltip">Tracks individual exercise progression — e.g. how your bench press best set has changed over the past 30 days. Each exercise is its own mini-chart.</div></div>
+        </div>
+
+        <div class="divider">Hooks (data fetchers)</div>
+        <div class="chip-row">
+          <div class="chip chip-hook">useTrendsData<div class="tooltip">The big one. Fires 6 API calls simultaneously when the page loads. Collects all trend data at once. Processes the raw responses into chart-ready format — e.g. it converts individual water log entries into per-day totals.</div></div>
+          <div class="chip chip-hook">useStrengthTrends<div class="tooltip">Fetches your strength session history — all sets, reps, and weights — to calculate volume and progression over time.</div></div>
+          <div class="chip chip-hook">useExerciseHistory<div class="tooltip">Fetches the full history for a specific exercise (e.g. squat) to render its progression chart.</div></div>
+        </div>
+
+        <div class="divider">API calls (all 6 fire at the same time)</div>
+        <div class="chip-row">
+          <div class="chip chip-endpoint">GET /api/sleep<div class="tooltip">Returns nightly sleep records — total hours and deep sleep hours. Synced from your Withings sleep tracker.</div></div>
+          <div class="chip chip-endpoint">GET /api/rhr<div class="tooltip">Returns your resting heart rate readings over the time range. Lower = better recovery. Synced from Withings.</div></div>
+          <div class="chip chip-endpoint">GET /api/sauna<div class="tooltip">Returns sauna session history. The hook groups them by day to show frequency over time.</div></div>
+          <div class="chip chip-endpoint">GET /api/food/weekly<div class="tooltip">Returns food data already aggregated by week on the backend — average daily calories and protein per week. Much lighter than sending 30 days of raw entries.</div></div>
+          <div class="chip chip-endpoint">GET /api/activity<div class="tooltip">Returns raw activity rows. The hook splits these into two buckets: runs (for the runs chart) and workouts (for strength volume).</div></div>
+          <div class="chip chip-endpoint">GET /api/water<div class="tooltip">Returns individual water log entries. The hook aggregates them into per-day totals for the 28-day bar chart.</div></div>
+          <div class="chip chip-endpoint">GET /api/exercises/history<div class="tooltip">Returns the history for a specific exercise — every set you've ever logged with the date, reps, and weight.</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════ CONNECTOR 1 -->
+  <div class="connector">
+    <div class="connector-line"></div>
+    <div style="display:flex;align-items:center;justify-content:center;">
+      <div class="gateway">
+        <div>
+          <div class="gateway-label">apiFetch( )</div>
+          <div class="gateway-desc">Every request passes through here · adds secret API key · handles errors</div>
+        </div>
+        <div class="tooltip" style="width:240px;">Every single API call in the entire app goes through this one function in lib/api.ts. It automatically adds a secret API key header to every request so the backend server knows the request is legitimate. If the server returns an error, the function throws an exception — which the card hook catches and uses to show the retry button.</div>
+      </div>
+    </div>
+    <div class="connector-line-bottom"></div>
+  </div>
+
+  <!-- ══════════════════════════════════ PYTHON LAYER -->
+  <div class="layer layer-python">
+    <div class="layer-header">
+      <div class="layer-dot"></div>
+      <span class="layer-title">FastAPI Python Backend</span>
+      <span class="layer-subtitle">Railway · always-on server · Port 8000</span>
+    </div>
+    <div class="layer-body">
+      <div class="detail-label" style="margin-bottom:6px;">API Endpoints</div>
+      <p class="layer-note">Each endpoint is a Python function that runs when the frontend calls it. GET = reads data and returns it. POST = saves new data. Hover any endpoint to see what it does.</p>
+      <div class="chips-wrap">
+        <div class="endpoint-chip"><span class="method">GET</span>/api/readiness<div class="tooltip">Calculates your readiness score by combining sleep quality, heart rate trend, and recent training load. Pure maths — doesn't save anything. Returns a score 0–100 plus a written recommendation.</div></div>
+        <div class="endpoint-chip"><span class="method">GET</span>/api/summary/daily<div class="tooltip">Reads yesterday's row from the daily_summaries table. Returns weight, total sleep, deep sleep, and resting heart rate.</div></div>
+        <div class="endpoint-chip"><span class="method">GET</span>/api/streaks<div class="tooltip">Walks backwards through your activity records day by day, counting consecutive days until it hits a gap. Does this for each streak category.</div></div>
+        <div class="endpoint-chip"><span class="method">GET</span>/api/activities/feed<div class="tooltip">Returns recent activities formatted for display — readable activity type names, date, duration, heart rate averages.</div></div>
+        <div class="endpoint-chip"><span class="method">GET</span>/api/activity<div class="tooltip">Returns raw activity rows from the database. The frontend hooks do their own filtering (runs vs workouts) on this data.</div></div>
+        <div class="endpoint-chip"><span class="method">GET</span>/api/mood<div class="tooltip">Returns mood and energy log entries from mood_logs, sorted newest-first. Accepts a "days" parameter to limit the date range.</div></div>
+        <div class="endpoint-chip"><span class="method">POST</span>/api/mood<div class="tooltip">Saves a new mood entry. Takes mood score (1–10) and energy score (1–10), adds the current timestamp, inserts into mood_logs.</div></div>
+        <div class="endpoint-chip"><span class="method">GET</span>/api/water<div class="tooltip">Returns water log entries from water_logs. Accepts "days" parameter — Dashboard asks for 14 days, Trends asks for 30.</div></div>
+        <div class="endpoint-chip"><span class="method">POST</span>/api/water<div class="tooltip">Saves a new water entry. You send ml amount, server timestamps it and inserts into water_logs.</div></div>
+        <div class="endpoint-chip"><span class="method">GET</span>/api/food<div class="tooltip">Returns food log entries from food_logs with calories and macro breakdown per day.</div></div>
+        <div class="endpoint-chip"><span class="method">POST</span>/api/food/log<div class="tooltip">Saves a food entry. If you typed natural language, AI parsing happened before this — this endpoint just saves the final numbers to food_logs.</div></div>
+        <div class="endpoint-chip"><span class="method">GET</span>/api/food/weekly<div class="tooltip">Runs a SQL GROUP BY query on food_logs to return weekly averages — average daily calories and protein per week. Much lighter than returning 30 rows.</div></div>
+        <div class="endpoint-chip"><span class="method">GET</span>/api/sleep<div class="tooltip">Returns sleep records from sleep_logs — total hours and deep sleep hours for each night.</div></div>
+        <div class="endpoint-chip"><span class="method">GET</span>/api/rhr<div class="tooltip">Returns resting heart rate readings from daily_summaries. Synced from Withings.</div></div>
+        <div class="endpoint-chip"><span class="method">GET</span>/api/sauna<div class="tooltip">Returns sauna session records. Accepts days and limit parameters for filtering.</div></div>
+        <div class="endpoint-chip"><span class="method">POST</span>/api/sauna<div class="tooltip">Saves a sauna session with date and optional duration to sauna_sessions.</div></div>
+        <div class="endpoint-chip"><span class="method">GET</span>/api/calendar<div class="tooltip">Returns a month's worth of events organised by date key. Aggregates data from activities, sleep, and food into a single response the MonthGrid can render as dots.</div></div>
+        <div class="endpoint-chip"><span class="method">GET</span>/api/exercises<div class="tooltip">Returns the list of exercises you've logged with their muscle group category (chest, back, legs, etc.).</div></div>
+        <div class="endpoint-chip"><span class="method">GET</span>/api/exercises/history<div class="tooltip">Returns the full history for a specific exercise — every logged set with date, reps, and weight.</div></div>
+        <div class="endpoint-chip"><span class="method">POST</span>/api/strength/log<div class="tooltip">Saves a strength training session. Takes exercise ID, sets, reps, and weight — stores in strength_sessions.</div></div>
+        <div class="endpoint-chip"><span class="method">POST</span>/api/sync<div class="tooltip">Triggers a Withings data sync — pulls fresh sleep, activity, heart rate, and weight data from the Withings API and saves it to the database. This is what the Sync button triggers.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════ CONNECTOR 2 -->
+  <div class="connector">
+    <div class="connector-line"></div>
+    <div class="connector-label">SQL queries via asyncpg driver</div>
+    <div class="connector-line-bottom"></div>
+  </div>
+
+  <!-- ══════════════════════════════════ DB LAYER -->
+  <div class="layer layer-db">
+    <div class="layer-header">
+      <div class="layer-dot"></div>
+      <span class="layer-title">PostgreSQL Database</span>
+      <span class="layer-subtitle">Railway · 6 years of data · Brisbane UTC+10</span>
+    </div>
+    <div class="layer-body">
+      <div class="detail-label" style="margin-bottom:6px;">Tables</div>
+      <p class="layer-note">Each table is like a spreadsheet — rows are individual records, columns are fields. Data either comes from Withings (synced) or from you manually logging in the app. Hover each table to see what it stores.</p>
+      <div class="chips-wrap">
+        <div class="table-chip">🗄 activities<div class="tooltip">Every activity synced from Withings — runs, workouts, walks, cycles. Each row stores the activity type, date, duration, distance, and heart rate stats. 6 years of data imported.</div></div>
+        <div class="table-chip">🗄 daily_summaries<div class="tooltip">A daily roll-up from Withings — one row per day with weight, total sleep hours, deep sleep hours, and resting heart rate. The source for VitalsCard and RHR trends.</div></div>
+        <div class="table-chip">🗄 sleep_logs<div class="tooltip">Detailed nightly sleep records synced from your Withings sleep tracker — total sleep time and deep sleep time per night.</div></div>
+        <div class="table-chip">🗄 mood_logs<div class="tooltip">Your manually logged mood entries. Each row has a timestamp, a mood score (1–10), and an energy score (1–10). Created in the app, stored here.</div></div>
+        <div class="table-chip">🗄 water_logs<div class="tooltip">Your manually logged water entries. Each row has a timestamp and how many ml you drank in that sip/glass. Multiple entries per day are summed for your daily total.</div></div>
+        <div class="table-chip">🗄 food_logs<div class="tooltip">Your manually logged food entries. Each row has a date and the nutrition breakdown: calories, protein, carbs, and fat. Typically one row per meal or food item.</div></div>
+        <div class="table-chip">🗄 sauna_sessions<div class="tooltip">Sauna sessions — either manually logged via the app or synced from Withings. Stores date, start time, and duration in minutes.</div></div>
+        <div class="table-chip">🗄 exercises<div class="tooltip">The exercise library — all the exercises you've ever logged, with their name and muscle group category (chest, back, shoulders, arms, legs, core). Referenced by strength sessions.</div></div>
+        <div class="table-chip">🗄 strength_sessions<div class="tooltip">Individual strength training sets. Each row links to an exercise and stores the number of reps and weight lifted for that set, plus a session date.</div></div>
+        <div class="table-chip">🗄 withings_tokens<div class="tooltip">The secure OAuth tokens that allow the backend to connect to your Withings account and pull data. You never see or interact with this table directly — it's purely a security detail.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- External sources -->
+  <div class="external-box">
+    <div class="detail-label" style="margin-bottom:10px;">External Systems</div>
+    <div class="shared-row">
+      <div class="shared-chip">Withings API
+        <div class="tooltip">Your Withings wearable device continuously records sleep, heart rate, steps, weight, and activities. That data sits on Withings' own cloud servers. When you tap Sync, the backend logs into the Withings API with your saved tokens and downloads everything new, then stores it in your database.</div>
+      </div>
+      <div class="shared-chip">AI / NLP parsing
+        <div class="tooltip">When you type food or exercises in natural language (like "chicken breast 200g and brown rice"), the backend sends that text to an AI language model. The AI returns structured data — calories, protein, exercise name, sets, reps — which the backend then saves to the database.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function togglePage(id) {
+      const panel = document.getElementById('panel-' + id);
+      const node  = document.getElementById('node-' + id);
+      const isOpen = panel.classList.contains('open');
+
+      document.querySelectorAll('.detail-panel').forEach(p => p.classList.remove('open'));
+      document.querySelectorAll('.page-node').forEach(n => n.classList.remove('open'));
+
+      if (!isOpen) {
+        panel.classList.add('open');
+        node.classList.add('open');
+        setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+      }
+    }
+  </script>
+</body>
+</html>
