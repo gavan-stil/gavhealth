@@ -88,7 +88,7 @@ export default function LogCards() {
       </div>
 
       <FoodNutritionCard open={openCard === 'food'} onToggle={() => toggle('food')} date={selectedDate} />
-      <WaterCard open={openCard === 'water'} onToggle={() => toggle('water')} />
+      <WaterCard open={openCard === 'water'} onToggle={() => toggle('water')} date={selectedDate} />
       <MoodEnergyCard open={openCard === 'mood'} onToggle={() => toggle('mood')} date={selectedDate} />
       <StrengthCard open={openCard === 'strength'} onToggle={() => toggle('strength')} />
       <SaunaCard open={openCard === 'sauna'} onToggle={() => toggle('sauna')} />

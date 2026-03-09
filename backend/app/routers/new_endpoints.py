@@ -779,20 +779,38 @@ async def log_water(body: WaterLogCreate, db: AsyncSession = Depends(get_db)):
     }
 
 
+BRISBANE_OFFSET = timedelta(hours=10)
+
+
 @router.get("/water")
 async def get_water(
     days: int = Query(default=1, ge=1, le=365),
+    date: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        text("""
-            SELECT id, logged_at, ml
-            FROM water_logs
-            WHERE logged_at >= NOW() - (:days * INTERVAL '1 day')
-            ORDER BY logged_at DESC
-        """),
-        {"days": days},
-    )
+    if date:
+        d = datetime.fromisoformat(date).date()
+        start = datetime(d.year, d.month, d.day, tzinfo=timezone(BRISBANE_OFFSET))
+        end = start + timedelta(days=1)
+        result = await db.execute(
+            text("""
+                SELECT id, logged_at, ml
+                FROM water_logs
+                WHERE logged_at >= :start AND logged_at < :end
+                ORDER BY logged_at DESC
+            """),
+            {"start": start, "end": end},
+        )
+    else:
+        result = await db.execute(
+            text("""
+                SELECT id, logged_at, ml
+                FROM water_logs
+                WHERE logged_at >= NOW() - (:days * INTERVAL '1 day')
+                ORDER BY logged_at DESC
+            """),
+            {"days": days},
+        )
     rows = result.mappings().all()
     return [
         {
@@ -802,6 +820,18 @@ async def get_water(
         }
         for r in rows
     ]
+
+
+@router.delete("/water/{entry_id}")
+async def delete_water(entry_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        text("DELETE FROM water_logs WHERE id = :id RETURNING id"),
+        {"id": entry_id},
+    )
+    await db.commit()
+    if not result.rowcount:
+        raise HTTPException(status_code=404, detail="Water entry not found")
+    return {"deleted": entry_id}
 
 
 # ---------------------------------------------------------------------------
