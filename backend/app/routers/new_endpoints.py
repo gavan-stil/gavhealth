@@ -447,7 +447,7 @@ async def list_strength_sessions(days: int = Query(default=14), db: AsyncSession
         text("""
             SELECT id, created_at::date AS log_date, workout_split, duration_minutes,
                    jsonb_array_length(exercises) AS exercise_count,
-                   matched_activity_id, match_confirmed
+                   matched_activity_id, match_confirmed, bridged_session_id
             FROM manual_strength_logs
             WHERE created_at >= CURRENT_DATE - (:days * INTERVAL '1 day')
             ORDER BY created_at DESC
@@ -464,6 +464,7 @@ async def list_strength_sessions(days: int = Query(default=14), db: AsyncSession
             "exercise_count": r["exercise_count"],
             "matched_activity_id": r["matched_activity_id"],
             "match_confirmed": r["match_confirmed"],
+            "bridged_session_id": r["bridged_session_id"],
         }
         for r in rows
     ]

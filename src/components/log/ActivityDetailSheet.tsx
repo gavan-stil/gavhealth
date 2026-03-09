@@ -22,6 +22,7 @@ export interface StrengthSessionForSheet {
   duration_minutes: number;
   exercise_count: number;
   matched_activity_id: number | null;
+  bridged_session_id: number | null;
 }
 
 /* ── API shapes ─────────────────────────────────────────────────────────── */
@@ -189,9 +190,18 @@ export default function ActivityDetailSheet({
     (async () => {
       setLoadingDetail(true);
       try {
-        const date = linkedSession.log_date;
+        // Use item.date (the Withings activity date), not linkedSession.log_date
+        // (which may be the date the session was entered, not when the workout happened).
+        // Widen to ±1 day to handle any timezone edge cases in the backend date filter.
+        const workoutDate = item.date;
+        const d = new Date(workoutDate + 'T00:00:00');
+        const prev = new Date(d); prev.setDate(d.getDate() - 1);
+        const next = new Date(d); next.setDate(d.getDate() + 1);
+        const startDate = prev.toLocaleDateString('en-CA');
+        const endDate = next.toLocaleDateString('en-CA');
+
         const [rawSessions, allEx] = await Promise.all([
-          apiFetch<RawSession[]>(`/api/strength/sessions?start_date=${date}&end_date=${date}&limit=10`),
+          apiFetch<RawSession[]>(`/api/strength/sessions?start_date=${startDate}&end_date=${endDate}&limit=20`),
           apiFetch<RawExercise[]>('/api/exercises'),
         ]);
         if (cancelled) return;
@@ -199,10 +209,17 @@ export default function ActivityDetailSheet({
         const exMap = new Map<string, RawExercise>();
         allEx.forEach(e => exMap.set(e.name.toLowerCase(), e));
 
-        /* Find the specific session — prefer by ID, fall back to first with exercises */
+        /* Find the bridged strength_sessions row.
+           linkedSession.id is from manual_strength_logs; bridged_session_id is the
+           strength_sessions.id — they're different sequences, so we must use bridged_session_id. */
         const withEx = rawSessions.filter(s => s.exercises.length > 0);
-        const raw = withEx.find(s => s.id === linkedSession.id) ?? withEx[0];
+        const raw = linkedSession.bridged_session_id != null
+          ? withEx.find(s => s.id === linkedSession.bridged_session_id)
+          : undefined;
         if (!raw) return;
+
+        // Use the session's own date for history matching (not workoutDate or log_date)
+        const sessionDate = raw.session_date.slice(0, 10);
 
         /* Collect exercise IDs for history fetch */
         const ids = new Set<number>();
@@ -225,7 +242,7 @@ export default function ActivityDetailSheet({
           const ex = exMap.get(r.toLowerCase());
           if (!ex) return;
           const { name } = parseEx(r);
-          const entry = histMap.get(ex.id)?.find(h => h.session_date.slice(0, 10) === date);
+          const entry = histMap.get(ex.id)?.find(h => h.session_date.slice(0, 10) === sessionDate);
           if (!entry) return;
           rows.push({
             name,

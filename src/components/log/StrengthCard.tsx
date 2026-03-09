@@ -450,6 +450,10 @@ export default function StrengthCard({
         })));
         setLastDate(data.date);
         setNoLastSession(false);
+        // Always reset startDate to today when loading a template — loading exercises
+        // from a past session as a template must NOT inherit the old session's date,
+        // otherwise the backend will match (and displace) the original linked session.
+        setStartDate(today());
       } else {
         setExercises([]);
         setLastDate(null);

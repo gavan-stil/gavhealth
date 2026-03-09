@@ -25,6 +25,7 @@ interface StrengthSession {
   duration_minutes: number;
   exercise_count: number;
   matched_activity_id: number | null;
+  bridged_session_id: number | null;
 }
 
 type MergedItem =
