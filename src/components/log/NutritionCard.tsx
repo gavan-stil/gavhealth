@@ -64,7 +64,7 @@ export default function NutritionCard({ open, onToggle }: Props) {
   const fetchToday = () => {
     setLoading(true);
     setError(null);
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA');
     apiFetch<FoodEntry[]>(`/api/food?date=${today}`)
       .then(entries => {
         const t = entries.reduce(

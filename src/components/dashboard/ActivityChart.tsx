@@ -31,7 +31,7 @@ export default function ActivityChart({ data, loading }: Props) {
     for (let i = 13; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      days.push(d.toISOString().split('T')[0]);
+      days.push(d.toLocaleDateString('en-CA'));
     }
     return days.map(date => {
       const dayItems = data.filter(a => a.date === date);

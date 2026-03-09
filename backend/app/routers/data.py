@@ -1,7 +1,13 @@
 """Read-only data endpoints: weight, sleep, activity, RHR, DEXA, streaks, settings,
 food, sauna, exercises, strength history, strength PRs."""
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
+
+BRISBANE_TZ = timezone(timedelta(hours=10))
+
+
+def brisbane_today() -> date:
+    return datetime.now(BRISBANE_TZ).date()
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select, text, update
@@ -117,7 +123,7 @@ async def get_sleep_stages(
     """
     from app.services.withings_service import get_valid_token, sync_sleep_stages
 
-    target_date = date or __import__("datetime").date.today()
+    target_date = date or brisbane_today()
 
     row = (await db.execute(
         select(SleepLog).where(SleepLog.sleep_date == target_date, SleepLog.source == "withings")
@@ -308,7 +314,7 @@ async def get_streaks(
     db: AsyncSession = Depends(get_db),
     _key: str = Depends(verify_api_key),
 ):
-    today = date.today()
+    today = brisbane_today()
 
     async def _streak(check_fn) -> tuple[int, int]:
         """Return (current_streak, longest_streak)."""
