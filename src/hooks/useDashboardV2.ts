@@ -30,9 +30,19 @@ export interface FoodEntry {
   protein_g: number;
 }
 
+export interface RawActivityEntry {
+  activity_date: string;
+  activity_type: string;
+  calories_burned: number | null;
+}
+
 interface FoodApiResponse {
   data: FoodEntry[];
   total: number;
+}
+
+interface RawActivityApiResponse {
+  data: RawActivityEntry[];
 }
 
 export interface TodayStats {
@@ -66,10 +76,15 @@ export default function useDashboardV2() {
   const mood = useFetch<MoodEntry[]>('/api/mood?days=30');
   const water = useFetch<WaterEntry[]>('/api/water?days=14');
   const foodRaw = useFetch<FoodApiResponse>('/api/food?days=14');
+  const activityRaw = useFetch<RawActivityApiResponse>('/api/activity?days=14');
   // Unwrap paginated response: { data: FoodEntry[], total, ... } → FoodEntry[]
   const food = {
     ...foodRaw,
     data: foodRaw.data?.data ?? null,
+  };
+  const activityData = {
+    ...activityRaw,
+    data: activityRaw.data?.data ?? null,
   };
 
   const refetch = useCallback(() => {
@@ -77,7 +92,8 @@ export default function useDashboardV2() {
     mood.refetch();
     water.refetch();
     food.refetch();
-  }, [activities.refetch, mood.refetch, water.refetch, food.refetch]);
+    activityRaw.refetch();
+  }, [activities.refetch, mood.refetch, water.refetch, food.refetch, activityRaw.refetch]);
 
   // Today's stats for QuickStatsRow — use local date to avoid UTC day-boundary bug (Brisbane UTC+10)
   const toLocalDate = (iso: string) => new Date(iso).toLocaleDateString('en-CA');
@@ -101,5 +117,5 @@ export default function useDashboardV2() {
     protein_g: todayProtein,
   };
 
-  return { activities, mood, water, food, todayStats, refetch };
+  return { activities, mood, water, food, activityData, todayStats, refetch };
 }

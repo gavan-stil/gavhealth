@@ -13,6 +13,7 @@ import CardEmpty from "@/components/dashboard/CardEmpty";
 import SyncButton from "@/components/SyncButton";
 import QuickStatsRow from "@/components/dashboard/QuickStatsRow";
 import ActivityChart from "@/components/dashboard/ActivityChart";
+import CalorieBalanceChart from "@/components/dashboard/CalorieBalanceChart";
 import MoodEnergyChart from "@/components/dashboard/MoodEnergyChart";
 import WaterNutritionChart from "@/components/dashboard/WaterNutritionChart";
 import NutritionTargetChart from "@/components/dashboard/NutritionTargetChart";
@@ -137,6 +138,13 @@ export default function DashboardPage() {
 
       {/* Activity chart */}
       <ActivityChart data={v2.activities.data} loading={v2.activities.loading} />
+
+      {/* Calorie balance chart */}
+      <CalorieBalanceChart
+        activityData={v2.activityData.data}
+        foodData={v2.food.data}
+        loading={v2.activityData.loading || v2.food.loading}
+      />
 
       {/* Mood & Energy chart */}
       <MoodEnergyChart data={v2.mood.data} loading={v2.mood.loading} />
