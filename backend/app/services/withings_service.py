@@ -623,9 +623,14 @@ async def sync_workouts(db: AsyncSession, access_token: str, since_ts: int) -> i
     Category 36 (miscellaneous) with HR data but low distance is treated as a
     sauna session and also linked to sauna_logs via withings_activity_id.
     """
+    # Always look back at least 14 days so any timezone-corrected dates get
+    # upserted even if the workout was uploaded to Withings before last_sync_at.
+    fourteen_days_ago = int((datetime.now(timezone.utc) - timedelta(days=14)).timestamp())
+    effective_since = min(since_ts, fourteen_days_ago)
+
     params: dict = {
         "action": "getworkouts",
-        "lastupdate": since_ts,
+        "lastupdate": effective_since,
         "data_fields": (
             "calories,effduration,steps,distance,elevation,"
             "hr_average,hr_max,hr_min,hr_zone_0,hr_zone_1,hr_zone_2,hr_zone_3,"
