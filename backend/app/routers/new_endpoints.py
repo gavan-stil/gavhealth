@@ -1042,3 +1042,44 @@ async def energy_balance(days: int = Query(default=30), db: AsyncSession = Depen
         }
         for r in rows
     ]
+
+
+# ---------------------------------------------------------------------------
+# T16-3. GET /api/hr/zones?days=N
+# Returns per-session HR zone breakdown for cardio (run/ride) workouts.
+# Columns hr_zone_0/1/2/3 added via main.py lifespan ALTER TABLE.
+# ---------------------------------------------------------------------------
+@router.get("/hr/zones")
+async def hr_zones(days: int = Query(default=30, ge=1, le=365), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        text("""
+            SELECT
+                activity_date                AS date,
+                activity_type,
+                ROUND(duration_mins)::int    AS duration_mins,
+                hr_zone_0,
+                hr_zone_1,
+                hr_zone_2,
+                hr_zone_3
+            FROM activity_logs
+            WHERE activity_type IN ('run', 'ride')
+              AND activity_date >= CURRENT_DATE - (:days * INTERVAL '1 day')
+              AND (hr_zone_0 IS NOT NULL OR hr_zone_1 IS NOT NULL
+                   OR hr_zone_2 IS NOT NULL OR hr_zone_3 IS NOT NULL)
+            ORDER BY activity_date ASC
+        """),
+        {"days": days},
+    )
+    rows = result.mappings().all()
+    return [
+        {
+            "date": r["date"].isoformat(),
+            "activity_type": r["activity_type"],
+            "duration_mins": r["duration_mins"],
+            "hr_zone_0": r["hr_zone_0"],
+            "hr_zone_1": r["hr_zone_1"],
+            "hr_zone_2": r["hr_zone_2"],
+            "hr_zone_3": r["hr_zone_3"],
+        }
+        for r in rows
+    ]

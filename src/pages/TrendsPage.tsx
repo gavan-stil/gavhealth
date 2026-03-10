@@ -6,6 +6,7 @@ import RecoverySparklines from "@/components/trends/RecoverySparklines";
 import PerformanceOverlay from "@/components/trends/PerformanceOverlay";
 import EnergyBalanceChart from "@/components/trends/EnergyBalanceChart";
 import StrengthQualityChart from "@/components/trends/StrengthQualityChart";
+import RunHRZonesChart from "@/components/trends/RunHRZonesChart";
 import WorkoutVolumeChart from "@/components/trends/WorkoutVolumeChart";
 import ExerciseProgressSection from "@/components/trends/ExerciseProgressSection";
 import NutritionTrendsChart from "@/components/trends/NutritionTrendsChart";
@@ -172,6 +173,7 @@ export default function TrendsPage() {
           )}
           <EnergyBalanceChart />
           <StrengthQualityChart />
+          <RunHRZonesChart />
           <RecoverySparklines data={data} />
           <PerformanceOverlay data={data} />
           <NutritionTrendsChart nutrition={data.nutrition} />

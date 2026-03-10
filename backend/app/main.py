@@ -65,6 +65,11 @@ async def lifespan(app: FastAPI):
             # activity_logs: start timestamp + min HR from Withings
             "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ",
             "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS min_hr INTEGER",
+            # T16: HR zone seconds (integers) from Withings workoutv2
+            "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS hr_zone_0 INTEGER",
+            "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS hr_zone_1 INTEGER",
+            "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS hr_zone_2 INTEGER",
+            "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS hr_zone_3 INTEGER",
             # sleep_logs: sleep stage breakdown (JSONB)
             "ALTER TABLE sleep_logs ADD COLUMN IF NOT EXISTS stages JSONB",
             # manual_strength_logs: backfill log_date column if missing

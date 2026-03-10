@@ -118,6 +118,11 @@ class ActivityLog(Base):
     # data-pipeline extensions
     route_polyline: Mapped[str | None] = mapped_column(Text)
     zone_seconds: Mapped[dict | None] = mapped_column(JSONB)
+    # T16: HR zone seconds from Withings workoutv2 (dedicated integer columns)
+    hr_zone_0: Mapped[int | None] = mapped_column(Integer)
+    hr_zone_1: Mapped[int | None] = mapped_column(Integer)
+    hr_zone_2: Mapped[int | None] = mapped_column(Integer)
+    hr_zone_3: Mapped[int | None] = mapped_column(Integer)
 
 
 # ---------------------------------------------------------------------------

@@ -701,6 +701,10 @@ async def sync_workouts(db: AsyncSession, access_token: str, since_ts: int) -> i
                 "calories_burned": data.get("calories"),
                 "elevation_m": data.get("elevation"),
                 "zone_seconds": zone_seconds,
+                "hr_zone_0": data.get("hr_zone_0"),
+                "hr_zone_1": data.get("hr_zone_1"),
+                "hr_zone_2": data.get("hr_zone_2"),
+                "hr_zone_3": data.get("hr_zone_3"),
                 "source": SOURCE,
             }
 
