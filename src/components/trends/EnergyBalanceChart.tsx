@@ -7,7 +7,6 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  ReferenceLine,
 } from "recharts";
 import { apiFetch } from "@/lib/api";
 import { AlertTriangle, Loader2 } from "lucide-react";

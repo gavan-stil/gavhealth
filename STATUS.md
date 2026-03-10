@@ -18,13 +18,16 @@ All 9 tasks shipped. App is live, logging flows work end-to-end.
 Task file: `tasks/T15-trends-energy-balance.md`
 
 Progress:
-- T15-1a: HTML mockup — in progress
-- T15-1b: `GET /api/energy-balance` endpoint — pending
-- T15-1c: `EnergyBalanceChart.tsx` component — pending
-- T15-2b: Fix `date: null` bug in `/api/strength/sessions` — pending
-- T15-2c: `StrengthQualityChart.tsx` component — pending
-- T15-3: Run HR Zones — 🔴 BLOCKED (backend needs to populate hr_zone_* cols)
-- T15-4: Remove CorrelationSummary — pending
+- T15-1a: HTML mockup — ✅ done
+- T15-1b: `GET /api/energy-balance` endpoint — ✅ deployed (commit 29dbae4; kJ fix in 382fd68)
+- T15-1c: `EnergyBalanceChart.tsx` component — ✅ done (commit 382fd68)
+- T15-1d: Wired to TrendsPage (top of page) — ✅ done
+- T15-2b: Fix `date: null` + add `category` in `/api/strength/sessions` — ✅ deployed (29dbae4)
+- T15-2c: `StrengthQualityChart.tsx` component — ✅ done (commit 382fd68)
+- T15-2d: Wired to TrendsPage (top of page) — ✅ done
+- T15-3: Run HR Zones — 🔴 BLOCKED (hr_zone_* cols always NULL; needs separate T16 backend task)
+- T15-4: Remove CorrelationSummary — ✅ done
+- **Data quality fix:** Withings kJ→kcal CASE guard in energy-balance endpoint (some bulk-imported daily_summary rows stored kJ; fixed in 382fd68)
 
 **T14 Sprint** — complete ✅ (2026-03-10). Only 1.6 (food photo spec) is a non-code research item, deprioritised.
 All code items done: 1a✅ 1b✅ 1c✅ 1d✅ 1e✅ 1f✅ 1g✅ 1h✅ 1.2✅ 1.3✅ 1.4✅ 1.7✅ 1.8✅ 2.1✅ 3✅ 4✅ 1.1-filter✅ 1.1-sessions✅ goal-rings✅ day-detail-sheet✅ 2✅.

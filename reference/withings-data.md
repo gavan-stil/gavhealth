@@ -117,6 +117,13 @@ All 4 blocking strength trends backend tasks are live. Verified via curl.
 ### 7. Store steps properly from daily_summary (LOW)
 - Currently stuffed into `notes` as a string — should be its own column
 
+### 8. ⚠️ kJ unit inconsistency in daily_summary rows (DATA QUALITY)
+- Some bulk-imported `daily_summary` rows have `calories_burned` stored in **kJ not kcal**.
+- Affected rows identified: 2026-03-06 (12926 kJ) and 2026-03-07 (12634 kJ). These also have anomalously large `duration_mins` (~1100).
+- Root cause: likely CSV export format difference (Withings CSV uses kJ in some locales/exports).
+- **Workaround (implemented):** `GET /api/energy-balance` applies `CASE WHEN calories_burned > 8000 THEN ROUND(calories_burned / 4.184) ELSE calories_burned END`. No human burns >8000 kcal/day normally; anything above that threshold is treated as kJ.
+- TODO: update the raw DB rows to store kcal consistently (or add a `calories_unit` column). Low urgency while the endpoint guard is in place.
+
 ---
 
 ## Current Data Volume (as of 2026-03-07)
