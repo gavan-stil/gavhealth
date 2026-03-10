@@ -14,20 +14,20 @@ All 9 tasks shipped. App is live, logging flows work end-to-end.
 
 ## Active Task
 
-**T15 Sprint** — Trends Redesign: Energy Balance + Strength Quality. Started 2026-03-10.
-Task file: `tasks/T15-trends-energy-balance.md`
+**T16** — HR Zones Backend: populate `hr_zone_0/1/2/3` from Withings sync. Started 2026-03-10.
+Task file: `tasks/T16-hr-zones.md`
 
 Progress:
-- T15-1a: HTML mockup — ✅ done
-- T15-1b: `GET /api/energy-balance` endpoint — ✅ deployed (commit 29dbae4; kJ fix in 382fd68)
-- T15-1c: `EnergyBalanceChart.tsx` component — ✅ done (commit 382fd68)
-- T15-1d: Wired to TrendsPage (top of page) — ✅ done
-- T15-2b: Fix `date: null` + add `category` in `/api/strength/sessions` — ✅ deployed (29dbae4)
-- T15-2c: `StrengthQualityChart.tsx` component — ✅ done (commit 382fd68)
-- T15-2d: Wired to TrendsPage (top of page) — ✅ done
-- T15-3: Run HR Zones — 🔴 BLOCKED (hr_zone_* cols always NULL; needs separate T16 backend task)
-- T15-4: Remove CorrelationSummary — ✅ done
-- **Data quality fix:** Withings kJ→kcal CASE guard in energy-balance endpoint (some bulk-imported daily_summary rows stored kJ; fixed in 382fd68)
+- T16-1: Add `hr_zone_0/1/2/3` columns to `activity_logs` — 🔲 todo
+- T16-2: Update `sync_workouts` to write zone seconds from Withings `workoutv2` response — 🔲 todo
+- T16-3: `GET /api/hr/zones?days=N` endpoint — 🔲 todo
+- T16-4: `RunHRZonesChart.tsx` (unblocks T15-3) — 🔲 todo
+
+---
+
+**T15 Sprint** — complete ✅ (2026-03-10). All code items done.
+Task file: `tasks/T15-trends-energy-balance.md`
+Commits: `29dbae4` (backend), `382fd68` (frontend + kJ fix), `f82dd9a` (import fix + docs)
 
 **T14 Sprint** — complete ✅ (2026-03-10). Only 1.6 (food photo spec) is a non-code research item, deprioritised.
 All code items done: 1a✅ 1b✅ 1c✅ 1d✅ 1e✅ 1f✅ 1g✅ 1h✅ 1.2✅ 1.3✅ 1.4✅ 1.7✅ 1.8✅ 2.1✅ 3✅ 4✅ 1.1-filter✅ 1.1-sessions✅ goal-rings✅ day-detail-sheet✅ 2✅.
@@ -41,6 +41,7 @@ Full task list: `tasks/T14-sprint.md`
 
 | Task | Date | Summary |
 |------|------|---------|
+| T15 Trends Redesign | 2026-03-10 | EnergyBalanceChart (intake/burn bars + weight line, dual y-axis, protein-first summary row). StrengthQualityChart (scatter: duration vs avg_hr, bubble=sets, category colour). Both at top of TrendsPage; CorrelationSummary removed. Data quality fix: kJ→kcal CASE guard in energy-balance endpoint (daily_summary rows from CSV bulk import stored kJ). Commits: 29dbae4, 382fd68, f82dd9a |
 | Withings timezone + HR detail sheet | 2026-03-10 | Bug 1: sync_workouts was using UTC .date() — morning Brisbane workouts landed on previous day. Fixed: .astimezone(BRISBANE_TZ).date(). Bug 2: on_conflict_do_nothing → on_conflict_do_update so re-syncs overwrite stale data. Bug 3: ActivityLog model missing started_at + min_hr columns — pg_insert upsert silently failed. Bug 4: sync_workouts used lastupdate=last_sync_at so Withings skipped already-sent workouts; fixed by capping lookback to 14 days. Feature: ActivityDetailSheet now shows start time + Avg/Low/High HR block (new started_at TIMESTAMPTZ + min_hr INTEGER columns). commits: 6bca5d0, 39ba1c0 |
 | Sleep history sheet + date-stepper fixes | 2026-03-10 | Tap SleepCard → SleepHistorySheet bottom sheet (30 days, proportional stage bars: deep/light/awake, sleep score pill, slide-up animation). New useSleepHistory hook. Fixed: useGoalRings + useDashboardV2 now accept selectedDate so sleep ring, steps ring, mood/water/calorie/protein QuickStats all reflect the stepped date. commit: f71da24 |
 | Sleep stages + Intraday HR | 2026-03-09 | Feature A: sleep_logs.stages JSONB + sync_sleep_stages (002 migration, SleepStagesResponse schema, GET /api/sleep/stages, useSleepStages hook, SleepStageBar + SleepCard components). Feature B: hr_intraday table (003 migration), sync_intraday_hr (getintradayactivity → hourly buckets, Brisbane UTC+10), GET /api/hr/intraday, useIntradayHR hook, IntradayHRChart (dawn→clay→ochre color scale). Scheduled syncs at 5:30am + 8:00am. main.py: ALTER TABLE sleep_logs ADD COLUMN IF NOT EXISTS stages JSONB. Deployed 4f73c9d. |
