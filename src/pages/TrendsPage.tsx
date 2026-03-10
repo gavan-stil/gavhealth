@@ -4,7 +4,8 @@ import type { TimeRange } from "@/hooks/useTrendsData";
 import { useStrengthTrends } from "@/hooks/useStrengthTrends";
 import RecoverySparklines from "@/components/trends/RecoverySparklines";
 import PerformanceOverlay from "@/components/trends/PerformanceOverlay";
-import CorrelationSummary from "@/components/trends/CorrelationSummary";
+import EnergyBalanceChart from "@/components/trends/EnergyBalanceChart";
+import StrengthQualityChart from "@/components/trends/StrengthQualityChart";
 import WorkoutVolumeChart from "@/components/trends/WorkoutVolumeChart";
 import ExerciseProgressSection from "@/components/trends/ExerciseProgressSection";
 import NutritionTrendsChart from "@/components/trends/NutritionTrendsChart";
@@ -169,9 +170,10 @@ export default function TrendsPage() {
               </span>
             </div>
           )}
+          <EnergyBalanceChart />
+          <StrengthQualityChart />
           <RecoverySparklines data={data} />
           <PerformanceOverlay data={data} />
-          <CorrelationSummary data={data} />
           <NutritionTrendsChart nutrition={data.nutrition} />
           <WaterTrendsChart water={data.water} />
           <WorkoutVolumeChart

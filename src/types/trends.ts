@@ -2,7 +2,8 @@
 
 export interface StrengthSession {
   id: number;
-  session_date: string;
+  date: string | null;          // T15-2b: non-null after backend fix
+  session_date: string;         // kept for backward compat
   activity_log_id: number | null;
   duration_mins: number | null;
   avg_hr: number | null;
@@ -12,6 +13,7 @@ export interface StrengthSession {
   total_load_kg: number;
   avg_load_per_set_kg: number;
   exercises: string[];
+  category: string;             // T15-2b: push | pull | legs | abs | mixed
 }
 
 export interface ExerciseSession {

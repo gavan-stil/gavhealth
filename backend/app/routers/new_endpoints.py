@@ -998,7 +998,14 @@ async def energy_balance(days: int = Query(default=30), db: AsyncSession = Depen
             burn_days AS (
                 SELECT
                     activity_date                    AS burn_date,
-                    calories_burned                  AS calories_burned_total
+                    -- Some Withings bulk-imported daily_summary rows store kJ not kcal.
+                    -- Guard: any value > 8 000 is clearly kJ (≈ 1 912 kcal min — no human
+                    -- burns > 8 000 kcal/day in normal life), so convert to kcal.
+                    CASE
+                        WHEN calories_burned > 8000
+                             THEN ROUND(calories_burned / 4.184)::int
+                        ELSE calories_burned
+                    END                              AS calories_burned_total
                 FROM activity_logs
                 WHERE activity_type = 'daily_summary'
                   AND activity_date >= CURRENT_DATE - (:days * INTERVAL '1 day')::interval
