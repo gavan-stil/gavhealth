@@ -11,6 +11,8 @@ export interface FeedItemForSheet {
   start_time: string | null;
   duration_minutes: number;
   avg_bpm: number | null;
+  min_hr: number | null;
+  max_hr: number | null;
   effort: EffortLevel;
   effort_manually_set: boolean;
 }
@@ -324,18 +326,51 @@ export default function ActivityDetailSheet({
           </button>
         </div>
 
-        {/* Stats row */}
+        {/* Date / time / duration row */}
         <div style={{
           display: 'flex', gap: 16, flexWrap: 'wrap',
-          marginBottom: 20,
+          marginBottom: 14,
           font: '600 13px/1 JetBrains Mono, monospace',
           letterSpacing: '-0.3px', color: 'var(--text-secondary)',
         }}>
           <span>{formatDate(item.date)}</span>
           {item.start_time && <span>{formatTime(item.start_time)}</span>}
           <span>{formatDuration(item.duration_minutes)}</span>
-          {item.avg_bpm && <span>{item.avg_bpm} bpm</span>}
         </div>
+
+        {/* HR block — only shown when at least avg HR is available */}
+        {(item.avg_bpm || item.min_hr || item.max_hr) && (
+          <div style={{
+            display: 'flex',
+            marginBottom: 20,
+            background: 'var(--bg-card)',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--border-default)',
+            overflow: 'hidden',
+          }}>
+            {[
+              { val: item.avg_bpm != null ? `${item.avg_bpm}` : '—', lbl: 'Avg BPM' },
+              { val: item.min_hr  != null ? `${item.min_hr}`  : '—', lbl: 'Low' },
+              { val: item.max_hr  != null ? `${item.max_hr}`  : '—', lbl: 'High' },
+            ].map((stat, i) => (
+              <div key={stat.lbl} style={{
+                flex: 1, padding: '10px 14px',
+                borderLeft: i > 0 ? '1px solid var(--border-default)' : 'none',
+                display: 'flex', flexDirection: 'column', gap: 3,
+              }}>
+                <span style={{
+                  font: '700 15px/1 JetBrains Mono, monospace',
+                  letterSpacing: '-0.5px', color: 'var(--text-primary)',
+                }}>{stat.val}</span>
+                <span style={{
+                  font: '600 9px/1 Inter, sans-serif',
+                  letterSpacing: '1px', textTransform: 'uppercase',
+                  color: 'var(--text-muted)',
+                }}>{stat.lbl}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Effort picker */}
         <div style={{ marginBottom: 20 }}>

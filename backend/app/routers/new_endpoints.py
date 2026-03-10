@@ -164,8 +164,11 @@ async def activities_feed(days: int = Query(default=14), db: AsyncSession = Depe
             SELECT id,
                    activity_type                          AS type,
                    activity_date                          AS date,
+                   started_at,
                    duration_mins                          AS duration_minutes,
                    avg_hr                                 AS avg_bpm,
+                   min_hr,
+                   max_hr,
                    COALESCE(effort, 'basic')              AS effort,
                    COALESCE(effort_manually_set, false)   AS effort_manually_set
             FROM activity_logs
@@ -180,8 +183,11 @@ async def activities_feed(days: int = Query(default=14), db: AsyncSession = Depe
             "id": r["id"],
             "type": r["type"],
             "date": r["date"].isoformat() if r["date"] else None,
+            "start_time": r["started_at"].isoformat() if r["started_at"] else None,
             "duration_minutes": r["duration_minutes"],
             "avg_bpm": r["avg_bpm"],
+            "min_hr": r["min_hr"],
+            "max_hr": r["max_hr"],
             "effort": r["effort"],
             "effort_manually_set": r["effort_manually_set"],
         }

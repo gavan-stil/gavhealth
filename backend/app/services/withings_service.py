@@ -652,11 +652,11 @@ async def sync_workouts(db: AsyncSession, access_token: str, since_ts: int) -> i
             activity_type = WORKOUT_CATEGORY_MAP.get(category, "other")
             data = workout.get("data", {})
 
-            # Timestamps
+            # Timestamps — convert to Brisbane local date (UTC+10, no DST)
             start_ts = workout.get("startdate", 0)
             end_ts = workout.get("enddate", start_ts)
             start_dt = datetime.fromtimestamp(start_ts, tz=timezone.utc)
-            activity_date = start_dt.date()
+            activity_date = start_dt.astimezone(BRISBANE_TZ).date()
 
             # Duration from effduration (effective seconds) or start/end delta
             eff_duration = data.get("effduration")
@@ -686,10 +686,12 @@ async def sync_workouts(db: AsyncSession, access_token: str, since_ts: int) -> i
                 "external_id": external_id,
                 "activity_type": activity_type,
                 "activity_date": activity_date,
+                "started_at": start_dt,
                 "duration_mins": duration_mins,
                 "distance_km": distance_km,
                 "avg_pace_secs": avg_pace_secs,
                 "avg_hr": data.get("hr_average"),
+                "min_hr": data.get("hr_min"),
                 "max_hr": data.get("hr_max"),
                 "calories_burned": data.get("calories"),
                 "elevation_m": data.get("elevation"),
@@ -697,12 +699,12 @@ async def sync_workouts(db: AsyncSession, access_token: str, since_ts: int) -> i
                 "source": SOURCE,
             }
 
-            stmt = pg_insert(ActivityLog).values(**values).on_conflict_do_nothing(
+            stmt = pg_insert(ActivityLog).values(**values).on_conflict_do_update(
                 index_elements=["external_id", "source"],
+                set_={k: v for k, v in values.items() if k not in ("external_id", "source")},
             )
             result = await db.execute(stmt)
-            if result.rowcount > 0:
-                count += 1
+            count += 1
 
             # --- Sauna special case ---
             # Category 36 (miscellaneous) + has HR data + low distance → sauna

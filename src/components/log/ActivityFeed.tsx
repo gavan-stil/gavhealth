@@ -14,6 +14,8 @@ interface FeedItem {
   start_time: string | null;
   duration_minutes: number;
   avg_bpm: number | null;
+  min_hr: number | null;
+  max_hr: number | null;
   effort: EffortLevel;
   effort_manually_set: boolean;
 }
