@@ -69,6 +69,34 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE sleep_logs ADD COLUMN IF NOT EXISTS stages JSONB",
             # manual_strength_logs: backfill log_date column if missing
             "ALTER TABLE manual_strength_logs ADD COLUMN IF NOT EXISTS log_date DATE DEFAULT CURRENT_DATE",
+            # T14-2: Fix exercise categories for names with explicit ' - Body part' suffix.
+            # SPLIT_PART extracts everything after the first ' - ' and maps to category.
+            # Idempotent — only touches rows whose name contains ' - '.
+            """
+            UPDATE exercises
+            SET category =
+              CASE
+                WHEN LOWER(SPLIT_PART(name, ' - ', 2)) LIKE '%back%'
+                  OR LOWER(SPLIT_PART(name, ' - ', 2)) LIKE '%lats%'
+                  OR LOWER(SPLIT_PART(name, ' - ', 2)) LIKE '%traps%' THEN 'back'
+                WHEN LOWER(SPLIT_PART(name, ' - ', 2)) LIKE '%chest%'
+                  OR LOWER(SPLIT_PART(name, ' - ', 2)) LIKE '%pec%' THEN 'chest'
+                WHEN LOWER(SPLIT_PART(name, ' - ', 2)) LIKE '%shoulder%' THEN 'shoulders'
+                WHEN LOWER(SPLIT_PART(name, ' - ', 2)) LIKE '%leg%'
+                  OR LOWER(SPLIT_PART(name, ' - ', 2)) LIKE '%quad%'
+                  OR LOWER(SPLIT_PART(name, ' - ', 2)) LIKE '%hamstring%'
+                  OR LOWER(SPLIT_PART(name, ' - ', 2)) LIKE '%glute%'
+                  OR LOWER(SPLIT_PART(name, ' - ', 2)) LIKE '%calf%' THEN 'legs'
+                WHEN LOWER(SPLIT_PART(name, ' - ', 2)) LIKE '%arm%'
+                  OR LOWER(SPLIT_PART(name, ' - ', 2)) LIKE '%bicep%'
+                  OR LOWER(SPLIT_PART(name, ' - ', 2)) LIKE '%tricep%' THEN 'arms'
+                WHEN LOWER(SPLIT_PART(name, ' - ', 2)) LIKE '%abs%'
+                  OR LOWER(SPLIT_PART(name, ' - ', 2)) LIKE '%core%' THEN 'core'
+                ELSE category
+              END
+            WHERE name LIKE '% - %'
+              AND SPLIT_PART(name, ' - ', 2) != ''
+            """,
             # manual_strength_logs: strength workouts logged via app
             """
             CREATE TABLE IF NOT EXISTS manual_strength_logs (

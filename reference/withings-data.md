@@ -86,27 +86,25 @@ These metrics don't exist in the DB and must be computed:
 
 ---
 
-## Backend Work Required
+## Backend Work — Strength Trends ✅ COMPLETE (2026-03-10)
 
-Ordered by priority for strength trends feature:
+All 4 blocking strength trends backend tasks are live. Verified via curl.
 
-### 1. Store bodyweight at log time (HIGH — blocks load calculations)
-- On `POST /api/log/strength/confirm` and `POST /api/log/strength/save`
-- Look up `weight_log` for session date, fall back to 7-day rolling avg
-- Populate `strength_sets.bodyweight_at_session`
+### ✅ 1. Store bodyweight at log time
+- `_lookup_bodyweight()` in `new_endpoints.py` — exact date match, falls back to 7-day rolling avg
+- Populated into `strength_sets.bodyweight_at_session` at log time
 
-### 2. Link strength_sessions → activity_log (HIGH — blocks cascade drill-down)
-- Add `activity_log_id FK` to `strength_sessions`
-- Match on date + duration proximity at log time
-- Allows joining Withings duration/HR with manual sets/reps
+### ✅ 2. Link strength_sessions → activity_log
+- `activity_log_id FK` on `strength_sessions` table
+- Matched by date proximity in `save_strength_log`
 
-### 3. New GET endpoint: `/api/strength/sessions?days=N` (HIGH — new UI)
-- Returns per-session aggregates: date, total_sets, total_reps, total_load, avg_load_per_set, duration (from linked activity_log), avg_hr
-- Groups by session, ordered by date desc
+### ✅ 3. GET /api/strength/sessions?days=N
+- Returns per-session aggregates: date, total_sets, total_reps, total_load, exercises[], duration, avg_hr
+- Curl-verified 200 OK with real data
 
-### 4. New GET endpoint: `/api/strength/exercise/:id/history?days=N` (HIGH — exercise drill-down)
-- Returns per-session data for one exercise: date, sets, reps, top_weight, session_volume (sets×reps×weight)
-- Existing `/api/strength/:exercise_id` returns 404 — not wired or wrong path
+### ✅ 4. GET /api/strength/exercise/:id/history?days=N
+- Returns per-session data per exercise: date, sets, reps, top_weight, session_volume
+- Curl-verified 200 OK
 
 ### 5. Store HR zones from Withings (MEDIUM — intensity tracking)
 - Alter `activity_log` to add `hr_zone_0/1/2/3` integer columns (seconds in each zone)

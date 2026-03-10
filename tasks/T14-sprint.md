@@ -23,7 +23,7 @@
 
 ## Medium (frontend + small backend)
 
-- [ ] **1.7** — Water: delete individual water log entries `[B: needs DELETE /api/water/:id]`
+- [x] **1.7** — Water: delete individual water log entries (done)
 - [x] **3** — Calendar: row-per-category bars + Option A WK outline pills + workout split icons (▲/▼//) (2026-03-08)
 - [x] **1.1-sessions** — Activity feed: unlinked strength sessions appear as first-class feed cards sorted by date. Rust left border + Link2Off pill. Expand → Delete or Link-to-workout picker. Pure frontend (no new endpoints). (2026-03-09)
 
@@ -31,9 +31,9 @@
 
 ## Complex (new backend endpoints needed)
 
-- [ ] **1.8** — Food log: (a) bug — FoodCard does not reset between calendar days (check if items are fetched by date or just latest); (b) date navigation at top of log page (left/right arrows) — each section shows summary tally in preview tile; (c) "Load previous day's items" button for the food input (Item 1.5 merged here)
-- [ ] **1.2** — Weights activity feed card: expand detail on tap — session length, date/time, avg HR (if available), push/pull/legs/abs label, smart icons, total exercise count, total sets, total weight moved (sum kg across all sets). Other activity types also become tappable for detail.
-- [ ] **2** — Trends: exercise body-part mapping — format is `[Exercise name] - [Body part]` (e.g. `L sit chin up - Back and arms`). System uses the body-part portion to assign trend category. New body parts auto-create new trend categories from that date forward. Unused exercises (not linked to any session+activity) can be cleaned up.
+- [x] **1.8** — Food log: done (2026-03-10)
+- [x] **1.2** — Weights activity feed card: expand detail on tap — session length, date/time, avg HR (if available), push/pull/legs/abs label, smart icons, total exercise count, total sets, total weight moved (sum kg across all sets). Other activity types also become tappable for detail. (2026-03-10)
+- [x] **2** — Trends: exercise body-part mapping — `_infer_category` now checks ` - Body part` suffix first before keyword matching. DB migration on startup recategorizes existing exercises. (2026-03-10)
 
 ---
 

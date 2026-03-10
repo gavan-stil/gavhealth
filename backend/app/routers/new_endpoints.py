@@ -18,7 +18,28 @@ router = APIRouter(prefix="/api", tags=["activities"], dependencies=[Depends(ver
 # T12 helpers — exercise category inference + bodyweight lookup
 # ---------------------------------------------------------------------------
 def _infer_category(name: str) -> str:
-    """Map exercise name → body-part category via keyword matching."""
+    """Map exercise name → body-part category.
+
+    Checks explicit ' - Body part' suffix first (e.g. 'L sit chin up - Back and arms'),
+    then falls back to keyword matching on the full name.
+    """
+    # Suffix-first: extract everything after the first ' - '
+    if " - " in name:
+        suffix = name.split(" - ", 1)[1].lower().strip()
+        if any(k in suffix for k in ("back", "lats", "traps")):
+            return "back"
+        if any(k in suffix for k in ("chest", "pec")):
+            return "chest"
+        if "shoulder" in suffix:
+            return "shoulders"
+        if any(k in suffix for k in ("leg", "quad", "hamstring", "glute", "calf")):
+            return "legs"
+        if any(k in suffix for k in ("arm", "bicep", "tricep")):
+            return "arms"
+        if any(k in suffix for k in ("abs", "core", "ab")):
+            return "core"
+
+    # Keyword matching on full name (fallback)
     n = name.lower()
     if any(k in n for k in ("bench", "chest", "pec", "push up", "push-up", "cable fly", "chest fly", "incline press", "decline press", "db press")):
         return "chest"
