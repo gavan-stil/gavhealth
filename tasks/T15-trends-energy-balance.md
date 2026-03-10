@@ -48,18 +48,23 @@ Shows feedback loop visually. Inspired by Garmin Connect energy balance view.
 
 - [ ] **T15-1a** — HTML mockup (`archive/trends-energy-balance-mockup.html`) — APPROVED FIRST
 - [ ] **T15-1b** — New endpoint `GET /api/energy-balance?days=N`
-  - Returns daily: `{ date, calories_in, calories_burned_active, weight_kg | null }`
+  - Returns daily: `{ date, calories_in, protein_g, calories_burned_total, weight_kg | null }`
   - `calories_in`: sum of `food_logs.calories_kcal` by `log_date`
-  - `calories_burned_active`: sum of `activity_logs.calories_burned` WHERE type NOT IN
-    ('daily_summary', 'other') — these contain TDEE/double-counted data
+  - `protein_g`: sum of `food_logs.protein_g` by `log_date` (user priority metric)
+  - `calories_burned_total`: `activity_logs.calories_burned` WHERE `activity_type = 'daily_summary'`
+    — Withings TDEE (includes basal + all movement, already calculated by device hardware)
+    — Single row per day; use NULL if no daily_summary for that day
+    — NOTE: do NOT sum workout active calories here — `daily_summary` already includes them
   - `weight_kg`: latest `weight_logs` reading for that date (or null)
   - Only returns days where `food_logs` has entries (starts Mar 7)
   - Curl test: `curl /api/energy-balance?days=14`
 - [ ] **T15-1c** — React component `EnergyBalanceChart.tsx`
   - Week/Month toggle (7 or 30 days)
   - Grouped bars: intake (ochre) + burn (dawn) — both on left y-axis
+    - Burn = `calories_burned_total` (Withings TDEE); omit burn bar if null for that day
   - Weight as smooth SVG polyline, right y-axis
-  - Summary row: avg intake · avg burn · net · weight Δ
+  - Summary row (protein FIRST — user priority): avg protein · avg intake · avg burn · net · weight Δ
+    - Protein cell: "Avg Xg / 180g" coloured green if ≥ 180g, ochre if below
   - "Tracking from Mar 7" label when showing ≥ date of first food log
   - Graceful: < 3 days data → "Keep logging food to see your trend"
 - [ ] **T15-1d** — Wire into TrendsPage, replace CorrelationSummary
@@ -93,9 +98,10 @@ curl -s "https://gavhealth-production.up.railway.app/api/weight?days=14" \
 
 #### Data quirks documented
 
-- `daily_summary` activity type = Withings TDEE (whole day, includes basal) — MUST be excluded
-  from active calories to avoid double-counting
-- `other` activity type sometimes has inflated calorie values (travel days, 7095 cal etc.) — also exclude
+- `daily_summary` activity type = Withings TDEE (whole day, includes basal + all movement)
+  — USE THIS as `calories_burned_total`. One row per day. Already calculated by Withings hardware.
+- Do NOT sum `workout` or other activity_type rows for burn — `daily_summary` already includes them.
+- `other` activity type can have inflated values (travel days 7095 cal etc.) — irrelevant, not used.
 - Some activities have `calories_burned: null` — treat as 0
 - Food tracking started 2026-03-07 — chart gracefully shows "from Mar 7" label
 - Weight logged most days but not every day — interpolate or just show dots
@@ -212,7 +218,9 @@ WaterTrendsChart            (keep)
 
 - [ ] Energy Balance: 4+ days of real food + activity data shows correctly
 - [ ] Energy Balance: days with missing food show as empty (no bar for that day)
+- [ ] Energy Balance: burn bar absent (not zero) when no daily_summary for a day
 - [ ] Energy Balance: weight line interpolates smoothly between readings
+- [ ] Energy Balance: summary row shows protein avg + colour (green ≥ 180g, ochre below)
 - [ ] Strength scatter: all sessions have dates (bug T15-2b fixed)
 - [ ] Strength scatter: 2 sessions with HR render as coloured dots
 - [ ] `npm run build` passes

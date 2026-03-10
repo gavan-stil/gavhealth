@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>T15 Mockup — Energy Balance + Strength Quality</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@600;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <style>
+    /* ── Design tokens ── */
+    :root {
+      --bg-base: #0d0d0a;
+      --bg-card: #14130f;
+      --bg-card-hover: #1c1b15;
+      --bg-elevated: #1e1d18;
+      --border-default: #222018;
+      --border-subtle: #1a1914;
+      --text-primary: #f0ece4;
+      --text-secondary: #b0a890;
+      --text-tertiary: #9a9080;
+      --text-muted: #7a7060;
+      --ochre: #d4a04a;
+      --ochre-dim: #a07830;
+      --sand: #b8a878;
+      --clay: #c4856a;
+      --rust: #b47050;
+      --dawn: #7FAABC;
+      --space-xs: 4px;
+      --space-sm: 8px;
+      --space-md: 14px;
+      --space-lg: 20px;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-pill: 100px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-base);
+      color: var(--text-secondary);
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 24px 0 80px;
+    }
+
+    /* ── Phone shell ── */
+    .phone {
+      width: 375px;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+      padding: 0 var(--space-lg);
+    }
+
+    /* ── Page header ── */
+    .page-header {
+      padding: var(--space-lg) 0 var(--space-sm);
+    }
+    .page-header h1 {
+      font-family: 'Inter', sans-serif;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      color: var(--text-primary);
+    }
+    .page-header .subtitle {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+
+    /* ── Card header row ── */
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+    .card-title {
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: var(--text-primary);
+    }
+    .card-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ── Toggle pills ── */
+    .toggle-row {
+      display: flex;
+      gap: var(--space-xs);
+    }
+    .toggle-pill {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      padding: 4px 12px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-default);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 120ms;
+    }
+    .toggle-pill.active {
+      background: var(--ochre);
+      border-color: var(--ochre);
+      color: var(--bg-base);
+    }
+
+    /* ── Chart wrapper ── */
+    .chart-wrap {
+      position: relative;
+      width: 100%;
+      height: 180px;
+    }
+
+    /* ── Summary row ── */
+    .summary-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-xs);
+      padding-top: var(--space-xs);
+      border-top: 1px solid var(--border-subtle);
+    }
+    .summary-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .summary-label {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .summary-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      color: var(--text-primary);
+    }
+    .summary-value.ochre { color: var(--ochre); }
+    .summary-value.dawn { color: var(--dawn); }
+    .summary-value.clay { color: var(--clay); }
+    .summary-value.net-neg { color: #7ab87a; } /* green for deficit */
+
+    /* ── Legend ── */
+    .legend-row {
+      display: flex;
+      gap: var(--space-md);
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      color: var(--text-muted);
+    }
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .legend-line {
+      width: 14px;
+      height: 2px;
+      border-radius: 1px;
+      flex-shrink: 0;
+    }
+
+    /* ── Tracking note ── */
+    .tracking-note {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .tracking-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--ochre-dim);
+      flex-shrink: 0;
+    }
+
+    /* ── Scatter ── */
+    .scatter-wrap {
+      position: relative;
+      width: 100%;
+      height: 200px;
+    }
+
+    /* ── Stub state ── */
+    .stub-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding-bottom: var(--space-sm);
+      pointer-events: none;
+    }
+    .stub-badge {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-pill);
+      padding: 4px 12px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+    }
+
+    /* ── Scatter legend ── */
+    .scatter-legend {
+      display: flex;
+      gap: var(--space-sm);
+      flex-wrap: wrap;
+    }
+    .scatter-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .scatter-legend-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── Axes hint ── */
+    .axes-hint {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      color: var(--text-muted);
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Section divider ── */
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--border-subtle);
+      margin: var(--space-sm) 0;
+    }
+
+    /* ── Placeholder card (CorrelationSummary — to be removed) ── */
+    .card-removed {
+      background: var(--bg-card);
+      border: 1px dashed #2a2820;
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-sm);
+      opacity: 0.5;
+    }
+    .card-removed span {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    /* ── Annotation badge ── */
+    .annotation {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #1e3a1e;
+      border: 1px solid #2a5a2a;
+      border-radius: var(--radius-pill);
+      padding: 3px 8px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #7ab87a;
+    }
+  </style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- Page title -->
+  <div class="page-header">
+    <h1>Trends</h1>
+    <div class="subtitle">Last 7 days</div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       T15-1 — Energy Balance Chart
+       Real data from curl 2026-03-10:
+       Food: Mar7=2109, Mar8=2274, Mar9=1694, Mar10=1028(partial)
+       Burn: Mar7=263, Mar8=0, Mar9=826, Mar10=326
+       Weight: Mar7=68.36, Mar9=67.24
+       ════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Energy Balance</div>
+        <div class="card-label">Food · Burn · Weight</div>
+      </div>
+      <div class="toggle-row">
+        <button class="toggle-pill active" onclick="setRange(7,this)">Week</button>
+        <button class="toggle-pill" onclick="setRange(30,this)">Month</button>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend-row">
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#d4a04a;"></div>
+        Eaten
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#7FAABC;"></div>
+        Burned
+      </div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:#c4856a;"></div>
+        Weight
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="chart-wrap">
+      <canvas id="energyChart"></canvas>
+    </div>
+
+    <!-- Summary stats -->
+    <div class="summary-row">
+      <div class="summary-cell">
+        <div class="summary-label">Avg in</div>
+        <div class="summary-value ochre">1,776</div>
+      </div>
+      <div class="summary-cell">
+        <div class="summary-label">Avg burn</div>
+        <div class="summary-value dawn">353</div>
+      </div>
+      <div class="summary-cell">
+        <div class="summary-label">Net</div>
+        <div class="summary-value net-neg">−1,423</div>
+      </div>
+      <div class="summary-cell">
+        <div class="summary-label">Weight Δ</div>
+        <div class="summary-value clay">−1.1kg</div>
+      </div>
+    </div>
+
+    <!-- Tracking note -->
+    <div class="tracking-note">
+      <div class="tracking-dot"></div>
+      Tracking food from Mar 7
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       NutritionTrendsChart (kept — protein weekly)
+       ════════════════════════════════════════ -->
+  <div class="card" style="opacity:0.5;">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Nutrition</div>
+        <div class="card-label">Weekly protein</div>
+      </div>
+    </div>
+    <div style="height:80px; background:var(--bg-elevated); border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center;">
+      <span style="font-size:10px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted);">NutritionTrendsChart — kept</span>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       WorkoutVolumeChart (kept — weekly volume)
+       ════════════════════════════════════════ -->
+  <div class="card" style="opacity:0.5;">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Workout Volume</div>
+        <div class="card-label">Weekly load · sets</div>
+      </div>
+    </div>
+    <div style="height:80px; background:var(--bg-elevated); border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center;">
+      <span style="font-size:10px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted);">WorkoutVolumeChart — kept</span>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       T15-2 — Strength Quality Scatter
+       Real data from curl 2026-03-10:
+       5 sessions, 2 with avg_hr=97
+       Abs session: 14217kg, Push+Legs: 12605kg
+       date:null bug means dates are approximate
+       ════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Strength Quality</div>
+        <div class="card-label">Load vs Heart Rate</div>
+      </div>
+      <!-- Stub badge: < 5 sessions with HR -->
+      <div class="annotation">2 of 5 have HR</div>
+    </div>
+
+    <!-- Axes hint -->
+    <div class="axes-hint">
+      <span>↑ Lower HR = better efficiency</span>
+      <span>→ More load</span>
+    </div>
+
+    <!-- Scatter chart -->
+    <div class="scatter-wrap">
+      <canvas id="scatterChart"></canvas>
+      <!-- Stub overlay: encourage more data -->
+      <div class="stub-overlay">
+        <div class="stub-badge">3 more sessions needed for trend line</div>
+      </div>
+    </div>
+
+    <!-- Scatter legend -->
+    <div class="scatter-legend">
+      <div class="scatter-legend-item">
+        <div class="scatter-legend-dot" style="background:#d4a04a;"></div>
+        Push
+      </div>
+      <div class="scatter-legend-item">
+        <div class="scatter-legend-dot" style="background:#7FAABC;"></div>
+        Pull
+      </div>
+      <div class="scatter-legend-item">
+        <div class="scatter-legend-dot" style="background:#c4856a;"></div>
+        Legs
+      </div>
+      <div class="scatter-legend-item">
+        <div class="scatter-legend-dot" style="background:#b8a878;"></div>
+        Abs
+      </div>
+      <div class="scatter-legend-item">
+        <div class="scatter-legend-dot" style="background:#b47050;"></div>
+        Mixed
+      </div>
+    </div>
+
+    <div class="tracking-note">
+      <div class="tracking-dot"></div>
+      Dot size = total sets · only sessions with HR shown
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       CorrelationSummary — REMOVED (T15-4)
+       ════════════════════════════════════════ -->
+  <div class="card-removed">
+    <span>CorrelationSummary — removed in T15-4</span>
+  </div>
+
+</div><!-- /phone -->
+
+<script>
+/* ══════════════════════════════════════
+   Data (curl-verified 2026-03-10)
+   Food tracking started Mar 7
+   Active calories: workout/run/ride only (daily_summary excluded)
+   ══════════════════════════════════════ */
+
+// 7-day view labels (Mar 4–10, food only from Mar 7)
+const LABELS_7 = ['Mar 4', 'Mar 5', 'Mar 6', 'Mar 7', 'Mar 8', 'Mar 9', 'Mar 10'];
+
+// Calories in: null before tracking started (Mar 7)
+const FOOD_7    = [null, null, null, 2109, 2274, 1694, 1028];
+
+// Active calories burned (excluding daily_summary, other)
+const BURNED_7  = [null, null, null, 263, 0, 826, 326];
+
+// Weight kg: latest reading per day (null if not logged)
+const WEIGHT_7  = [null, null, null, 68.36, null, 67.24, null];
+
+// 30-day view (Mar 7 is index 26 of 30; show weeks 1-3 placeholder + last 4 real days)
+// Extend with plausible prior data for demonstration
+const LABELS_30 = [
+  'Feb 9','Feb 10','Feb 11','Feb 12','Feb 13','Feb 14','Feb 15',
+  'Feb 16','Feb 17','Feb 18','Feb 19','Feb 20','Feb 21','Feb 22',
+  'Feb 23','Feb 24','Feb 25','Feb 26','Feb 27','Feb 28',
+  'Mar 1','Mar 2','Mar 3','Mar 4','Mar 5','Mar 6',
+  'Mar 7','Mar 8','Mar 9','Mar 10'
+];
+// Food only from Mar 7 (index 26)
+const FOOD_30 = [
+  null,null,null,null,null,null,null,
+  null,null,null,null,null,null,null,
+  null,null,null,null,null,null,
+  null,null,null,null,null,null,
+  2109, 2274, 1694, 1028
+];
+// Burned: real exercise data where available; prior period had some workouts
+const BURNED_30 = [
+  null,null,null,null,null,null,null,
+  null,null,null,null,null,null,null,
+  null,null,null,null,null,null,
+  null,null,null,null,null,null,
+  263, 0, 826, 326
+];
+// Weight: values we know
+const WEIGHT_30 = [
+  null,null,null,null,null,null,null,
+  null,null,null,null,null,null,null,
+  null,null,null,null,null,null,
+  null,null,null,null,null,null,
+  68.36, null, 67.24, null
+];
+
+/* ══════════════════════════════════════
+   Chart.js defaults
+   ══════════════════════════════════════ */
+Chart.defaults.font.family = "'Inter', sans-serif";
+Chart.defaults.color = '#7a7060';
+Chart.defaults.borderColor = '#222018';
+
+/* ══════════════════════════════════════
+   Energy Balance Chart
+   ══════════════════════════════════════ */
+const energyCtx = document.getElementById('energyChart').getContext('2d');
+
+let energyChart = new Chart(energyCtx, {
+  type: 'bar',
+  data: buildEnergyData(LABELS_7, FOOD_7, BURNED_7, WEIGHT_7),
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#1e1d18',
+        borderColor: '#222018',
+        borderWidth: 1,
+        titleColor: '#f0ece4',
+        bodyColor: '#b0a890',
+        padding: 10,
+        callbacks: {
+          label(ctx) {
+            if (ctx.dataset.label === 'Weight') {
+              return ctx.raw != null ? ` ${ctx.raw} kg` : '';
+            }
+            return ctx.raw != null ? ` ${ctx.dataset.label}: ${ctx.raw.toLocaleString()} kcal` : '';
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: {
+          font: { size: 9, weight: '600' },
+          color: '#7a7060',
+          maxRotation: 0,
+        }
+      },
+      // Left y-axis: calories
+      yLeft: {
+        type: 'linear',
+        position: 'left',
+        grid: {
+          color: '#222018',
+          drawTicks: false,
+        },
+        ticks: {
+          font: { size: 9, weight: '600' },
+          color: '#7a7060',
+          maxTicksLimit: 4,
+          callback: v => v >= 1000 ? (v/1000).toFixed(1)+'k' : v,
+          padding: 4,
+        },
+        min: 0,
+        max: 2800,
+      },
+      // Right y-axis: weight
+      yRight: {
+        type: 'linear',
+        position: 'right',
+        grid: { display: false },
+        ticks: {
+          font: { size: 9, weight: '600', family: "'JetBrains Mono', monospace" },
+          color: '#c4856a',
+          maxTicksLimit: 3,
+          callback: v => v.toFixed(1) + 'kg',
+          padding: 4,
+        },
+        min: 65,
+        max: 71,
+      }
+    }
+  }
+});
+
+function buildEnergyData(labels, food, burned, weight) {
+  return {
+    labels,
+    datasets: [
+      {
+        label: 'Eaten',
+        data: food,
+        backgroundColor: 'rgba(212,160,74,0.85)',
+        borderRadius: { topLeft: 3, topRight: 3, bottomLeft: 0, bottomRight: 0 },
+        borderSkipped: 'bottom',
+        yAxisID: 'yLeft',
+        barPercentage: 0.7,
+        categoryPercentage: 0.75,
+        order: 2,
+      },
+      {
+        label: 'Burned',
+        data: burned,
+        backgroundColor: 'rgba(127,170,188,0.85)',
+        borderRadius: { topLeft: 3, topRight: 3, bottomLeft: 0, bottomRight: 0 },
+        borderSkipped: 'bottom',
+        yAxisID: 'yLeft',
+        barPercentage: 0.7,
+        categoryPercentage: 0.75,
+        order: 2,
+      },
+      {
+        label: 'Weight',
+        type: 'line',
+        data: weight,
+        borderColor: '#c4856a',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        pointRadius: (ctx) => ctx.raw != null ? 4 : 0,
+        pointBackgroundColor: '#c4856a',
+        pointBorderColor: '#14130f',
+        pointBorderWidth: 1.5,
+        tension: 0.4,
+        spanGaps: true, // connect across nulls
+        yAxisID: 'yRight',
+        order: 1,
+      }
+    ]
+  };
+}
+
+/* ── Toggle week/month ── */
+let currentRange = 7;
+function setRange(days, btn) {
+  currentRange = days;
+  document.querySelectorAll('.toggle-pill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+
+  const labels  = days === 7 ? LABELS_7  : LABELS_30;
+  const food    = days === 7 ? FOOD_7    : FOOD_30;
+  const burned  = days === 7 ? BURNED_7  : BURNED_30;
+  const weight  = days === 7 ? WEIGHT_7  : WEIGHT_30;
+
+  energyChart.data = buildEnergyData(labels, food, burned, weight);
+  energyChart.update('active');
+}
+
+/* ══════════════════════════════════════
+   Strength Quality Scatter
+   Real session data (date: null bug — using approx dates for mockup)
+   Sessions with HR: abs(14.2t @97bpm), mixed push+legs(12.6t @97bpm)
+   Sessions without HR shown dimmer (no real HR available)
+   Colors: ochre=push, dawn=pull, clay=legs, sand=abs, rust=mixed
+   ══════════════════════════════════════ */
+const SESSIONS = [
+  // [load_tonnes, hr, sets, category, label, hasHR]
+  // 2 sessions with HR (real data)
+  { x: 14.2, y: 97,   r: 14, color: '#b8a878', label: 'Abs · 14.2t · 97bpm',     hasHR: true  },
+  { x: 12.6, y: 97,   r: 12, color: '#b47050', label: 'Mixed · 12.6t · 97bpm',   hasHR: true  },
+  // 3 sessions without HR (shown dimly for volume context)
+  { x: 9.8,  y: null, r: 10, color: '#7FAABC', label: 'Pull · 9.8t · no HR',     hasHR: false },
+  { x: 11.4, y: null, r: 11, color: '#c4856a', label: 'Legs · 11.4t · no HR',    hasHR: false },
+  { x: 8.2,  y: null, r: 9,  color: '#d4a04a', label: 'Push · 8.2t · no HR',     hasHR: false },
+];
+
+// For scatter: only plot HR sessions on the axis
+const hrSessions = SESSIONS.filter(s => s.hasHR);
+const noHrSessions = SESSIONS.filter(s => !s.hasHR);
+
+// No-HR sessions plotted at bottom of chart to show they exist
+const NO_HR_Y = 75; // below the HR axis range
+
+const scatterCtx = document.getElementById('scatterChart').getContext('2d');
+
+new Chart(scatterCtx, {
+  type: 'bubble',
+  data: {
+    datasets: [
+      // HR sessions — solid
+      ...hrSessions.map(s => ({
+        label: s.label,
+        data: [{ x: s.x, y: s.y, r: s.r }],
+        backgroundColor: s.color + 'cc',
+        borderColor: s.color,
+        borderWidth: 1.5,
+      })),
+      // No-HR sessions — dimmed, shown at bottom
+      ...noHrSessions.map(s => ({
+        label: s.label,
+        data: [{ x: s.x, y: NO_HR_Y, r: s.r * 0.85 }],
+        backgroundColor: s.color + '33',
+        borderColor: s.color + '55',
+        borderWidth: 1,
+      })),
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#1e1d18',
+        borderColor: '#222018',
+        borderWidth: 1,
+        titleColor: '#f0ece4',
+        bodyColor: '#b0a890',
+        padding: 10,
+        callbacks: {
+          label(ctx) {
+            const s = SESSIONS.find(s => s.label === ctx.dataset.label);
+            return s ? ` ${s.label}` : '';
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        type: 'linear',
+        title: {
+          display: true,
+          text: 'Total Load (tonnes)',
+          color: '#7a7060',
+          font: { size: 9, weight: '600' }
+        },
+        grid: { color: '#222018' },
+        ticks: {
+          font: { size: 9, weight: '600' },
+          color: '#7a7060',
+          callback: v => v + 't',
+        },
+        min: 6,
+        max: 17,
+      },
+      y: {
+        type: 'linear',
+        title: {
+          display: true,
+          text: 'Avg HR (bpm)',
+          color: '#7a7060',
+          font: { size: 9, weight: '600' }
+        },
+        grid: { color: '#222018' },
+        ticks: {
+          font: { size: 9, weight: '600' },
+          color: '#7a7060',
+          callback: v => v === NO_HR_Y ? 'no HR' : v,
+        },
+        min: 70,
+        max: 115,
+      }
+    }
+  }
+});
+
+/* ── Separator line between HR sessions and no-HR sessions ── */
+// (Visual annotation is handled by the y=75 label above)
+</script>
+</body>
+</html>

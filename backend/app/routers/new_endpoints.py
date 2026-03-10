@@ -57,6 +57,28 @@ def _infer_category(name: str) -> str:
     return "other"
 
 
+def _session_category(categories: list[str]) -> str:
+    """Map a list of exercise DB categories → scatter colour group.
+
+    DB categories: chest, back, shoulders, arms, legs, core, other
+    Scatter groups: push, pull, legs, abs, mixed
+    """
+    MACRO = {
+        "chest": "push", "shoulders": "push", "arms": "push",
+        "back": "pull",
+        "legs": "legs",
+        "core": "abs",
+        "other": "mixed",
+    }
+    cats = {MACRO.get(c, "mixed") for c in (categories or []) if c}
+    cats.discard("mixed")          # ignore unknowns when deciding
+    if not cats:
+        return "mixed"
+    if len(cats) == 1:
+        return cats.pop()
+    return "mixed"
+
+
 async def _lookup_bodyweight(db: AsyncSession, session_date) -> float | None:
     """Get bodyweight: exact date match, else 7-day rolling avg."""
     bw_result = await db.execute(
@@ -672,7 +694,8 @@ async def strength_sessions(days: int = Query(default=90), db: AsyncSession = De
                         * st.reps
                     ), 0) / COUNT(st.id)
                 ELSE 0 END                             AS avg_load_per_set_kg,
-                ARRAY_AGG(DISTINCT e.name)             AS exercises
+                ARRAY_AGG(DISTINCT e.name)             AS exercises,
+                ARRAY_AGG(DISTINCT e.category)         AS categories
             FROM strength_sessions ss
             LEFT JOIN strength_sets st ON st.session_id = ss.id
             LEFT JOIN exercises e ON e.id = st.exercise_id
@@ -688,6 +711,7 @@ async def strength_sessions(days: int = Query(default=90), db: AsyncSession = De
     return [
         {
             "id": r["id"],
+            "date": r["session_date"].isoformat() if r["session_date"] else None,
             "session_date": r["session_date"].isoformat() if r["session_date"] else None,
             "activity_log_id": r["activity_log_id"],
             "duration_mins": float(r["duration_mins"]) if r["duration_mins"] is not None else None,
@@ -698,6 +722,7 @@ async def strength_sessions(days: int = Query(default=90), db: AsyncSession = De
             "total_load_kg": float(r["total_load_kg"]),
             "avg_load_per_set_kg": float(r["avg_load_per_set_kg"]),
             "exercises": [e for e in (r["exercises"] or []) if e is not None],
+            "category": _session_category([c for c in (r["categories"] or []) if c is not None]),
         }
         for r in rows
     ]
@@ -946,6 +971,67 @@ async def get_mood(
             "logged_at": r["logged_at"].isoformat(),
             "mood": r["mood"],
             "energy": r["energy"],
+        }
+        for r in rows
+    ]
+
+
+# ---------------------------------------------------------------------------
+# T15-1b. GET /api/energy-balance?days=N
+# Returns daily rows for the Energy Balance chart.
+# Burn = Withings TDEE from daily_summary (includes basal + all movement).
+# Only returns days where food has been logged (tracking started Mar 7 2026).
+# ---------------------------------------------------------------------------
+@router.get("/energy-balance")
+async def energy_balance(days: int = Query(default=30), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        text("""
+            WITH food_days AS (
+                SELECT
+                    log_date,
+                    SUM(COALESCE(calories_kcal, 0))  AS calories_in,
+                    SUM(COALESCE(protein_g, 0))       AS protein_g
+                FROM food_logs
+                WHERE log_date >= CURRENT_DATE - (:days * INTERVAL '1 day')::interval
+                GROUP BY log_date
+            ),
+            burn_days AS (
+                SELECT
+                    activity_date                    AS burn_date,
+                    calories_burned                  AS calories_burned_total
+                FROM activity_logs
+                WHERE activity_type = 'daily_summary'
+                  AND activity_date >= CURRENT_DATE - (:days * INTERVAL '1 day')::interval
+            ),
+            weight_days AS (
+                SELECT DISTINCT ON (recorded_at::date)
+                    recorded_at::date                AS weight_date,
+                    weight_kg
+                FROM weight_logs
+                WHERE recorded_at::date >= CURRENT_DATE - (:days * INTERVAL '1 day')::interval
+                ORDER BY recorded_at::date, recorded_at DESC
+            )
+            SELECT
+                fd.log_date                          AS date,
+                fd.calories_in,
+                fd.protein_g,
+                bd.calories_burned_total,
+                wd.weight_kg
+            FROM food_days fd
+            LEFT JOIN burn_days bd  ON bd.burn_date   = fd.log_date
+            LEFT JOIN weight_days wd ON wd.weight_date = fd.log_date
+            ORDER BY fd.log_date ASC
+        """),
+        {"days": days},
+    )
+    rows = result.mappings().all()
+    return [
+        {
+            "date": r["date"].isoformat(),
+            "calories_in": int(r["calories_in"]) if r["calories_in"] is not None else 0,
+            "protein_g": round(float(r["protein_g"]), 1) if r["protein_g"] is not None else 0.0,
+            "calories_burned_total": int(r["calories_burned_total"]) if r["calories_burned_total"] is not None else None,
+            "weight_kg": round(float(r["weight_kg"]), 2) if r["weight_kg"] is not None else None,
         }
         for r in rows
     ]
