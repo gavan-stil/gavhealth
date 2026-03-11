@@ -408,7 +408,7 @@ async def sync_intraday_hr(db: AsyncSession, access_token: str, date_str: str) -
             "action": "getintradayactivity",
             "startdate": startdate,
             "enddate": enddate,
-            "data_fields": "heart_rate",
+            "data_fields": "heart_rate,steps",
         })
     except Exception as e:
         logger.warning("sync_intraday_hr: Withings error for %s: %s", date_str, e)
@@ -419,28 +419,34 @@ async def sync_intraday_hr(db: AsyncSession, access_token: str, date_str: str) -
         logger.info("sync_intraday_hr: no intraday data for %s", date_str)
         return 0
 
-    # Bucket readings by local hour
+    # Bucket HR readings and step counts by local hour
     buckets: dict[int, list[int]] = defaultdict(list)
+    steps_buckets: dict[int, int] = defaultdict(int)
     for ts_str, reading in series.items():
         try:
             ts = int(ts_str)
         except (ValueError, TypeError):
             continue
-        hr = reading.get("heart_rate")
-        if hr is None or hr <= 0:
-            continue
         # Convert to Brisbane local hour
         local_hour = ((ts + BRISBANE_OFFSET) % 86400) // 3600
-        buckets[local_hour].append(int(hr))
+        hr = reading.get("heart_rate")
+        if hr is not None and hr > 0:
+            buckets[local_hour].append(int(hr))
+        steps = reading.get("steps")
+        if steps is not None and steps > 0:
+            steps_buckets[local_hour] += int(steps)
 
-    if not buckets:
+    all_hours = set(buckets.keys()) | set(steps_buckets.keys())
+    if not all_hours:
         return 0
 
     count = 0
-    for hour, readings in buckets.items():
-        hr_avg = round(sum(readings) / len(readings), 1)
-        hr_min = min(readings)
-        hr_max = max(readings)
+    for hour in all_hours:
+        readings = buckets.get(hour, [])
+        hr_avg = round(sum(readings) / len(readings), 1) if readings else None
+        hr_min = min(readings) if readings else None
+        hr_max = max(readings) if readings else None
+        steps_count = steps_buckets.get(hour) or None
 
         stmt = pg_insert(HrIntraday).values(
             log_date=log_date,
@@ -448,7 +454,8 @@ async def sync_intraday_hr(db: AsyncSession, access_token: str, date_str: str) -
             hr_avg=hr_avg,
             hr_min=hr_min,
             hr_max=hr_max,
-            readings_count=len(readings),
+            readings_count=len(readings) if readings else None,
+            steps_count=steps_count,
             source=SOURCE,
         ).on_conflict_do_update(
             index_elements=["log_date", "hour", "source"],
@@ -456,7 +463,8 @@ async def sync_intraday_hr(db: AsyncSession, access_token: str, date_str: str) -
                 "hr_avg": hr_avg,
                 "hr_min": hr_min,
                 "hr_max": hr_max,
-                "readings_count": len(readings),
+                "readings_count": len(readings) if readings else None,
+                "steps_count": steps_count,
             },
         )
         await db.execute(stmt)
@@ -603,7 +611,7 @@ async def sync_activities(db: AsyncSession, access_token: str, since_ts: int) ->
             "max_hr": activity.get("hr_max"),
             "elevation_m": activity.get("elevation"),
             "zone_seconds": zone_data,
-            "notes": f"steps: {activity.get('steps')}" if activity.get("steps") else None,
+            "steps": activity.get("steps"),
             "source": SOURCE,
         }
 
@@ -623,10 +631,11 @@ async def sync_workouts(db: AsyncSession, access_token: str, since_ts: int) -> i
     Category 36 (miscellaneous) with HR data but low distance is treated as a
     sauna session and also linked to sauna_logs via withings_activity_id.
     """
-    # Always look back at least 14 days so any timezone-corrected dates get
-    # upserted even if the workout was uploaded to Withings before last_sync_at.
-    fourteen_days_ago = int((datetime.now(timezone.utc) - timedelta(days=14)).timestamp())
-    effective_since = min(since_ts, fourteen_days_ago)
+    # Always look back at least 30 days so any timezone-corrected dates get
+    # upserted even if the workout was uploaded to Withings before last_sync_at,
+    # and so HR data that Withings attaches late (sometimes hours after upload) gets backfilled.
+    thirty_days_ago = int((datetime.now(timezone.utc) - timedelta(days=30)).timestamp())
+    effective_since = min(since_ts, thirty_days_ago)
 
     params: dict = {
         "action": "getworkouts",
@@ -734,6 +743,41 @@ async def sync_workouts(db: AsyncSession, access_token: str, since_ts: int) -> i
     return count
 
 
+async def backfill_missing_workout_hr(db: AsyncSession, access_token: str) -> int:
+    """Re-fetch workouts that have avg_hr = NULL within the last 60 days.
+
+    Withings sometimes processes HR data hours after the workout is uploaded.
+    The regular sync window (30 days) covers most cases, but this function
+    provides an explicit targeted backfill by extending the lookback to 60 days
+    only when NULL-HR rows exist in that window.
+
+    Returns count of rows re-fetched.
+    """
+    from sqlalchemy import text as sa_text
+
+    sixty_days_ago = datetime.now(timezone.utc) - timedelta(days=60)
+
+    # Check if there are any NULL-HR workout rows in the last 60 days
+    result = await db.execute(
+        sa_text(
+            "SELECT COUNT(*) FROM activity_logs "
+            "WHERE avg_hr IS NULL "
+            "  AND activity_type != 'daily_summary' "
+            "  AND activity_date >= :cutoff"
+        ),
+        {"cutoff": sixty_days_ago.date()},
+    )
+    null_count = result.scalar_one()
+
+    if null_count == 0:
+        logger.info("backfill_missing_workout_hr: no NULL-HR rows found, skipping")
+        return 0
+
+    logger.info("backfill_missing_workout_hr: %d NULL-HR rows — extending sync to 60 days", null_count)
+    since_ts = int(sixty_days_ago.timestamp())
+    return await sync_workouts(db, access_token, since_ts)
+
+
 async def run_full_sync(db: AsyncSession) -> dict:
     """Run a full sync of all Withings data types. Returns summary dict."""
     batch_id = uuid.uuid4()
@@ -787,6 +831,14 @@ async def run_full_sync(db: AsyncSession) -> dict:
                     error_message=str(e),
                     batch_id=batch_id,
                 ))
+
+        # HR backfill: re-fetch workouts with NULL HR (Withings sometimes attaches HR late)
+        try:
+            backfilled = await backfill_missing_workout_hr(db, access_token)
+            results["hr_backfill"] = backfilled
+        except Exception as e:
+            logger.warning("backfill_missing_workout_hr error: %s", e)
+            results["hr_backfill"] = f"error: {str(e)}"
 
         # Sync sleep stages + intraday HR for last 2 days (Brisbane local date)
         today = datetime.now(BRISBANE_TZ).date()

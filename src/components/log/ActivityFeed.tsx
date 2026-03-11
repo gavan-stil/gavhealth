@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertCircle, Dumbbell, Flame, Link2Off, Sunrise, Zap } from 'lucide-react';
+import { AlertCircle, Dumbbell, Link2Off } from 'lucide-react';
+import { EnergyIcon } from './MoodEnergyCard';
 import { apiFetch } from '@/lib/api';
 import StrengthCard from './StrengthCard';
 import ActivityDetailSheet from './ActivityDetailSheet';
@@ -62,11 +63,6 @@ const TYPE_LABELS: Record<string, string> = {
   daily_summary: 'Day Summary',
 };
 
-const EFFORT_LABEL: Record<EffortLevel, string> = {
-  basic: 'Basic',
-  mid: 'Mid',
-  lets_go: "Let's Go",
-};
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr + 'T00:00:00');
@@ -710,29 +706,16 @@ function OrphanCard({
   );
 }
 
-const EFFORT_ICON: Record<EffortLevel, ReactNode> = {
-  lets_go: <Flame size={11} />,
-  mid: <Zap size={11} />,
-  basic: <Sunrise size={11} />,
+const EFFORT_ENERGY_VALUE: Record<EffortLevel, number> = {
+  basic: 2,
+  mid: 4,
+  lets_go: 5,
 };
 
 function EffortBadge({ effort, isUnreviewed }: { effort: EffortLevel; isUnreviewed: boolean }) {
-  const isLetsGo = effort === 'lets_go';
   return (
     <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-      <span style={{
-        padding: '3px 10px',
-        borderRadius: 'var(--radius-pill)',
-        background: isLetsGo ? 'var(--ochre)' : 'transparent',
-        border: isLetsGo ? 'none' : '1px solid var(--border-default)',
-        color: isLetsGo ? 'var(--bg-base)' : 'var(--text-muted)',
-        font: '600 11px/1 Inter, sans-serif',
-        whiteSpace: 'nowrap' as const,
-        display: 'inline-flex', alignItems: 'center', gap: 4,
-      }}>
-        {EFFORT_ICON[effort]}
-        {EFFORT_LABEL[effort]}
-      </span>
+      <EnergyIcon value={EFFORT_ENERGY_VALUE[effort]} size={15} />
       {isUnreviewed && (
         <span style={{
           position: 'absolute', top: -2, right: -2,

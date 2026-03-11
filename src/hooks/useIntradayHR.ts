@@ -7,6 +7,7 @@ export interface HrIntradayBucket {
   hr_min: number | null;
   hr_max: number | null;
   readings_count: number | null;
+  steps_count: number | null;
 }
 
 export interface IntradayHRData {

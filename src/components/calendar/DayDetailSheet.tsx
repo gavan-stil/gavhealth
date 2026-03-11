@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Flame } from "lucide-react";
+import { EnergyIcon } from "@/components/log/MoodEnergyCard";
 import type { CSSProperties } from "react";
 import type { CategoryDot } from "@/types/calendar";
 import { CATEGORY_LABELS, CATEGORY_COLORS, SUB_TOGGLE_DEFS } from "@/types/calendar";
@@ -530,21 +530,8 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
                     {label}
                   </span>
 
-                  {/* Effort pill */}
-                  {dot.isLetsGo && (
-                    <span style={{
-                      font: "500 10px/1 'Inter',sans-serif",
-                      padding: "3px 7px",
-                      borderRadius: 6,
-                      background: "rgba(255,255,255,0.07)",
-                      color: "var(--text-secondary)",
-                      flexShrink: 0,
-                      display: "inline-flex", alignItems: "center", gap: 4,
-                    }}>
-                      <Flame size={10} />
-                      Let&rsquo;s Go
-                    </span>
-                  )}
+                  {/* Effort icon */}
+                  {dot.isLetsGo && <EnergyIcon value={5} size={13} />}
 
                   {/* Interval badge */}
                   {dot.isInterval && (

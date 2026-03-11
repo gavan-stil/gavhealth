@@ -19,6 +19,10 @@ const HOUR_LABELS = [
   "12p", "", "", "3p", "", "", "6p", "", "", "9p", "", "",
 ];
 
+const BAR_HEIGHT = 72;
+const STEPS_HEIGHT = 36;
+const CHART_WIDTH = 240; // nominal SVG width — scales via viewBox
+
 export default function IntradayHRChart({ data, loading }: Props) {
   if (loading) {
     return (
@@ -77,9 +81,29 @@ export default function IntradayHRChart({ data, loading }: Props) {
     ...buckets.filter((b) => b.hr_avg !== null).map((b) => b.hr_avg as number),
     40,
   );
-  const range = maxHr - minHr || 1;
+  const hrRange = maxHr - minHr || 1;
 
-  const BAR_HEIGHT = 72;
+  // Steps line — compute scale
+  const stepValues = buckets
+    .filter((b) => b.steps_count !== null && b.steps_count! > 0)
+    .map((b) => b.steps_count as number);
+  const hasSteps = stepValues.length > 0;
+  const maxSteps = hasSteps ? Math.max(...stepValues) : 0;
+  const totalSteps = stepValues.reduce((a, b) => a + b, 0);
+
+  // Build SVG polyline points for steps (one point per hour, centred in column)
+  const colWidth = CHART_WIDTH / 24;
+  const stepsPoints = hasSteps
+    ? Array.from({ length: 24 }, (_, hour) => {
+        const b = byHour.get(hour);
+        const s = b?.steps_count ?? null;
+        if (s === null || s === 0) return null;
+        const x = hour * colWidth + colWidth / 2;
+        // Invert Y: high steps = top of the area (0 in SVG = top)
+        const y = STEPS_HEIGHT - Math.round((s / maxSteps) * (STEPS_HEIGHT - 4));
+        return `${x},${y}`;
+      }).filter(Boolean).join(" ")
+    : "";
 
   return (
     <div
@@ -102,14 +126,68 @@ export default function IntradayHRChart({ data, loading }: Props) {
         <span className="label-text" style={{ color: "var(--text-muted)" }}>
           HR THROUGH THE DAY
         </span>
-        {buckets.length > 0 && (
-          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-            {Math.round(minHr)}–{Math.round(maxHr)} bpm
-          </span>
-        )}
+        <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+          {hasSteps && (
+            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+              {totalSteps.toLocaleString()} steps
+            </span>
+          )}
+          {buckets.length > 0 && (
+            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+              {Math.round(minHr)}–{Math.round(maxHr)} bpm
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Bar chart */}
+      {/* Steps line chart — only render if there's data */}
+      {hasSteps && (
+        <svg
+          viewBox={`0 0 ${CHART_WIDTH} ${STEPS_HEIGHT}`}
+          preserveAspectRatio="none"
+          style={{ width: "100%", height: STEPS_HEIGHT, display: "block", marginBottom: 2 }}
+        >
+          {/* Subtle area fill */}
+          <defs>
+            <linearGradient id="stepsGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#7FAABC" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#7FAABC" stopOpacity="0.02" />
+            </linearGradient>
+          </defs>
+          {/* Dots for each hour with steps */}
+          {Array.from({ length: 24 }, (_, hour) => {
+            const b = byHour.get(hour);
+            const s = b?.steps_count ?? null;
+            if (!s || s === 0) return null;
+            const x = hour * colWidth + colWidth / 2;
+            const y = STEPS_HEIGHT - Math.round((s / maxSteps) * (STEPS_HEIGHT - 4));
+            return (
+              <circle
+                key={hour}
+                cx={x}
+                cy={y}
+                r={2}
+                fill="#7FAABC"
+                opacity={0.85}
+              />
+            );
+          })}
+          {/* Connecting polyline */}
+          {stepsPoints && (
+            <polyline
+              points={stepsPoints}
+              fill="none"
+              stroke="#7FAABC"
+              strokeWidth={1.5}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              opacity={0.6}
+            />
+          )}
+        </svg>
+      )}
+
+      {/* HR bar chart */}
       <div
         style={{
           display: "flex",
@@ -142,14 +220,15 @@ export default function IntradayHRChart({ data, loading }: Props) {
             );
           }
 
-          const barPct = Math.max(0.08, (hr - minHr) / range);
+          const barPct = Math.max(0.08, (hr - minHr) / hrRange);
           const barHeight = Math.round(barPct * BAR_HEIGHT);
           const color = hrToColor(hr);
+          const steps = bucket?.steps_count ?? null;
 
           return (
             <div
               key={hour}
-              title={`${hour}:00 — ${Math.round(hr)} bpm`}
+              title={`${hour}:00 — ${Math.round(hr)} bpm${steps ? ` · ${steps.toLocaleString()} steps` : ""}`}
               style={{
                 flex: 1,
                 height: "100%",
@@ -226,6 +305,20 @@ export default function IntradayHRChart({ data, loading }: Props) {
             <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{label}</span>
           </div>
         ))}
+        {hasSteps && (
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <div
+              style={{
+                width: 16,
+                height: 2,
+                background: "#7FAABC",
+                borderRadius: 1,
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ fontSize: 10, color: "var(--text-muted)" }}>steps</span>
+          </div>
+        )}
       </div>
     </div>
   );

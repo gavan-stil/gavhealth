@@ -1,5 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react';
-import { X, Dumbbell, Flame, Zap, Sunrise } from 'lucide-react';
+import { X, Dumbbell } from 'lucide-react';
+import { EnergyIcon } from './MoodEnergyCard';
 import { apiFetch } from '@/lib/api';
 
 type EffortLevel = 'basic' | 'mid' | 'lets_go';
@@ -138,9 +139,9 @@ const EFFORT_LABEL: Record<EffortLevel, string> = {
 };
 
 const EFFORT_ICON: Record<EffortLevel, ReactNode> = {
-  lets_go: <Flame size={12} />,
-  mid: <Zap size={12} />,
-  basic: <Sunrise size={12} />,
+  basic: <EnergyIcon value={2} size={14} />,
+  mid: <EnergyIcon value={4} size={14} />,
+  lets_go: <EnergyIcon value={5} size={14} />,
 };
 
 const TYPE_LABELS: Record<string, string> = {
