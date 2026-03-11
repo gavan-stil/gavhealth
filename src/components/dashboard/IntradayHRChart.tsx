@@ -19,9 +19,11 @@ const HOUR_LABELS = [
   "12p", "", "", "3p", "", "", "6p", "", "", "9p", "", "",
 ];
 
-const BAR_HEIGHT = 72;
-const STEPS_HEIGHT = 36;
-const CHART_WIDTH = 240; // nominal SVG width — scales via viewBox
+const CHART_H = 90;
+const NOMINAL_W = 240;
+const COL_W = NOMINAL_W / 24; // 10px per column
+
+const STEPS_COLOR = "#c05540"; // rust-terracotta — legible over dark bg and HR bars
 
 export default function IntradayHRChart({ data, loading }: Props) {
   if (loading) {
@@ -70,7 +72,6 @@ export default function IntradayHRChart({ data, loading }: Props) {
     );
   }
 
-  // Build full 24-hour grid with gaps for missing hours
   const byHour = new Map(buckets.map((b) => [b.hour, b]));
 
   const maxHr = Math.max(
@@ -82,18 +83,17 @@ export default function IntradayHRChart({ data, loading }: Props) {
     40,
   );
   const hrRange = maxHr - minHr || 1;
+  const hrMid = Math.round((maxHr + minHr) / 2);
 
-  // Steps line — compute scale
   const stepValues = buckets
     .filter((b) => b.steps_count !== null && b.steps_count! > 0)
     .map((b) => b.steps_count as number);
   const hasSteps = stepValues.length > 0;
   const maxSteps = hasSteps ? Math.max(...stepValues) : 0;
   const totalSteps = stepValues.reduce((a, b) => a + b, 0);
+  const stepsAxisMax = hasSteps ? Math.ceil(maxSteps / 500) * 500 : 1000;
+  const stepsMid = Math.round(stepsAxisMax / 2);
 
-  const colWidth = CHART_WIDTH / 24;
-
-  // Build smooth bezier path for steps using Catmull-Rom interpolation
   function catmullRomPath(pts: { x: number; y: number }[]): string {
     if (pts.length < 2) return "";
     let d = `M ${pts[0].x},${pts[0].y}`;
@@ -117,11 +117,18 @@ export default function IntradayHRChart({ data, loading }: Props) {
         const s = b?.steps_count ?? null;
         if (!s || s === 0) return null;
         return {
-          x: hour * colWidth + colWidth / 2,
-          y: STEPS_HEIGHT - Math.round((s / maxSteps) * (STEPS_HEIGHT - 4)),
+          x: hour * COL_W + COL_W / 2,
+          y: CHART_H - Math.round((s / stepsAxisMax) * CHART_H),
         };
       }).filter(Boolean) as { x: number; y: number }[])
     : [];
+
+  const axisLabelStyle: React.CSSProperties = {
+    fontSize: 9,
+    lineHeight: 1,
+    color: "var(--text-muted)",
+    textAlign: "right" as const,
+  };
 
   return (
     <div
@@ -158,152 +165,128 @@ export default function IntradayHRChart({ data, loading }: Props) {
         </div>
       </div>
 
-      {/* Steps line chart — only render if there's data */}
-      {hasSteps && stepsPathData.length > 0 && (
-        <svg
-          viewBox={`0 0 ${CHART_WIDTH} ${STEPS_HEIGHT}`}
-          preserveAspectRatio="none"
-          style={{ width: "100%", height: STEPS_HEIGHT, display: "block", marginBottom: 2 }}
+      {/* Chart layout: left-axis | plot | right-axis */}
+      <div style={{ display: "flex", alignItems: "stretch", gap: 4 }}>
+
+        {/* Left axis: HR bpm */}
+        <div
+          style={{
+            width: 26,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            paddingBottom: 18, // matches x-axis label row height
+          }}
         >
-          {/* Smooth connecting path */}
-          <path
-            d={catmullRomPath(stepsPathData)}
-            fill="none"
-            stroke="#7FAABC"
-            strokeWidth={2}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            opacity={0.85}
-          />
-          {/* Dots for each data point */}
-          {stepsPathData.map((pt, i) => (
-            <circle
-              key={i}
-              cx={pt.x}
-              cy={pt.y}
-              r={3}
-              fill="#7FAABC"
-              strokeWidth={0}
-            />
+          {[maxHr, hrMid, minHr].map((v) => (
+            <div key={v} style={axisLabelStyle}>
+              {Math.round(v)}
+            </div>
           ))}
-        </svg>
-      )}
+        </div>
 
-      {/* HR bar chart */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-end",
-          gap: 2,
-          height: BAR_HEIGHT,
-          overflow: "hidden",
-        }}
-      >
-        {Array.from({ length: 24 }, (_, hour) => {
-          const bucket = byHour.get(hour);
-          const hr = bucket?.hr_avg ?? null;
-
-          if (hr === null) {
-            return (
-              <div
-                key={hour}
-                style={{ flex: 1, height: "100%", display: "flex", alignItems: "flex-end" }}
-              >
-                <div
-                  style={{
-                    width: "100%",
-                    height: 4,
-                    background: "var(--border-default)",
-                    borderRadius: 2,
-                    opacity: 0.4,
-                  }}
+        {/* Plot area */}
+        <div style={{ flex: 1 }}>
+          <svg
+            viewBox={`0 0 ${NOMINAL_W} ${CHART_H}`}
+            preserveAspectRatio="none"
+            style={{ width: "100%", height: CHART_H, display: "block", overflow: "visible" }}
+          >
+            {/* HR bars */}
+            {Array.from({ length: 24 }, (_, hour) => {
+              const bucket = byHour.get(hour);
+              const hr = bucket?.hr_avg ?? null;
+              if (hr === null) {
+                // Stub for missing hours
+                return (
+                  <rect
+                    key={hour}
+                    x={hour * COL_W + 0.5}
+                    y={CHART_H - 4}
+                    width={COL_W - 1}
+                    height={4}
+                    fill="var(--border-default)"
+                    rx={2}
+                    opacity={0.4}
+                  />
+                );
+              }
+              const barPct = Math.max(0.06, (hr - minHr) / hrRange);
+              const barH = Math.round(barPct * CHART_H);
+              const color = hrToColor(hr);
+              return (
+                <rect
+                  key={hour}
+                  x={hour * COL_W + 0.5}
+                  y={CHART_H - barH}
+                  width={COL_W - 1}
+                  height={barH}
+                  fill={color}
+                  rx={2}
                 />
-              </div>
-            );
-          }
+              );
+            })}
 
-          const barPct = Math.max(0.08, (hr - minHr) / hrRange);
-          const barHeight = Math.round(barPct * BAR_HEIGHT);
-          const color = hrToColor(hr);
-          const steps = bucket?.steps_count ?? null;
+            {/* Steps line overlay */}
+            {hasSteps && stepsPathData.length > 1 && (
+              <path
+                d={catmullRomPath(stepsPathData)}
+                fill="none"
+                stroke={STEPS_COLOR}
+                strokeWidth={1.5}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                opacity={0.9}
+              />
+            )}
+          </svg>
 
-          const stepsLabel = steps && steps > 0
-            ? steps >= 1000
-              ? `${(steps / 1000).toFixed(1)}k`
-              : String(steps)
-            : null;
-
-          return (
-            <div
-              key={hour}
-              title={`${hour}:00 — ${Math.round(hr)} bpm${steps ? ` · ${steps.toLocaleString()} steps` : ""}`}
-              style={{
-                flex: 1,
-                height: "100%",
-                display: "flex",
-                alignItems: "flex-end",
-              }}
-            >
+          {/* X-axis hour labels */}
+          <div style={{ display: "flex", marginTop: 3 }}>
+            {HOUR_LABELS.map((label, i) => (
               <div
+                key={i}
                 style={{
-                  width: "100%",
-                  height: barHeight,
-                  background: color,
-                  borderRadius: "2px 2px 0 0",
-                  transition: "height 0.3s ease",
-                  minHeight: 4,
-                  position: "relative",
+                  flex: 1,
+                  fontSize: 9,
+                  color: label ? "var(--text-muted)" : "transparent",
+                  whiteSpace: "nowrap",
                   overflow: "hidden",
+                  userSelect: "none",
                 }}
               >
-                {stepsLabel && barHeight >= 16 && (
-                  <span
-                    style={{
-                      position: "absolute",
-                      top: 2,
-                      left: "50%",
-                      transform: "translateX(-50%) rotate(-90deg)",
-                      fontSize: 7,
-                      fontWeight: 600,
-                      color: "rgba(255,255,255,0.85)",
-                      lineHeight: 1,
-                      whiteSpace: "nowrap",
-                      pointerEvents: "none",
-                      userSelect: "none",
-                    }}
-                  >
-                    {stepsLabel}
-                  </span>
-                )}
+                {label || "."}
               </div>
-            </div>
-          );
-        })}
-      </div>
+            ))}
+          </div>
+        </div>
 
-      {/* Hour labels — only show 12a/3a/6a/9a/12p/3p/6p/9p */}
-      <div
-        style={{
-          display: "flex",
-          marginTop: 4,
-        }}
-      >
-        {HOUR_LABELS.map((label, i) => (
+        {/* Right axis: Steps */}
+        {hasSteps && (
           <div
-            key={i}
             style={{
-              flex: 1,
-              textAlign: "left",
-              fontSize: 9,
-              color: label ? "var(--text-muted)" : "transparent",
-              userSelect: "none",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
+              width: 26,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              paddingBottom: 18,
             }}
           >
-            {label || "."}
+            {[stepsAxisMax, stepsMid, 0].map((v, i) => (
+              <div
+                key={i}
+                style={{
+                  fontSize: 9,
+                  lineHeight: 1,
+                  color: STEPS_COLOR,
+                  textAlign: "left",
+                }}
+              >
+                {v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v}
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
 
       {/* Legend */}
@@ -315,13 +298,15 @@ export default function IntradayHRChart({ data, loading }: Props) {
           flexWrap: "wrap",
         }}
       >
-        {([
-          ["≤50", "#7FAABC"],
-          ["51–60", "#8B95C0"],
-          ["61–70", "#A884A0"],
-          ["71–80", "#c4856a"],
-          [">80", "#D4A04A"],
-        ] as [string, string][]).map(([label, color]) => (
+        {(
+          [
+            ["≤50", "#7FAABC"],
+            ["51–60", "#8B95C0"],
+            ["61–70", "#A884A0"],
+            ["71–80", "#c4856a"],
+            [">80", "#D4A04A"],
+          ] as [string, string][]
+        ).map(([label, color]) => (
           <div key={label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <div
               style={{
@@ -341,7 +326,7 @@ export default function IntradayHRChart({ data, loading }: Props) {
               style={{
                 width: 16,
                 height: 2,
-                background: "#7FAABC",
+                background: STEPS_COLOR,
                 borderRadius: 1,
                 flexShrink: 0,
               }}
