@@ -31,6 +31,7 @@ type ExRow = {
   totalReps: number;
   topWeightKg: number;
   usesBodyweight: boolean;
+  isPb: boolean;
 };
 
 type SessionDetail = {
@@ -91,9 +92,6 @@ function fmtWeight(kg: number, bw: boolean): string {
   return kg > 0 ? `${kg}kg` : "–";
 }
 
-function fmtLoad(kg: number): string {
-  return kg >= 1000 ? `${(kg / 1000).toFixed(1)}t` : `${Math.round(kg)}kg`;
-}
 
 function formatDate(iso: string): string {
   const d = new Date(iso + "T00:00:00");
@@ -129,7 +127,6 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
   const [sessions, setSessions]               = useState<SessionDetail[]>([]);
   const [loadingStrength, setLoadingStrength] = useState(false);
   const [expandedKey, setExpandedKey]         = useState<string | null>(null);
-  const [showEx, setShowEx]                   = useState<Record<number, boolean>>({});
   const [unlinking, setUnlinking]             = useState<number | null>(null);
 
   const hasStrength = dots.some((d) => d.category === "strength");
@@ -137,7 +134,6 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
   /* Reset state + auto-expand first card when date changes */
   useEffect(() => {
     setSessions([]);
-    setShowEx({});
     setLoadingStrength(false);
     if (!hasStrength && dots.length > 0) {
       setExpandedKey(`d-${dots[0].category}`);
@@ -202,16 +198,18 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
             const ex = exMap.get(r.toLowerCase());
             if (!ex) return;
             const { name } = parseEx(r);
-            const entry = histMap.get(ex.id)?.find(
-              (h) => h.session_date.slice(0, 10) === date
-            );
+            const hist = histMap.get(ex.id) ?? [];
+            const entry = hist.find((h) => h.session_date.slice(0, 10) === date);
             if (!entry) return;
+            const allTimeMax = hist.reduce((m, h) => Math.max(m, h.top_weight_kg), 0);
+            const isPb = !ex.uses_bodyweight && entry.top_weight_kg > 0 && entry.top_weight_kg >= allTimeMax;
             rows.push({
               name,
               sets: entry.sets,
               totalReps: entry.total_reps,
               topWeightKg: entry.top_weight_kg,
               usesBodyweight: ex.uses_bodyweight,
+              isPb,
             });
           });
           return {
@@ -227,10 +225,7 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
         });
 
         setSessions(details);
-        if (details.length > 0) {
-          setExpandedKey(`s-${details[0].id}`);
-          setShowEx({ [details[0].id]: true });
-        }
+        if (details.length > 0) setExpandedKey(`s-${details[0].id}`);
       } catch (err) {
         console.error("[DayDetailSheet] fetch error:", err);
       } finally {
@@ -318,11 +313,10 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
           {sessions.map((s) => {
             const key = `s-${s.id}`;
             const expanded = expandedKey === key;
-            const exVisible = showEx[s.id] ?? false;
             const TOTALS = [
               { val: String(s.totalSets), lbl: "Sets" },
               { val: String(s.totalReps), lbl: "Reps" },
-              { val: fmtLoad(s.totalLoadKg), lbl: "Load" },
+              { val: Math.round(s.totalLoadKg).toLocaleString(), lbl: "Volume" },
             ];
 
             return (
@@ -369,16 +363,16 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
                   <div style={{ padding: "0 14px 14px" }}>
                     <div style={SEP} />
 
-                    {/* Body area pills */}
+                    {/* Area chips */}
                     {s.bodyAreas.length > 0 && (
                       <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 10 }}>
                         {s.bodyAreas.map((a) => (
                           <span key={a} style={{
-                            font: "500 9px/1 'Inter',sans-serif", letterSpacing: "0.3px", textTransform: "uppercase",
-                            padding: "3px 7px", borderRadius: 20,
-                            background: "rgba(255,255,255,0.05)",
-                            color: "var(--text-secondary)",
-                            border: "1px solid rgba(255,255,255,0.08)",
+                            font: "500 9px/1 'Inter',sans-serif", letterSpacing: "0.4px", textTransform: "uppercase",
+                            padding: "3px 8px", borderRadius: 100,
+                            background: "rgba(180,112,80,0.15)",
+                            border: "1px solid rgba(180,112,80,0.25)",
+                            color: "var(--rust)",
                           }}>
                             {a}
                           </span>
@@ -412,75 +406,66 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
                       </div>
                     )}
 
-                    {/* Session totals */}
-                    <div style={{ display: "flex", alignItems: "center", marginTop: 12 }}>
+                    {/* Totals row */}
+                    <div style={{
+                      display: "flex",
+                      border: "1px solid var(--border-default)",
+                      borderRadius: 8,
+                      overflow: "hidden",
+                      marginTop: 12,
+                    }}>
                       {TOTALS.map(({ val, lbl }, i) => (
-                        <div key={lbl} style={{ display: "flex", alignItems: "center", flex: 1 }}>
-                          {i > 0 && (
-                            <div style={{ width: 1, height: 28, background: "rgba(255,255,255,0.07)", marginRight: 12, flexShrink: 0 }} />
-                          )}
-                          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                            <span style={{ font: "600 15px/1 'JetBrains Mono',monospace", color: "var(--text-primary)" }}>{val}</span>
-                            <span style={{ font: "400 9px/1 'Inter',sans-serif", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)" }}>{lbl}</span>
-                          </div>
+                        <div key={lbl} style={{
+                          flex: 1, padding: "9px 10px",
+                          display: "flex", flexDirection: "column", gap: 3,
+                          borderLeft: i > 0 ? "1px solid var(--border-default)" : undefined,
+                        }}>
+                          <span style={{ font: "700 15px/1 'JetBrains Mono',monospace", letterSpacing: "-0.5px", color: "var(--text-primary)" }}>{val}</span>
+                          <span style={{ font: "500 9px/1 'Inter',sans-serif", letterSpacing: "0.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>{lbl}</span>
                         </div>
                       ))}
                     </div>
 
-                    {/* Exercise toggle + rows */}
+                    {/* Exercise table */}
                     {s.rows.length > 0 && (
-                      <>
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowEx((p) => ({ ...p, [s.id]: !p[s.id] }));
-                          }}
-                          style={{
-                            display: "flex", alignItems: "center", gap: 6,
-                            cursor: "pointer",
-                            borderTop: "1px solid rgba(255,255,255,0.05)",
-                            marginTop: 12, paddingTop: 10,
-                          }}
-                        >
-                          <span style={{
-                            fontSize: 11, color: "var(--text-muted)",
-                            display: "inline-block",
-                            transform: exVisible ? "rotate(180deg)" : "none",
-                            transition: "transform 0.2s",
-                          }}>▾</span>
-                          <span style={{ font: "500 10px/1 'Inter',sans-serif", letterSpacing: "0.3px", textTransform: "uppercase", color: "var(--text-muted)" }}>
-                            Exercises ({s.rows.length})
-                          </span>
-                        </div>
-
-                        {exVisible && (
-                          <div style={{ marginTop: 6 }}>
-                            {s.rows.map((r, ri) => (
-                              <div key={r.name} style={{
-                                display: "grid",
-                                gridTemplateColumns: "1fr 28px 36px 54px",
-                                gap: 4,
-                                padding: "7px 0",
-                                borderBottom: ri < s.rows.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
-                                alignItems: "center",
-                              }}>
-                                <span style={{ font: "400 11px/1.3 'Inter',sans-serif", color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                  {r.name}
-                                </span>
-                                <span style={{ font: "500 10px/1 'JetBrains Mono',monospace", color: "var(--text-muted)", textAlign: "right" }}>
-                                  {r.sets}×
-                                </span>
-                                <span style={{ font: "500 10px/1 'JetBrains Mono',monospace", color: "var(--text-primary)", textAlign: "right" }}>
-                                  {r.totalReps}
-                                </span>
-                                <span style={{ font: "500 10px/1 'JetBrains Mono',monospace", color: "var(--text-primary)", textAlign: "right" }}>
-                                  {fmtWeight(r.topWeightKg, r.usesBodyweight)}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </>
+                      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 12 }}>
+                        <thead>
+                          <tr>
+                            <th style={{ font: "600 9px/1 'Inter',sans-serif", letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-muted)", padding: "0 0 6px", textAlign: "left", borderBottom: "1px solid var(--border-default)" }}>Exercise</th>
+                            <th style={{ font: "600 9px/1 'Inter',sans-serif", letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-muted)", padding: "0 0 6px", textAlign: "right", width: 28, borderBottom: "1px solid var(--border-default)" }}>Sets</th>
+                            <th style={{ font: "600 9px/1 'Inter',sans-serif", letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-muted)", padding: "0 0 6px", textAlign: "right", width: 32, borderBottom: "1px solid var(--border-default)" }}>Reps</th>
+                            <th style={{ font: "600 9px/1 'Inter',sans-serif", letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-muted)", padding: "0 0 6px", textAlign: "right", width: 52, borderBottom: "1px solid var(--border-default)" }}>Top</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {s.rows.map((r, ri) => (
+                            <tr key={r.name}>
+                              <td style={{ padding: "7px 0", borderBottom: ri < s.rows.length - 1 ? "1px solid rgba(255,255,255,0.04)" : undefined, verticalAlign: "middle" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                  <div style={{ width: 5, height: 5, borderRadius: "50%", flexShrink: 0, background: r.isPb ? "var(--ochre)" : "transparent" }} />
+                                  <span style={{
+                                    font: "400 12px/1.3 'Inter',sans-serif",
+                                    color: r.isPb ? "var(--ochre)" : "var(--text-secondary)",
+                                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                                    maxWidth: 155,
+                                  }}>
+                                    {r.name}
+                                  </span>
+                                </div>
+                              </td>
+                              <td style={{ font: "500 11px/1 'JetBrains Mono',monospace", color: "var(--text-muted)", textAlign: "right", padding: "7px 0 7px 4px", width: 28, borderBottom: ri < s.rows.length - 1 ? "1px solid rgba(255,255,255,0.04)" : undefined }}>
+                                {r.sets}×
+                              </td>
+                              <td style={{ font: "500 11px/1 'JetBrains Mono',monospace", color: "var(--text-secondary)", textAlign: "right", width: 32, padding: "7px 0", borderBottom: ri < s.rows.length - 1 ? "1px solid rgba(255,255,255,0.04)" : undefined }}>
+                                {r.totalReps}
+                              </td>
+                              <td style={{ font: "500 11px/1 'JetBrains Mono',monospace", color: "var(--text-secondary)", textAlign: "right", width: 52, padding: "7px 0", borderBottom: ri < s.rows.length - 1 ? "1px solid rgba(255,255,255,0.04)" : undefined }}>
+                                {fmtWeight(r.topWeightKg, r.usesBodyweight)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     )}
                   </div>
                 )}

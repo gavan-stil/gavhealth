@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=375, initial-scale=1">
+<title>Strength Session — Consistency Mockup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:           #111110;
+    --surface:      #1c1c1a;
+    --surface-2:    #242422;
+    --border:       #2e2e2b;
+    --border-light: #383835;
+    --ochre:        #c89b4a;
+    --ochre-dim:    rgba(200,155,74,0.13);
+    --pb:           #e8c47a;
+    --pb-dim:       rgba(232,196,122,0.10);
+    --freq:         #8fa8c8;
+    --freq-dim:     rgba(143,168,200,0.10);
+    --rust:         #b47050;
+    --rust-dim:     rgba(180,112,80,0.12);
+    --signal-good:  #4a9e6a;
+    --text-pri:     #f0ede8;
+    --text-sec:     #a8a49e;
+    --text-mut:     #6b6760;
+    --radius:       12px;
+    --radius-sm:    8px;
+    --radius-pill:  99px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text-pri);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    max-width: 375px;
+    margin: 0 auto;
+    padding: 0 0 60px;
+  }
+
+  /* ─── Section labels ─── */
+  .section-label {
+    font: 500 10px/1 Inter, sans-serif;
+    color: var(--text-mut);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 28px 16px 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ─── SVG icons ─── */
+  .icon-fire {
+    display: inline-block;
+    vertical-align: middle;
+    width: 10px;
+    height: 10px;
+  }
+  .icon-chevron {
+    display: inline-block;
+    vertical-align: middle;
+    width: 12px;
+    height: 12px;
+    transition: transform 0.2s;
+    color: var(--text-mut);
+  }
+  .icon-chevron.open { transform: rotate(180deg); }
+
+  /* ─── Shared session card ─── */
+  .s-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .s-card.pb   { border-color: rgba(232,196,122,0.30); }
+  .s-card.freq { border-color: rgba(143,168,200,0.22); }
+  .s-card.linked { border-left: 3px solid var(--rust); }
+
+  /* Card header row */
+  .s-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px 10px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .s-card-header-left { flex: 1; min-width: 0; }
+
+  .s-card-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 5px;
+    flex-wrap: wrap;
+  }
+  .s-card-date {
+    font: 500 13px/1.2 Inter, sans-serif;
+    color: var(--text-pri);
+  }
+  .s-card-split {
+    font: 700 10px/1 Inter, sans-serif;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: var(--radius-pill);
+    border: 1px solid currentColor;
+  }
+  .s-card-split.rust { color: var(--rust); }
+  .s-card-split.ochre { color: var(--ochre); }
+
+  /* Badges */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font: 600 10px/1 Inter, sans-serif;
+    padding: 2px 7px;
+    border-radius: var(--radius-pill);
+  }
+  .badge-pb {
+    color: var(--pb);
+    background: var(--pb-dim);
+    border: 1px solid rgba(232,196,122,0.25);
+  }
+  .badge-freq {
+    color: var(--freq);
+    background: var(--freq-dim);
+    border: 1px solid rgba(143,168,200,0.20);
+  }
+
+  /* Summary stats row */
+  .s-card-stats {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .stat {
+    font: 400 11px/1.3 Inter, sans-serif;
+    color: var(--text-sec);
+    white-space: nowrap;
+  }
+  .stat em {
+    font-style: normal;
+    color: var(--text-mut);
+    font-size: 10px;
+  }
+
+  /* ─── Expanded body ─── */
+  .s-card-body {
+    border-top: 1px solid var(--border);
+    padding: 10px 14px 12px;
+  }
+
+  /* Body area chips */
+  .area-chips {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .area-chip {
+    font: 500 9px/1 Inter, sans-serif;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--text-sec);
+  }
+
+  /* ─── Totals block ─── */
+  .totals-row {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .total-cell {
+    flex: 1;
+    padding: 9px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .total-cell + .total-cell {
+    border-left: 1px solid var(--border);
+  }
+  .total-val {
+    font: 700 15px/1 'JetBrains Mono', monospace;
+    letter-spacing: -0.5px;
+    color: var(--text-pri);
+  }
+  .total-lbl {
+    font: 600 9px/1 Inter, sans-serif;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-mut);
+  }
+
+  /* ─── Exercise table ─── */
+  .ex-table { width: 100%; border-collapse: collapse; }
+  .ex-table-head th {
+    font: 600 9px/1 Inter, sans-serif;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-mut);
+    padding: 0 0 6px;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+  }
+  .ex-table-head th:first-child { text-align: left; }
+
+  .ex-row td {
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    vertical-align: middle;
+  }
+  .ex-row:last-child td { border-bottom: none; }
+
+  .ex-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .ex-pb-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--pb);
+    flex-shrink: 0;
+  }
+  .ex-pb-dot.invisible { background: transparent; }
+  .ex-name {
+    font: 400 12px/1.3 Inter, sans-serif;
+    color: var(--text-sec);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 155px;
+  }
+  .ex-name.pb { color: var(--pb); }
+
+  .ex-num {
+    font: 500 11px/1 'JetBrains Mono', monospace;
+    letter-spacing: -0.3px;
+    color: var(--text-mut);
+    text-align: right;
+    padding-left: 4px;
+    width: 28px;
+    flex-shrink: 0;
+  }
+  .ex-reps {
+    font: 600 12px/1 'JetBrains Mono', monospace;
+    letter-spacing: -0.3px;
+    color: var(--text-pri);
+    text-align: right;
+    padding-left: 4px;
+    width: 32px;
+    flex-shrink: 0;
+  }
+  .ex-weight {
+    font: 600 12px/1 'JetBrains Mono', monospace;
+    letter-spacing: -0.3px;
+    color: var(--text-pri);
+    text-align: right;
+    padding-left: 4px;
+    width: 52px;
+    flex-shrink: 0;
+  }
+
+  /* Action buttons */
+  .card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .btn {
+    flex: 1;
+    padding: 9px 0;
+    border-radius: var(--radius-sm);
+    font: 600 12px/1 Inter, sans-serif;
+    text-align: center;
+    cursor: pointer;
+    border: 1px solid;
+  }
+  .btn-ghost   { background: transparent; border-color: var(--border-light); color: var(--text-mut); }
+  .btn-ochre   { background: var(--ochre-dim); border-color: rgba(200,155,74,0.25); color: var(--ochre); }
+  .btn-rust    { background: transparent; border-color: var(--rust); color: var(--rust); }
+  .btn-load    { display: block; width: 100%; margin-top: 4px; background: var(--ochre-dim); border-color: rgba(200,155,74,0.25); color: var(--ochre); }
+
+  /* ─── 1. PICKER — bottom sheet chrome ─── */
+  .sheet-wrap {
+    background: var(--surface);
+    border-radius: 20px 20px 0 0;
+    border-top: 1px solid var(--border-light);
+    margin: 0 0 0;
+    padding: 0 14px 20px;
+  }
+  .sheet-handle {
+    width: 36px; height: 4px;
+    background: var(--border-light);
+    border-radius: var(--radius-pill);
+    margin: 12px auto 0;
+  }
+  .sheet-title {
+    font: 600 15px/1.2 Inter, sans-serif;
+    color: var(--text-pri);
+    padding: 14px 0 2px;
+  }
+  .sheet-subtitle {
+    font: 400 12px/1.3 Inter, sans-serif;
+    color: var(--text-mut);
+    margin-bottom: 12px;
+  }
+  .older-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0 8px;
+  }
+  .older-divider-line { flex: 1; height: 1px; background: var(--border); }
+  .older-divider-lbl { font: 400 10px/1 Inter, sans-serif; color: var(--text-mut); letter-spacing: 0.06em; }
+
+  /* ─── 2. CALENDAR — day sheet chrome ─── */
+  .cal-wrap {
+    background: var(--surface);
+    border-radius: 20px 20px 0 0;
+    border-top: 1px solid var(--border-light);
+    padding: 0 16px 20px;
+  }
+  .cal-date-header {
+    font: 600 14px/1.3 Inter, sans-serif;
+    letter-spacing: -0.3px;
+    color: var(--text-pri);
+    padding: 16px 0 12px;
+  }
+
+  /* ─── 3. LOG — activity detail chrome ─── */
+  .log-wrap {
+    background: var(--surface);
+    border-radius: 20px 20px 0 0;
+    border-top: 1px solid var(--border-light);
+    padding: 0 16px 20px;
+  }
+  .log-activity-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 0 12px;
+  }
+  .log-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--rust); flex-shrink: 0; }
+  .log-title { font: 700 18px/1.2 Inter, sans-serif; letter-spacing: -0.5px; color: var(--text-pri); flex: 1; }
+  .log-meta-row {
+    font: 600 12px/1 'JetBrains Mono', monospace;
+    letter-spacing: -0.3px;
+    color: var(--text-sec);
+    display: flex;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .log-hr-block {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .log-hr-cell {
+    flex: 1;
+    padding: 9px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .log-hr-cell + .log-hr-cell { border-left: 1px solid var(--border); }
+  .log-hr-val { font: 700 15px/1 'JetBrains Mono', monospace; letter-spacing: -0.5px; color: var(--text-pri); }
+  .log-hr-lbl { font: 600 9px/1 Inter, sans-serif; letter-spacing: 1px; text-transform: uppercase; color: var(--text-mut); }
+
+  .effort-lbl {
+    font: 600 10px/1 Inter, sans-serif;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text-mut);
+    margin-bottom: 8px;
+  }
+  .effort-pills {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .effort-pill {
+    flex: 1;
+    padding: 8px 0;
+    border-radius: var(--radius-pill);
+    font: 600 12px/1 Inter, sans-serif;
+    text-align: center;
+    border: 1px solid var(--border-light);
+    color: var(--text-mut);
+    cursor: pointer;
+  }
+  .effort-pill.active {
+    background: var(--ochre);
+    border-color: var(--ochre);
+    color: var(--bg);
+  }
+
+  .strength-section-lbl {
+    font: 600 10px/1 Inter, sans-serif;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text-mut);
+    margin-bottom: 10px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════
+     1. SESSION PICKER — bottom sheet
+     ══════════════════════════════════════════════════ -->
+<p class="section-label">1 — Picker (Log route, bottom sheet)</p>
+
+<div class="sheet-wrap">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">Recent Legs sessions</div>
+  <div class="sheet-subtitle">Tap to preview · select to load as template</div>
+
+  <!-- PB card — expanded -->
+  <div class="s-card pb" id="picker-card-1">
+    <div class="s-card-header" onclick="toggle('picker-1')">
+      <div class="s-card-header-left">
+        <div class="s-card-top">
+          <span class="s-card-date">Mon 3 Mar, 7:14 am</span>
+          <span class="badge badge-pb">
+            <svg class="icon-fire" viewBox="0 0 24 24"><path d="M 12 2 C 12 2 6 10 6 14.5 A 6 6 0 0 0 18 14.5 C 18 10 12 2 12 2 Z" fill="none" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M 12 22 C 12 22 9 17 9 15 A 3 3 0 0 1 15 15 C 15 17 12 22 12 22" fill="none" stroke="#e8c47a" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/></svg>
+            PB
+          </span>
+        </div>
+        <div class="s-card-stats">
+          <span class="stat">6 <em>exercises</em></span>
+          <span class="stat">22 <em>sets</em></span>
+          <span class="stat">196 <em>reps</em></span>
+          <span class="stat">3,840 <em>kg volume</em></span>
+        </div>
+      </div>
+      <svg class="icon-chevron open" id="chev-picker-1" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="4,6 8,10 12,6"/></svg>
+    </div>
+    <div class="s-card-body" id="body-picker-1">
+      <!-- area chips -->
+      <div class="area-chips">
+        <span class="area-chip">Legs</span>
+        <span class="area-chip">Glutes</span>
+        <span class="area-chip">Calves</span>
+      </div>
+      <!-- totals -->
+      <div class="totals-row">
+        <div class="total-cell"><span class="total-val">22</span><span class="total-lbl">Sets</span></div>
+        <div class="total-cell"><span class="total-val">196</span><span class="total-lbl">Reps</span></div>
+        <div class="total-cell"><span class="total-val">3,840kg</span><span class="total-lbl">Volume</span></div>
+      </div>
+      <!-- exercise table -->
+      <table class="ex-table">
+        <thead class="ex-table-head">
+          <tr><th>Exercise</th><th style="text-align:right;width:28px">Sets</th><th style="text-align:right;width:32px">Reps</th><th style="text-align:right;width:52px">Top</th></tr>
+        </thead>
+        <tbody>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot"></div><span class="ex-name pb">Squat</span></div></td><td class="ex-num">4×</td><td class="ex-reps">20</td><td class="ex-weight">130kg</td></tr>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot"></div><span class="ex-name pb">Romanian DL</span></div></td><td class="ex-num">3×</td><td class="ex-reps">24</td><td class="ex-weight">90kg</td></tr>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot invisible"></div><span class="ex-name">Leg Press</span></div></td><td class="ex-num">3×</td><td class="ex-reps">30</td><td class="ex-weight">160kg</td></tr>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot invisible"></div><span class="ex-name">Leg Curl</span></div></td><td class="ex-num">3×</td><td class="ex-reps">36</td><td class="ex-weight">50kg</td></tr>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot invisible"></div><span class="ex-name">Calf Raise</span></div></td><td class="ex-num">3×</td><td class="ex-reps">45</td><td class="ex-weight">40kg</td></tr>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot invisible"></div><span class="ex-name">Nordic Curl</span></div></td><td class="ex-num">3×</td><td class="ex-reps">18</td><td class="ex-weight">BW</td></tr>
+        </tbody>
+      </table>
+      <button class="btn btn-ochre btn-load">Load this session</button>
+    </div>
+  </div>
+
+  <!-- Most-loaded card — collapsed -->
+  <div class="s-card freq">
+    <div class="s-card-header" onclick="toggle('picker-2')">
+      <div class="s-card-header-left">
+        <div class="s-card-top">
+          <span class="s-card-date">Wed 26 Feb, 6:58 am</span>
+          <span class="badge badge-freq">↺ Most loaded</span>
+        </div>
+        <div class="s-card-stats">
+          <span class="stat">5 <em>exercises</em></span>
+          <span class="stat">18 <em>sets</em></span>
+          <span class="stat">176 <em>reps</em></span>
+          <span class="stat">3,210 <em>kg volume</em></span>
+        </div>
+      </div>
+      <svg class="icon-chevron" id="chev-picker-2" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="4,6 8,10 12,6"/></svg>
+    </div>
+    <div class="s-card-body" id="body-picker-2" style="display:none">
+      <div class="area-chips"><span class="area-chip">Legs</span><span class="area-chip">Glutes</span></div>
+      <div class="totals-row">
+        <div class="total-cell"><span class="total-val">18</span><span class="total-lbl">Sets</span></div>
+        <div class="total-cell"><span class="total-val">176</span><span class="total-lbl">Reps</span></div>
+        <div class="total-cell"><span class="total-val">3,210kg</span><span class="total-lbl">Volume</span></div>
+      </div>
+      <table class="ex-table">
+        <thead class="ex-table-head"><tr><th>Exercise</th><th style="text-align:right;width:28px">Sets</th><th style="text-align:right;width:32px">Reps</th><th style="text-align:right;width:52px">Top</th></tr></thead>
+        <tbody>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot invisible"></div><span class="ex-name">Squat</span></div></td><td class="ex-num">4×</td><td class="ex-reps">24</td><td class="ex-weight">120kg</td></tr>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot invisible"></div><span class="ex-name">Leg Press</span></div></td><td class="ex-num">4×</td><td class="ex-reps">40</td><td class="ex-weight">150kg</td></tr>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot invisible"></div><span class="ex-name">Leg Curl</span></div></td><td class="ex-num">3×</td><td class="ex-reps">36</td><td class="ex-weight">50kg</td></tr>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot invisible"></div><span class="ex-name">Leg Extension</span></div></td><td class="ex-num">3×</td><td class="ex-reps">45</td><td class="ex-weight">45kg</td></tr>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot invisible"></div><span class="ex-name">Calf Raise</span></div></td><td class="ex-num">4×</td><td class="ex-reps">80</td><td class="ex-weight">35kg</td></tr>
+        </tbody>
+      </table>
+      <button class="btn btn-ochre btn-load">Load this session</button>
+    </div>
+  </div>
+
+  <div class="older-divider"><div class="older-divider-line"></div><div class="older-divider-lbl">Older sessions</div><div class="older-divider-line"></div></div>
+
+  <!-- Older session — collapsed -->
+  <div class="s-card">
+    <div class="s-card-header">
+      <div class="s-card-header-left">
+        <div class="s-card-top"><span class="s-card-date">Fri 21 Feb, 7:02 am</span></div>
+        <div class="s-card-stats">
+          <span class="stat">4 <em>exercises</em></span>
+          <span class="stat">16 <em>sets</em></span>
+          <span class="stat">136 <em>reps</em></span>
+          <span class="stat">2,760 <em>kg volume</em></span>
+        </div>
+      </div>
+      <svg class="icon-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="4,6 8,10 12,6"/></svg>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════
+     2. CALENDAR — day detail sheet
+     ══════════════════════════════════════════════════ -->
+<p class="section-label">2 — Calendar (day detail sheet)</p>
+
+<div class="cal-wrap">
+  <div class="sheet-handle"></div>
+  <div class="cal-date-header">Mon 3 Mar</div>
+
+  <!-- Strength card — expanded -->
+  <div class="s-card">
+    <div class="s-card-header" onclick="toggle('cal-1')">
+      <div class="s-card-header-left">
+        <div class="s-card-top">
+          <span class="s-card-split rust">Legs</span>
+          <span class="badge badge-pb">
+            <svg class="icon-fire" viewBox="0 0 24 24"><path d="M 12 2 C 12 2 6 10 6 14.5 A 6 6 0 0 0 18 14.5 C 18 10 12 2 12 2 Z" fill="none" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M 12 22 C 12 22 9 17 9 15 A 3 3 0 0 1 15 15 C 15 17 12 22 12 22" fill="none" stroke="#e8c47a" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/></svg>
+            PB
+          </span>
+        </div>
+        <div class="s-card-stats">
+          <span class="stat">7:14 <em>am</em></span>
+          <span class="stat">22 <em>sets</em></span>
+          <span class="stat">196 <em>reps</em></span>
+          <span class="stat">3,840 <em>kg volume</em></span>
+        </div>
+      </div>
+      <svg class="icon-chevron open" id="chev-cal-1" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="4,6 8,10 12,6"/></svg>
+    </div>
+    <div class="s-card-body" id="body-cal-1">
+      <div class="area-chips">
+        <span class="area-chip">Legs</span>
+        <span class="area-chip">Glutes</span>
+        <span class="area-chip">Calves</span>
+      </div>
+      <div class="totals-row">
+        <div class="total-cell"><span class="total-val">22</span><span class="total-lbl">Sets</span></div>
+        <div class="total-cell"><span class="total-val">196</span><span class="total-lbl">Reps</span></div>
+        <div class="total-cell"><span class="total-val">3,840kg</span><span class="total-lbl">Volume</span></div>
+      </div>
+      <table class="ex-table">
+        <thead class="ex-table-head"><tr><th>Exercise</th><th style="text-align:right;width:28px">Sets</th><th style="text-align:right;width:32px">Reps</th><th style="text-align:right;width:52px">Top</th></tr></thead>
+        <tbody>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot"></div><span class="ex-name pb">Squat</span></div></td><td class="ex-num">4×</td><td class="ex-reps">20</td><td class="ex-weight">130kg</td></tr>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot"></div><span class="ex-name pb">Romanian DL</span></div></td><td class="ex-num">3×</td><td class="ex-reps">24</td><td class="ex-weight">90kg</td></tr>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot invisible"></div><span class="ex-name">Leg Press</span></div></td><td class="ex-num">3×</td><td class="ex-reps">30</td><td class="ex-weight">160kg</td></tr>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot invisible"></div><span class="ex-name">Leg Curl</span></div></td><td class="ex-num">3×</td><td class="ex-reps">36</td><td class="ex-weight">50kg</td></tr>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot invisible"></div><span class="ex-name">Calf Raise</span></div></td><td class="ex-num">3×</td><td class="ex-reps">45</td><td class="ex-weight">40kg</td></tr>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot invisible"></div><span class="ex-name">Nordic Curl</span></div></td><td class="ex-num">3×</td><td class="ex-reps">18</td><td class="ex-weight">BW</td></tr>
+        </tbody>
+      </table>
+      <div class="card-actions">
+        <button class="btn btn-ghost">Unlink Withings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- A non-strength activity dot (Sauna) — for context -->
+  <div class="s-card" style="opacity:0.45">
+    <div class="s-card-header">
+      <div class="s-card-header-left">
+        <div class="s-card-top"><span class="s-card-split" style="color:#c45a4a;border-color:#c45a4a">Sauna</span></div>
+        <div class="s-card-stats"><span class="stat">45 <em>min</em></span></div>
+      </div>
+      <svg class="icon-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="4,6 8,10 12,6"/></svg>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════
+     3. LOG — activity detail sheet (Withings linked)
+     ══════════════════════════════════════════════════ -->
+<p class="section-label">3 — Log (activity detail, linked session)</p>
+
+<div class="log-wrap">
+  <div class="sheet-handle"></div>
+
+  <!-- Activity header -->
+  <div class="log-activity-header">
+    <div class="log-dot"></div>
+    <span class="log-title">Workout</span>
+  </div>
+  <div class="log-meta-row">
+    <span>Mon 3 Mar</span>
+    <span>7:14am</span>
+    <span>68m</span>
+  </div>
+
+  <!-- HR block -->
+  <div class="log-hr-block">
+    <div class="log-hr-cell"><span class="log-hr-val">142</span><span class="log-hr-lbl">Avg BPM</span></div>
+    <div class="log-hr-cell"><span class="log-hr-val">98</span><span class="log-hr-lbl">Low</span></div>
+    <div class="log-hr-cell"><span class="log-hr-val">174</span><span class="log-hr-lbl">High</span></div>
+  </div>
+
+  <!-- Effort -->
+  <div class="effort-lbl">Effort</div>
+  <div class="effort-pills">
+    <div class="effort-pill">Basic</div>
+    <div class="effort-pill active">Mid</div>
+    <div class="effort-pill">Let's Go</div>
+  </div>
+
+  <!-- Strength section -->
+  <div class="strength-section-lbl">Strength Session</div>
+
+  <div class="s-card linked">
+    <div class="s-card-header" onclick="toggle('log-1')">
+      <div class="s-card-header-left">
+        <div class="s-card-top">
+          <span class="s-card-split rust">Legs</span>
+          <span class="badge badge-pb">
+            <svg class="icon-fire" viewBox="0 0 24 24"><path d="M 12 2 C 12 2 6 10 6 14.5 A 6 6 0 0 0 18 14.5 C 18 10 12 2 12 2 Z" fill="none" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M 12 22 C 12 22 9 17 9 15 A 3 3 0 0 1 15 15 C 15 17 12 22 12 22" fill="none" stroke="#e8c47a" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/></svg>
+            PB
+          </span>
+        </div>
+        <div class="s-card-stats">
+          <span class="stat">22 <em>sets</em></span>
+          <span class="stat">196 <em>reps</em></span>
+          <span class="stat">3,840 <em>kg volume</em></span>
+        </div>
+      </div>
+      <svg class="icon-chevron open" id="chev-log-1" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="4,6 8,10 12,6"/></svg>
+    </div>
+    <div class="s-card-body" id="body-log-1">
+      <div class="area-chips">
+        <span class="area-chip">Legs</span>
+        <span class="area-chip">Glutes</span>
+        <span class="area-chip">Calves</span>
+      </div>
+      <div class="totals-row">
+        <div class="total-cell"><span class="total-val">22</span><span class="total-lbl">Sets</span></div>
+        <div class="total-cell"><span class="total-val">196</span><span class="total-lbl">Reps</span></div>
+        <div class="total-cell"><span class="total-val">3,840kg</span><span class="total-lbl">Volume</span></div>
+      </div>
+      <table class="ex-table">
+        <thead class="ex-table-head"><tr><th>Exercise</th><th style="text-align:right;width:28px">Sets</th><th style="text-align:right;width:32px">Reps</th><th style="text-align:right;width:52px">Top</th></tr></thead>
+        <tbody>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot"></div><span class="ex-name pb">Squat</span></div></td><td class="ex-num">4×</td><td class="ex-reps">20</td><td class="ex-weight">130kg</td></tr>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot"></div><span class="ex-name pb">Romanian DL</span></div></td><td class="ex-num">3×</td><td class="ex-reps">24</td><td class="ex-weight">90kg</td></tr>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot invisible"></div><span class="ex-name">Leg Press</span></div></td><td class="ex-num">3×</td><td class="ex-reps">30</td><td class="ex-weight">160kg</td></tr>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot invisible"></div><span class="ex-name">Leg Curl</span></div></td><td class="ex-num">3×</td><td class="ex-reps">36</td><td class="ex-weight">50kg</td></tr>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot invisible"></div><span class="ex-name">Calf Raise</span></div></td><td class="ex-num">3×</td><td class="ex-reps">45</td><td class="ex-weight">40kg</td></tr>
+          <tr class="ex-row"><td><div class="ex-name-cell"><div class="ex-pb-dot invisible"></div><span class="ex-name">Nordic Curl</span></div></td><td class="ex-num">3×</td><td class="ex-reps">18</td><td class="ex-weight">BW</td></tr>
+        </tbody>
+      </table>
+      <div class="card-actions">
+        <button class="btn btn-ghost">Unlink</button>
+        <button class="btn btn-rust">Re-log</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     SECTION 4 — Log activity feed · Unlinked (orphan) session
+     ══════════════════════════════════════════════════════════════════ -->
+
+<div class="section-label">4 · Log feed — Unlinked session</div>
+
+<!-- Feed context: a regular linked workout above it for reference -->
+<div style="padding:0 16px;">
+
+  <!-- Collapsed orphan card (how it looks in the feed at rest) -->
+  <div class="section-label" style="padding:0 0 8px; font-size:9px;">COLLAPSED STATE</div>
+  <div style="
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-left:3px solid var(--rust);
+    border-radius:var(--radius);
+    overflow:hidden;
+    margin-bottom:16px;
+  ">
+    <!-- Header -->
+    <div style="
+      padding:12px 14px 10px;
+      cursor:pointer;
+      display:flex; flex-direction:column; gap:5px;
+    ">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <!-- rust dot -->
+        <span style="width:10px;height:10px;border-radius:50%;background:var(--rust);flex-shrink:0;"></span>
+        <span style="font:700 16px/1.2 Inter,sans-serif;letter-spacing:-0.5px;color:var(--text-pri);flex:1;">
+          Strength
+        </span>
+        <!-- unlinked badge -->
+        <span style="
+          display:inline-flex;align-items:center;gap:4px;
+          padding:3px 8px;
+          border-radius:var(--radius-pill);
+          border:1px solid var(--rust);
+          color:var(--rust);
+          font:600 11px/1 Inter,sans-serif;
+        ">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            <line x1="4" y1="4" x2="20" y2="20"/>
+          </svg>
+          unlinked
+        </span>
+        <!-- chevron -->
+        <svg class="icon-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+      <!-- sub-row: date + stats -->
+      <div style="
+        font:600 13px/1 'JetBrains Mono',monospace; letter-spacing:-0.5px;
+        color:var(--text-sec); padding-left:18px;
+      ">
+        Tue 10 Mar · 5 exercises · 48 min
+      </div>
+      <!-- split pill row -->
+      <div style="padding-left:18px; display:flex; align-items:center; gap:4px;">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--rust)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span class="s-card-split rust">Push</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Expanded orphan card (tapped to expand) -->
+  <div class="section-label" style="padding:0 0 8px; font-size:9px;">EXPANDED STATE</div>
+  <div style="
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-left:3px solid var(--rust);
+    border-radius:var(--radius);
+    overflow:hidden;
+    margin-bottom:8px;
+  ">
+    <!-- Header (same as collapsed) -->
+    <div style="
+      padding:12px 14px 10px;
+      cursor:pointer;
+      display:flex; flex-direction:column; gap:5px;
+    ">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="width:10px;height:10px;border-radius:50%;background:var(--rust);flex-shrink:0;"></span>
+        <span style="font:700 16px/1.2 Inter,sans-serif;letter-spacing:-0.5px;color:var(--text-pri);flex:1;">
+          Strength
+        </span>
+        <span style="
+          display:inline-flex;align-items:center;gap:4px;
+          padding:3px 8px;
+          border-radius:var(--radius-pill);
+          border:1px solid var(--rust);
+          color:var(--rust);
+          font:600 11px/1 Inter,sans-serif;
+        ">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            <line x1="4" y1="4" x2="20" y2="20"/>
+          </svg>
+          unlinked
+        </span>
+        <svg class="icon-chevron open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+      <div style="font:600 13px/1 'JetBrains Mono',monospace;letter-spacing:-0.5px;color:var(--text-sec);padding-left:18px;">
+        Tue 10 Mar · 5 exercises · 48 min
+      </div>
+      <div style="padding-left:18px; display:flex; align-items:center; gap:4px;">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--rust)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span class="s-card-split rust">Push</span>
+      </div>
+    </div>
+
+    <!-- Expanded body -->
+    <div class="s-card-body">
+
+      <!-- Body area chips -->
+      <div class="area-chips">
+        <span class="area-chip">Chest</span>
+        <span class="area-chip">Shoulders</span>
+        <span class="area-chip">Triceps</span>
+      </div>
+
+      <!-- Totals -->
+      <div class="totals-row">
+        <div class="total-cell">
+          <span class="total-val">22</span>
+          <span class="total-lbl">Sets</span>
+        </div>
+        <div class="total-cell">
+          <span class="total-val">176</span>
+          <span class="total-lbl">Reps</span>
+        </div>
+        <div class="total-cell">
+          <span class="total-val">4,820</span>
+          <span class="total-lbl">Volume</span>
+        </div>
+      </div>
+
+      <!-- Exercise table -->
+      <table class="ex-table">
+        <thead class="ex-table-head">
+          <tr>
+            <th style="text-align:left;">Exercise</th>
+            <th>Sets</th>
+            <th>Reps</th>
+            <th>Top</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- PB exercise -->
+          <tr class="ex-row">
+            <td>
+              <div class="ex-name-cell">
+                <span class="ex-pb-dot"></span>
+                <span class="ex-name pb">Bench Press</span>
+              </div>
+            </td>
+            <td class="ex-num">5×</td>
+            <td class="ex-reps">8.0</td>
+            <td class="ex-weight">102.5</td>
+          </tr>
+          <!-- Normal exercises -->
+          <tr class="ex-row">
+            <td>
+              <div class="ex-name-cell">
+                <span class="ex-pb-dot invisible"></span>
+                <span class="ex-name">Incline DB Press</span>
+              </div>
+            </td>
+            <td class="ex-num">4×</td>
+            <td class="ex-reps">10.0</td>
+            <td class="ex-weight">34</td>
+          </tr>
+          <tr class="ex-row">
+            <td>
+              <div class="ex-name-cell">
+                <span class="ex-pb-dot invisible"></span>
+                <span class="ex-name">Lateral Raise</span>
+              </div>
+            </td>
+            <td class="ex-num">4×</td>
+            <td class="ex-reps">15.0</td>
+            <td class="ex-weight">14</td>
+          </tr>
+          <tr class="ex-row">
+            <td>
+              <div class="ex-name-cell">
+                <span class="ex-pb-dot invisible"></span>
+                <span class="ex-name">Cable Fly</span>
+              </div>
+            </td>
+            <td class="ex-num">4×</td>
+            <td class="ex-reps">12.0</td>
+            <td class="ex-weight">22.5</td>
+          </tr>
+          <tr class="ex-row">
+            <td>
+              <div class="ex-name-cell">
+                <span class="ex-pb-dot invisible"></span>
+                <span class="ex-name">Tricep Pushdown</span>
+              </div>
+            </td>
+            <td class="ex-num">5×</td>
+            <td class="ex-reps">12.0</td>
+            <td class="ex-weight">47.5</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Actions -->
+      <div style="display:flex; gap:8px; margin-top:12px;">
+        <button style="
+          flex:1; padding:10px;
+          background:transparent;
+          border:1px solid #e05252;
+          border-radius:var(--radius-sm);
+          color:#e05252;
+          font:600 12px/1 Inter,sans-serif;
+          cursor:pointer;
+        ">Delete session</button>
+        <button style="
+          flex:1; padding:10px;
+          background:transparent;
+          border:1px solid var(--border-light);
+          border-radius:var(--radius-sm);
+          color:var(--text-sec);
+          font:600 12px/1 Inter,sans-serif;
+          cursor:pointer;
+        ">Link to workout</button>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function toggle(id) {
+    const body = document.getElementById('body-' + id);
+    const chev = document.getElementById('chev-' + id);
+    if (!body) return;
+    const open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : 'block';
+    if (chev) chev.classList.toggle('open', !open);
+  }
+</script>
+</body>
+</html>

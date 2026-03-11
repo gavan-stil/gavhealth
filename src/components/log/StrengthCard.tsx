@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Dumbbell, Check, X, Plus, AlertCircle, Square, CheckSquare, Pencil } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import type { Exercise, ExerciseSession } from '@/types/trends';
+import SessionPickerSheet from './SessionPickerSheet';
 
 type LoadType = 'kg' | 'bw' | 'bw+';
 type WorkoutSet = { load_type: LoadType; kg: number; reps: number; completed?: boolean };
@@ -427,8 +428,7 @@ export default function StrengthCard({
   const [state, setState] = useState<StrengthState>('empty');
   const [selectedSplit, setSelectedSplit] = useState<SplitName>('push');
   const [exercises, setExercises] = useState<WorkoutExercise[]>([]);
-  const [lastDate, setLastDate] = useState<string | null>(null);
-  const [noLastSession, setNoLastSession] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [matchMessage, setMatchMessage] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(today);
   const [startTime, setStartTime] = useState(() => {
@@ -485,33 +485,6 @@ export default function StrengthCard({
       .catch(() => {});
   }, []);
 
-  const loadLastSession = async () => {
-    try {
-      const data = await apiFetch<{ date: string; exercises: WorkoutExercise[] } | null>(
-        `/api/log/strength/last/${selectedSplit}`
-      );
-      if (data && data.exercises && data.exercises.length > 0) {
-        setExercises(data.exercises.map(e => ({
-          ...e,
-          sets: e.sets.map(s => ({ ...s })),
-        })));
-        setLastDate(data.date);
-        setNoLastSession(false);
-        // Always reset startDate to today when loading a template — loading exercises
-        // from a past session as a template must NOT inherit the old session's date,
-        // otherwise the backend will match (and displace) the original linked session.
-        setStartDate(today());
-      } else {
-        setExercises([]);
-        setLastDate(null);
-        setNoLastSession(true);
-      }
-    } catch {
-      setExercises([]);
-      setNoLastSession(true);
-    }
-  };
-
   const updateExercise = (idx: number, ex: WorkoutExercise) => {
     setExercises(prev => prev.map((e, i) => i === idx ? ex : e));
   };
@@ -556,7 +529,6 @@ export default function StrengthCard({
       setTimeout(() => {
         setState('empty');
         setExercises([]);
-        setLastDate(null);
         setMatchMessage(null);
         onConfirmed?.();
       }, 3000);
@@ -626,8 +598,6 @@ export default function StrengthCard({
 
   const resetForm = () => {
     setExercises([]);
-    setLastDate(null);
-    setNoLastSession(false);
     setBrainDumpInput('');
     setParsedLabel(null);
     setDuration(45);
@@ -741,7 +711,7 @@ export default function StrengthCard({
                     {SPLITS.map(s => (
                       <button
                         key={s}
-                        onClick={() => { setSelectedSplit(s); setExercises([]); setLastDate(null); setNoLastSession(false); }}
+                        onClick={() => { setSelectedSplit(s); setExercises([]); }}
                         style={{
                           flex: 1, padding: '6px 0', borderRadius: 'var(--radius-pill)',
                           font: '600 12px/1 Inter, sans-serif', cursor: 'pointer',
@@ -756,26 +726,25 @@ export default function StrengthCard({
                     ))}
                   </div>
 
-                  {/* Load last session */}
+                  {/* Load a recent session */}
                   <button
-                    onClick={loadLastSession}
+                    onClick={() => setSheetOpen(true)}
                     style={{
-                      background: 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      width: '100%',
+                      background: 'var(--bg-elevated)',
                       border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)',
                       padding: 'var(--space-sm) var(--space-md)',
-                      font: '400 13px/1.5 Inter, sans-serif', color: 'var(--ochre)',
-                      cursor: 'pointer', textAlign: 'left',
+                      font: '500 13px/1.5 Inter, sans-serif', color: 'var(--text-secondary)',
+                      cursor: 'pointer',
                     }}
                   >
-                    {lastDate
-                      ? `Load last ${selectedSplit} · ${lastDate}`
-                      : `Load last ${selectedSplit} session`}
+                    <svg viewBox="0 0 24 24" style={{ width: 16, height: 16, flexShrink: 0 }} fill="none" stroke="var(--ochre)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="1 4 1 10 7 10" />
+                      <path d="M3.51 15a9 9 0 1 0 .49-3.5" />
+                    </svg>
+                    Load a recent session…
                   </button>
-                  {noLastSession && (
-                    <span style={{ font: '400 12px/1 Inter', color: 'var(--text-muted)' }}>
-                      No previous {selectedSplit} session found
-                    </span>
-                  )}
 
                   {/* Exercise cards */}
                   {exercises.map((ex, i) => (
@@ -1102,6 +1071,16 @@ export default function StrengthCard({
           )}
         </div>
       )}
+
+      <SessionPickerSheet
+        split={selectedSplit}
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        onLoad={(exs) => {
+          setExercises(exs.map(e => ({ ...e, sets: e.sets.map(s => ({ ...s })) })));
+          setStartDate(today());
+        }}
+      />
     </div>
   );
 }

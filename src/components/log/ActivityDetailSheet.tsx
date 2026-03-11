@@ -52,6 +52,7 @@ type ExRow = {
   totalReps: number;
   topWeightKg: number;
   usesBodyweight: boolean;
+  isPb: boolean;
 };
 
 type SessionDetail = {
@@ -108,10 +109,6 @@ function deriveBodyAreas(exercises: string[]): string[] {
 function fmtWeight(kg: number, bw: boolean): string {
   if (bw) return kg > 0 ? `BW +${kg}kg` : 'BW';
   return kg > 0 ? `${kg}kg` : '–';
-}
-
-function fmtLoad(kg: number): string {
-  return kg >= 1000 ? `${(kg / 1000).toFixed(1)}t` : `${Math.round(kg)}kg`;
 }
 
 function formatDate(dateStr: string) {
@@ -244,14 +241,18 @@ export default function ActivityDetailSheet({
           const ex = exMap.get(r.toLowerCase());
           if (!ex) return;
           const { name } = parseEx(r);
-          const entry = histMap.get(ex.id)?.find(h => h.session_date.slice(0, 10) === sessionDate);
+          const hist = histMap.get(ex.id) ?? [];
+          const entry = hist.find(h => h.session_date.slice(0, 10) === sessionDate);
           if (!entry) return;
+          const allTimeMax = hist.reduce((m, h) => Math.max(m, h.top_weight_kg), 0);
+          const isPb = !ex.uses_bodyweight && entry.top_weight_kg > 0 && entry.top_weight_kg >= allTimeMax;
           rows.push({
             name,
             sets: entry.sets,
             totalReps: entry.total_reps,
             topWeightKg: entry.top_weight_kg,
             usesBodyweight: ex.uses_bodyweight,
+            isPb,
           });
         });
 
@@ -434,10 +435,10 @@ export default function ActivityDetailSheet({
                     borderLeft: '3px solid var(--rust)',
                     overflow: 'hidden',
                   }}>
-                    {/* Session header: split + body area chips */}
+                    {/* Session header: split */}
                     <div style={{
-                      padding: '12px 14px',
-                      display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+                      padding: '12px 14px 8px',
+                      display: 'flex', alignItems: 'center', gap: 8,
                     }}>
                       <Dumbbell size={12} color="var(--rust)" />
                       <span style={{
@@ -446,18 +447,25 @@ export default function ActivityDetailSheet({
                       }}>
                         {detail.split}
                       </span>
-                      {detail.bodyAreas.map(a => (
-                        <span key={a} style={{
-                          padding: '2px 8px',
-                          borderRadius: 'var(--radius-pill)',
-                          border: '1px solid var(--border-default)',
-                          font: '600 10px/1 Inter, sans-serif',
-                          color: 'var(--text-muted)',
-                        }}>
-                          {a}
-                        </span>
-                      ))}
                     </div>
+
+                    {/* Body area chips */}
+                    {detail.bodyAreas.length > 0 && (
+                      <div style={{ padding: '0 14px 10px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {detail.bodyAreas.map(a => (
+                          <span key={a} style={{
+                            padding: '2px 8px',
+                            borderRadius: 'var(--radius-pill)',
+                            background: 'rgba(180,112,80,0.15)',
+                            border: '1px solid rgba(180,112,80,0.25)',
+                            font: '600 10px/1 Inter, sans-serif',
+                            color: 'var(--rust)',
+                          }}>
+                            {a}
+                          </span>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Totals: sets / reps / load */}
                     <div style={{
@@ -467,7 +475,7 @@ export default function ActivityDetailSheet({
                       {[
                         { val: String(detail.totalSets), lbl: 'Sets' },
                         { val: String(detail.totalReps), lbl: 'Reps' },
-                        { val: fmtLoad(detail.totalLoadKg), lbl: 'Load' },
+                        { val: Math.round(detail.totalLoadKg).toLocaleString(), lbl: 'Volume' },
                       ].map((t, i) => (
                         <div key={t.lbl} style={{
                           flex: 1, padding: '10px 14px',
@@ -487,30 +495,76 @@ export default function ActivityDetailSheet({
                       ))}
                     </div>
 
-                    {/* Exercise rows */}
+                    {/* Exercise table */}
                     {detail.rows.length > 0 && (
-                      <div style={{ borderTop: '1px solid var(--border-default)' }}>
-                        {detail.rows.map((row, i) => (
-                          <div key={i} style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            padding: '9px 14px',
-                            borderTop: i > 0 ? '1px solid rgba(255,255,255,0.04)' : 'none',
-                          }}>
-                            <span style={{
-                              font: '500 13px/1.3 Inter, sans-serif',
-                              color: 'var(--text-primary)', flex: 1, minWidth: 0,
-                            }}>
-                              {row.name}
-                            </span>
-                            <span style={{
-                              font: '600 12px/1 JetBrains Mono, monospace',
-                              letterSpacing: '-0.3px', color: 'var(--text-secondary)',
-                              marginLeft: 8, whiteSpace: 'nowrap' as const,
-                            }}>
-                              {row.sets}×{row.sets > 0 ? Math.round(row.totalReps / row.sets) : row.totalReps} · {fmtWeight(row.topWeightKg, row.usesBodyweight)}
-                            </span>
-                          </div>
-                        ))}
+                      <div style={{ borderTop: '1px solid var(--border-default)', padding: '0 14px 12px' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 10 }}>
+                          <thead>
+                            <tr>
+                              {[
+                                { label: 'Exercise', style: { textAlign: 'left' as const, flex: 1 } },
+                                { label: 'Sets', style: { width: 28, textAlign: 'right' as const } },
+                                { label: 'Reps', style: { width: 32, textAlign: 'right' as const } },
+                                { label: 'Top', style: { width: 52, textAlign: 'right' as const } },
+                              ].map(col => (
+                                <th key={col.label} style={{
+                                  ...col.style,
+                                  font: '600 9px/1 Inter, sans-serif',
+                                  letterSpacing: '0.5px', textTransform: 'uppercase',
+                                  color: 'var(--text-muted)',
+                                  paddingBottom: 6,
+                                  borderBottom: '1px solid var(--border-default)',
+                                }}>
+                                  {col.label}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {detail.rows.map((row) => (
+                              <tr key={row.name}>
+                                <td style={{ padding: '7px 0', verticalAlign: 'middle' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <div style={{
+                                      width: 5, height: 5, borderRadius: '50%', flexShrink: 0,
+                                      background: row.isPb ? 'var(--ochre)' : 'transparent',
+                                    }} />
+                                    <span style={{
+                                      font: '500 12px/1.3 Inter, sans-serif',
+                                      color: row.isPb ? 'var(--ochre)' : 'var(--text-secondary)',
+                                    }}>
+                                      {row.name}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td style={{
+                                  width: 28, textAlign: 'right', verticalAlign: 'middle',
+                                  font: '600 12px/1 JetBrains Mono, monospace',
+                                  letterSpacing: '-0.3px', color: 'var(--text-secondary)',
+                                  padding: '7px 0',
+                                }}>
+                                  {row.sets}×
+                                </td>
+                                <td style={{
+                                  width: 32, textAlign: 'right', verticalAlign: 'middle',
+                                  font: '600 12px/1 JetBrains Mono, monospace',
+                                  letterSpacing: '-0.3px', color: 'var(--text-secondary)',
+                                  padding: '7px 0',
+                                }}>
+                                  {row.totalReps}
+                                </td>
+                                <td style={{
+                                  width: 52, textAlign: 'right', verticalAlign: 'middle',
+                                  font: '600 12px/1 JetBrains Mono, monospace',
+                                  letterSpacing: '-0.3px', color: 'var(--text-secondary)',
+                                  padding: '7px 0',
+                                }}>
+                                  {fmtWeight(row.topWeightKg, row.usesBodyweight)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     )}
                   </div>

@@ -72,6 +72,13 @@ All require `X-API-Key` header.
 | Parse | `POST /api/log/food` | `{ "description": "2 eggs scrambled with cheese" }` | `{ parsed: { protein, carbs, fat, calories, food_items[] } }` |
 | Confirm | `POST /api/log/food/confirm` | Confirmed macro data | Row written to `food_logs` |
 
+### Strength GET endpoints
+
+| Endpoint | Returns |
+|----------|---------|
+| `GET /api/log/strength/last/{split}` | `{ date: "YYYY-MM-DD", exercises: WorkoutExercise[] }` — most recent session for split. exercises JSONB shape: `[{ name, sets: [{ kg, reps, completed?, load_type }], superset }]`. load_type: "bw" (bodyweight — skip in volume), "bw+" (bw + extra kg), "kg" (loaded). |
+| `GET /api/log/strength/recent/{split}?limit=5` | `RecentSession[]` — up to `limit` (max 10) sessions, sorted: PBs first → most_loaded → chrono desc. Response: `{ id, date, start_time, exercise_count, total_sets, avg_reps_per_set, total_volume_kg, is_pb, most_loaded, exercises: RecentSessionExercise[], raw_exercises: WorkoutExercise[] }`. `raw_exercises` = original JSONB for `onLoad`. Volume skips "bw" sets. 400 if split invalid. |
+
 ### Strength (2-step NLP)
 
 | Step | Endpoint | Body | Returns |
