@@ -412,6 +412,171 @@ async def last_strength_log(split: str, db: AsyncSession = Depends(get_db)):
 
 
 # ---------------------------------------------------------------------------
+# T17-2. GET /api/log/strength/recent/{split}?limit=5
+# Returns up to `limit` recent sessions for the given split with computed stats.
+# Used by SessionPickerSheet to let the user load a past session as a template.
+# ---------------------------------------------------------------------------
+@router.get("/log/strength/recent/{split}")
+async def recent_strength_sessions(
+    split: str,
+    limit: int = Query(default=5, ge=1, le=10),
+    db: AsyncSession = Depends(get_db),
+):
+    import json as _json
+    from collections import Counter
+
+    VALID_SPLITS = ("push", "pull", "legs", "abs")
+    if split not in VALID_SPLITS:
+        raise HTTPException(status_code=400, detail=f"split must be one of: {', '.join(VALID_SPLITS)}")
+
+    # Fetch all sessions for this split (all rows needed for PB + most_loaded computation)
+    result = await db.execute(
+        text("""
+            SELECT id,
+                   (created_at AT TIME ZONE 'Australia/Brisbane')::date AS local_date,
+                   (start_time AT TIME ZONE 'Australia/Brisbane')       AS local_start,
+                   exercises
+            FROM manual_strength_logs
+            WHERE workout_split = :split
+            ORDER BY created_at DESC
+        """),
+        {"split": split},
+    )
+    rows = result.mappings().all()
+    if not rows:
+        return []
+
+    def _parse_exs(raw) -> list:
+        if raw is None:
+            return []
+        if isinstance(raw, str):
+            try:
+                return _json.loads(raw)
+            except Exception:
+                return []
+        return raw  # asyncpg returns JSONB as Python list already
+
+    sessions_parsed = [(row, _parse_exs(row["exercises"])) for row in rows]
+
+    # ---- All-time max weight + reps per exercise name (across all sessions in this split) ----
+    all_time_max_weight: dict[str, float] = {}
+    all_time_max_reps:   dict[str, int]   = {}
+    name_sets_per_session: list[frozenset] = []
+
+    for (_row, exs) in sessions_parsed:
+        name_set = frozenset(e.get("name", "").lower().strip() for e in exs if e.get("name"))
+        name_sets_per_session.append(name_set)
+        for ex in exs:
+            n = ex.get("name", "").lower().strip()
+            if not n:
+                continue
+            for s in ex.get("sets", []):
+                lt   = s.get("load_type", "kg")
+                kg   = s.get("kg")
+                reps = int(s.get("reps", 0) or 0)
+                if lt != "bw" and kg is not None:
+                    all_time_max_weight[n] = max(all_time_max_weight.get(n, 0.0), float(kg))
+                if reps:
+                    all_time_max_reps[n] = max(all_time_max_reps.get(n, 0), reps)
+
+    # ---- most_loaded: exercise name-set that appears most frequently ----
+    name_set_counts = Counter(name_sets_per_session)
+    max_count = max(name_set_counts.values()) if name_set_counts else 0
+    most_loaded_target: frozenset | None = None
+    for ns in name_sets_per_session:  # ordered newest-first; first hit wins tie
+        if name_set_counts[ns] == max_count:
+            most_loaded_target = ns
+            break
+
+    # ---- Build result sessions ----
+    result_sessions = []
+    most_loaded_assigned = False
+
+    for i, (row, exs) in enumerate(sessions_parsed):
+        name_set       = name_sets_per_session[i]
+        total_sets_all = 0
+        total_reps_all = 0
+        total_volume   = 0.0
+        session_is_pb  = False
+        ex_list: list[dict] = []
+
+        for ex in exs:
+            ex_name = ex.get("name", "")
+            n_lower = ex_name.lower().strip()
+            sets    = ex.get("sets", [])
+            num_sets = len(sets)
+            total_sets_all += num_sets
+
+            reps_list = [int(s.get("reps", 0) or 0) for s in sets]
+            ex_reps   = sum(reps_list)
+            total_reps_all += ex_reps
+            avg_reps = round(ex_reps / num_sets, 1) if num_sets > 0 else 0.0
+
+            top_w: float | None = None
+            for s in sets:
+                lt = s.get("load_type", "kg")
+                kg = s.get("kg")
+                if lt != "bw" and kg is not None:
+                    kg_f = float(kg)
+                    if top_w is None or kg_f > top_w:
+                        top_w = kg_f
+                    total_volume += int(s.get("reps", 0) or 0) * kg_f
+
+            atm_w = all_time_max_weight.get(n_lower)
+            atm_r = all_time_max_reps.get(n_lower, 0)
+            ex_pb = bool(
+                (atm_w is not None and top_w is not None and top_w >= atm_w)
+                or (reps_list and max(reps_list) >= atm_r and atm_r > 0)
+            )
+            if ex_pb:
+                session_is_pb = True
+
+            ex_list.append({
+                "name":          ex_name,
+                "sets":          num_sets,
+                "avg_reps":      avg_reps,
+                "top_weight_kg": top_w,
+                "is_pb":         ex_pb,
+            })
+
+        avg_rps = round(total_reps_all / total_sets_all, 1) if total_sets_all > 0 else 0.0
+
+        is_most_loaded = (
+            not most_loaded_assigned
+            and most_loaded_target is not None
+            and name_set == most_loaded_target
+            and name_set_counts[name_set] == max_count
+        )
+        if is_most_loaded:
+            most_loaded_assigned = True
+
+        start_time_str = None
+        local_start = row.get("local_start")
+        if local_start is not None and hasattr(local_start, "hour"):
+            start_time_str = f"{local_start.hour:02d}:{local_start.minute:02d}"
+
+        result_sessions.append({
+            "id":               row["id"],
+            "date":             row["local_date"].isoformat() if row["local_date"] else None,
+            "start_time":       start_time_str,
+            "exercise_count":   len(exs),
+            "total_sets":       total_sets_all,
+            "avg_reps_per_set": avg_rps,
+            "total_volume_kg":  round(total_volume),
+            "is_pb":            session_is_pb,
+            "most_loaded":      is_most_loaded,
+            "exercises":        ex_list,
+            "raw_exercises":    exs,   # WorkoutExercise[] — passed to onLoad in SessionPickerSheet
+        })
+
+    # Sort: PBs first (already newest-first), then most_loaded, then remaining chrono desc
+    pb_sessions = [s for s in result_sessions if s["is_pb"]]
+    ml_sessions = [s for s in result_sessions if s["most_loaded"] and not s["is_pb"]]
+    rest        = [s for s in result_sessions if not s["is_pb"] and not s["most_loaded"]]
+    return (pb_sessions + ml_sessions + rest)[:limit]
+
+
+# ---------------------------------------------------------------------------
 # 5. PATCH /api/log/strength/{id}/relink
 # ---------------------------------------------------------------------------
 @router.patch("/log/strength/{id}/relink")
