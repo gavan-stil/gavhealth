@@ -22,12 +22,11 @@ interface FeedItem {
 
 interface StrengthSession {
   id: number;
-  log_date: string;
-  workout_split: string;
-  duration_minutes: number;
-  exercise_count: number;
-  matched_activity_id: number | null;
-  bridged_session_id: number | null;
+  session_date: string;
+  category: string;
+  duration_mins: number;
+  exercises: string[];
+  activity_log_id: number | null;
 }
 
 type MergedItem =
@@ -136,7 +135,7 @@ export default function ActivityFeed() {
 
   const fetchStrengthSessions = useCallback(async () => {
     try {
-      const data = await apiFetch<StrengthSession[]>('/api/log/strength/sessions?days=30');
+      const data = await apiFetch<StrengthSession[]>('/api/strength/sessions?days=30');
       setStrengthSessions(data);
     } catch {
       // silently ignore — non-critical
@@ -164,11 +163,11 @@ export default function ActivityFeed() {
   // Build lookup: activityId → linked session
   const linkedByActivityId: Record<number, StrengthSession> = {};
   for (const s of strengthSessions) {
-    if (s.matched_activity_id !== null) {
-      linkedByActivityId[s.matched_activity_id] = s;
+    if (s.activity_log_id !== null) {
+      linkedByActivityId[s.activity_log_id] = s;
     }
   }
-  const unlinkedSessions = strengthSessions.filter(s => s.matched_activity_id === null);
+  const unlinkedSessions = strengthSessions.filter(s => s.activity_log_id === null);
 
   const updateEffort = async (id: number, effort: EffortLevel) => {
     const prev = items.find(i => i.id === id)?.effort;
@@ -288,8 +287,8 @@ export default function ActivityFeed() {
     ...filteredItems.map(item => ({ kind: 'activity' as const, item })),
     ...(showOrphans ? unlinkedSessions.map(session => ({ kind: 'orphan' as const, session })) : []),
   ].sort((a, b) => {
-    const dateA = a.kind === 'activity' ? a.item.date : a.session.log_date;
-    const dateB = b.kind === 'activity' ? b.item.date : b.session.log_date;
+    const dateA = a.kind === 'activity' ? a.item.date : a.session.session_date;
+    const dateB = b.kind === 'activity' ? b.item.date : b.session.session_date;
     return dateB.localeCompare(dateA);
   });
 
@@ -402,7 +401,7 @@ export default function ActivityFeed() {
                       font: '600 11px/1 Inter, sans-serif', color: 'var(--rust)',
                       textTransform: 'capitalize',
                     }}>
-                      {linkedByActivityId[item.id].workout_split} · {linkedByActivityId[item.id].exercise_count} exercises
+                      {linkedByActivityId[item.id].category} · {linkedByActivityId[item.id].exercises.length} exercises
                     </span>
                   </div>
                 )}
@@ -497,7 +496,7 @@ function OrphanCard({
     let cancelled = false;
     (async () => {
       try {
-        const logDate = session.log_date.slice(0, 10);
+        const logDate = session.session_date.slice(0, 10);
         const d = new Date(logDate + 'T00:00:00');
         const prev = new Date(d); prev.setDate(d.getDate() - 1);
         const next = new Date(d); next.setDate(d.getDate() + 1);
@@ -514,9 +513,7 @@ function OrphanCard({
         allEx.forEach(e => exMap.set(e.name.toLowerCase(), e));
 
         const withEx = rawSessions.filter(s => s.exercises.length > 0);
-        const raw = session.bridged_session_id != null
-          ? withEx.find(s => s.id === session.bridged_session_id)
-          : withEx[0];
+        const raw = withEx.find(s => s.id === session.id) ?? withEx[0];
         if (!raw) return;
 
         const sessionDate = raw.session_date.slice(0, 10);
@@ -582,14 +579,14 @@ function OrphanCard({
           </span>
         </div>
         <div style={{ font: '600 13px/1 JetBrains Mono, monospace', letterSpacing: '-0.5px', color: 'var(--text-secondary)', paddingLeft: 'calc(10px + var(--space-sm))' }}>
-          {formatDate(session.log_date)}
-          {' · '}{session.exercise_count} exercises
-          {' · '}{formatDuration(session.duration_minutes)}
+          {formatDate(session.session_date)}
+          {' · '}{session.exercises.length} exercises
+          {' · '}{formatDuration(session.duration_mins)}
         </div>
         <div style={{ paddingLeft: 'calc(10px + var(--space-sm))', display: 'flex', alignItems: 'center', gap: 4 }}>
           <Dumbbell size={11} color="var(--rust)" />
           <span style={{ font: '600 11px/1 Inter, sans-serif', color: 'var(--rust)', textTransform: 'capitalize' }}>
-            {session.workout_split}
+            {session.category}
           </span>
         </div>
       </div>

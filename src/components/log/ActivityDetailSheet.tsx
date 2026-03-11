@@ -19,12 +19,11 @@ export interface FeedItemForSheet {
 
 export interface StrengthSessionForSheet {
   id: number;
-  log_date: string;
-  workout_split: string;
-  duration_minutes: number;
-  exercise_count: number;
-  matched_activity_id: number | null;
-  bridged_session_id: number | null;
+  session_date: string;
+  category: string;
+  duration_mins: number;
+  exercises: string[];
+  activity_log_id: number | null;
 }
 
 /* ── API shapes ─────────────────────────────────────────────────────────── */
@@ -208,13 +207,8 @@ export default function ActivityDetailSheet({
         const exMap = new Map<string, RawExercise>();
         allEx.forEach(e => exMap.set(e.name.toLowerCase(), e));
 
-        /* Find the bridged strength_sessions row.
-           linkedSession.id is from manual_strength_logs; bridged_session_id is the
-           strength_sessions.id — they're different sequences, so we must use bridged_session_id. */
         const withEx = rawSessions.filter(s => s.exercises.length > 0);
-        const raw = linkedSession.bridged_session_id != null
-          ? withEx.find(s => s.id === linkedSession.bridged_session_id)
-          : undefined;
+        const raw = withEx.find(s => s.id === linkedSession.id);
         if (!raw) return;
 
         // Use the session's own date for history matching (not workoutDate or log_date)
@@ -644,13 +638,13 @@ export default function ActivityDetailSheet({
                             font: '600 13px/1 Inter, sans-serif',
                             color: 'var(--text-primary)', textTransform: 'capitalize',
                           }}>
-                            {session.workout_split}
+                            {session.category}
                           </span>
                           <span style={{
                             font: '400 11px/1 JetBrains Mono, monospace',
                             color: 'var(--text-muted)', letterSpacing: '-0.3px',
                           }}>
-                            {session.log_date} · {session.exercise_count} ex · {formatDuration(session.duration_minutes)}
+                            {session.session_date} · {session.exercises.length} ex · {formatDuration(session.duration_mins)}
                           </span>
                         </div>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
