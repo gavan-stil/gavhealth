@@ -227,6 +227,12 @@ export default function IntradayHRChart({ data, loading }: Props) {
           const color = hrToColor(hr);
           const steps = bucket?.steps_count ?? null;
 
+          const stepsLabel = steps && steps > 0
+            ? steps >= 1000
+              ? `${(steps / 1000).toFixed(1)}k`
+              : String(steps)
+            : null;
+
           return (
             <div
               key={hour}
@@ -246,8 +252,30 @@ export default function IntradayHRChart({ data, loading }: Props) {
                   borderRadius: "2px 2px 0 0",
                   transition: "height 0.3s ease",
                   minHeight: 4,
+                  position: "relative",
+                  overflow: "hidden",
                 }}
-              />
+              >
+                {stepsLabel && barHeight >= 16 && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: 2,
+                      left: "50%",
+                      transform: "translateX(-50%) rotate(-90deg)",
+                      fontSize: 7,
+                      fontWeight: 600,
+                      color: "rgba(255,255,255,0.85)",
+                      lineHeight: 1,
+                      whiteSpace: "nowrap",
+                      pointerEvents: "none",
+                      userSelect: "none",
+                    }}
+                  >
+                    {stepsLabel}
+                  </span>
+                )}
+              </div>
             </div>
           );
         })}
