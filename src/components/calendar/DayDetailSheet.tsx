@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Flame } from "lucide-react";
 import type { CSSProperties } from "react";
 import type { CategoryDot } from "@/types/calendar";
 import { CATEGORY_LABELS, CATEGORY_COLORS, SUB_TOGGLE_DEFS } from "@/types/calendar";
@@ -8,6 +9,7 @@ import { apiFetch } from "@/lib/api";
 type RawSession = {
   id: number;
   session_date: string;
+  session_datetime?: string | null;
   activity_log_id: number | null;
   duration_mins: number | null;
   total_sets: number;
@@ -37,6 +39,7 @@ type ExRow = {
 type SessionDetail = {
   id: number;
   activityLogId: number | null;
+  sessionDatetime: string | null;
   split: string;
   bodyAreas: string[];
   totalSets: number;
@@ -99,6 +102,15 @@ function formatDate(iso: string): string {
   const MON = ["January","February","March","April","May","June","July",
                "August","September","October","November","December"];
   return `${DAY[d.getDay()]}, ${d.getDate()} ${MON[d.getMonth()]}`;
+}
+
+function formatTime(isoStr: string): string {
+  const d = new Date(isoStr);
+  const h = d.getHours();
+  const m = d.getMinutes();
+  const ampm = h >= 12 ? "pm" : "am";
+  const hh = h % 12 || 12;
+  return `${hh}:${String(m).padStart(2, "0")}${ampm}`;
 }
 
 /* ─── Style constants ────────────────────────────────────────────────── */
@@ -215,6 +227,7 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
           return {
             id: s.id,
             activityLogId: s.activity_log_id,
+            sessionDatetime: s.session_datetime ?? null,
             split: deriveSplit(s.exercises),
             bodyAreas: deriveBodyAreas(s.exercises),
             totalSets: s.total_sets,
@@ -343,6 +356,11 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
                     }}>
                       {s.split}
                     </span>
+                    {s.sessionDatetime && (
+                      <span style={{ font: "500 10px/1 'JetBrains Mono',monospace", color: "var(--text-muted)", flexShrink: 0 }}>
+                        {formatTime(s.sessionDatetime)}
+                      </span>
+                    )}
                   </div>
                   {!expanded && (
                     <span style={{ font: "500 10px/1 'JetBrains Mono',monospace", color: "var(--text-muted)", flexShrink: 0 }}>
@@ -521,7 +539,9 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
                       background: "rgba(255,255,255,0.07)",
                       color: "var(--text-secondary)",
                       flexShrink: 0,
+                      display: "inline-flex", alignItems: "center", gap: 4,
                     }}>
+                      <Flame size={10} />
                       Let&rsquo;s Go
                     </span>
                   )}

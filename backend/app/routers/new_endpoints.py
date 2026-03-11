@@ -843,6 +843,7 @@ async def strength_sessions(days: int = Query(default=90), db: AsyncSession = De
             SELECT
                 ss.id,
                 ss.session_datetime::date              AS session_date,
+                ss.session_datetime                    AS session_datetime,
                 ss.activity_log_id,
                 al.duration_mins,
                 al.avg_hr,
@@ -878,6 +879,7 @@ async def strength_sessions(days: int = Query(default=90), db: AsyncSession = De
             "id": r["id"],
             "date": r["session_date"].isoformat() if r["session_date"] else None,
             "session_date": r["session_date"].isoformat() if r["session_date"] else None,
+            "session_datetime": r["session_datetime"].isoformat() if r["session_datetime"] else None,
             "activity_log_id": r["activity_log_id"],
             "duration_mins": float(r["duration_mins"]) if r["duration_mins"] is not None else None,
             "avg_hr": r["avg_hr"],

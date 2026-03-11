@@ -14,19 +14,13 @@ All 9 tasks shipped. App is live, logging flows work end-to-end.
 
 ## Active Task
 
-**T17** — Strength Session Consistency + Session Picker. Started 2026-03-11.
-Task file: `tasks/active/task-strength-session-picker.md`
-Mockup: `archive/strength-session-consistency-mockup.html` — all 4 sections approved ✅
+None. See backlog.
 
-Progress:
-- T17-1: curl-verify `/api/log/strength/last/{split}` shape — 🔲 todo
-- T17-2: Backend `GET /api/log/strength/recent/{split}` — 🔲 todo
-- T17-3: New `SessionPickerSheet.tsx` component — 🔲 todo
-- T17-4: Wire into `StrengthCard.tsx` (swap trigger) — 🔲 todo
-- T17-5: Update `DayDetailSheet.tsx` exercise body — 🔲 todo
-- T17-6: Update `ActivityDetailSheet.tsx` linked-session body — 🔲 todo
-- T17-7: Update `ActivityFeed.tsx` orphan expanded body — 🔲 todo
-- T17-8: `npm run build` pass + push — 🔲 todo
+---
+
+**T17** — Strength Session Consistency + Session Picker — ✅ complete (2026-03-11).
+Commit: `a6f0828`
+- SessionPickerSheet, StrengthCard trigger, shared 4-col exercise table + PB dots across DayDetailSheet / ActivityDetailSheet / ActivityFeed (OrphanCard)
 
 ---
 

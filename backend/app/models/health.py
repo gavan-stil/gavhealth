@@ -90,6 +90,7 @@ class HrIntraday(Base):
     hr_min: Mapped[int | None] = mapped_column(Integer)
     hr_max: Mapped[int | None] = mapped_column(Integer)
     readings_count: Mapped[int | None] = mapped_column(Integer)
+    steps_count: Mapped[int | None] = mapped_column(Integer)
     source: Mapped[str] = mapped_column(String(50), nullable=False, default="withings")
 
 
@@ -123,6 +124,8 @@ class ActivityLog(Base):
     hr_zone_1: Mapped[int | None] = mapped_column(Integer)
     hr_zone_2: Mapped[int | None] = mapped_column(Integer)
     hr_zone_3: Mapped[int | None] = mapped_column(Integer)
+    # Steps from Withings daily summary (getactivity)
+    steps: Mapped[int | None] = mapped_column(Integer)
 
 
 # ---------------------------------------------------------------------------

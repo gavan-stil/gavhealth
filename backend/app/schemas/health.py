@@ -111,6 +111,7 @@ class ActivityResponse(BaseModel):
     max_hr: int | None = None
     calories_burned: int | None = None
     elevation_m: float | None = None
+    steps: int | None = None
     source: str
     external_id: str | None = None
     notes: str | None = None
@@ -337,6 +338,7 @@ class HrIntradayBucket(BaseModel):
     hr_min: int | None = None
     hr_max: int | None = None
     readings_count: int | None = None
+    steps_count: int | None = None
 
     model_config = {"from_attributes": True}
 

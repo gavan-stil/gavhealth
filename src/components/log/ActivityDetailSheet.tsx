@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { X, Dumbbell } from 'lucide-react';
+import { useState, useEffect, type ReactNode } from 'react';
+import { X, Dumbbell, Flame, Zap, Sunrise } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 
 type EffortLevel = 'basic' | 'mid' | 'lets_go';
@@ -135,6 +135,12 @@ function formatDuration(mins: number) {
 
 const EFFORT_LABEL: Record<EffortLevel, string> = {
   basic: 'Basic', mid: 'Mid', lets_go: "Let's Go",
+};
+
+const EFFORT_ICON: Record<EffortLevel, ReactNode> = {
+  lets_go: <Flame size={12} />,
+  mid: <Zap size={12} />,
+  basic: <Sunrise size={12} />,
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -388,8 +394,10 @@ export default function ActivityDetailSheet({
                   color: localEffort === level ? 'var(--bg-base)' : 'var(--text-muted)',
                   font: '600 12px/1 Inter, sans-serif',
                   cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                 }}
               >
+                {EFFORT_ICON[level]}
                 {EFFORT_LABEL[level]}
               </button>
             ))}

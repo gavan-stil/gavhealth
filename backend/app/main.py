@@ -72,6 +72,10 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS hr_zone_3 INTEGER",
             # sleep_logs: sleep stage breakdown (JSONB)
             "ALTER TABLE sleep_logs ADD COLUMN IF NOT EXISTS stages JSONB",
+            # activity_logs: steps from Withings daily summary
+            "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS steps INTEGER",
+            # hr_intraday: steps count per hour bucket
+            "ALTER TABLE hr_intraday ADD COLUMN IF NOT EXISTS steps_count INTEGER",
             # manual_strength_logs: backfill log_date column if missing
             "ALTER TABLE manual_strength_logs ADD COLUMN IF NOT EXISTS log_date DATE DEFAULT CURRENT_DATE",
             # T14-2: Fix exercise categories for names with explicit ' - Body part' suffix.

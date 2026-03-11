@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertCircle, Dumbbell, Link2Off } from 'lucide-react';
+import { AlertCircle, Dumbbell, Flame, Link2Off, Sunrise, Zap } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import StrengthCard from './StrengthCard';
 import ActivityDetailSheet from './ActivityDetailSheet';
@@ -23,6 +23,7 @@ interface FeedItem {
 interface StrengthSession {
   id: number;
   session_date: string;
+  session_datetime: string | null;
   category: string;
   duration_mins: number;
   exercises: string[];
@@ -580,6 +581,7 @@ function OrphanCard({
         </div>
         <div style={{ font: '600 13px/1 JetBrains Mono, monospace', letterSpacing: '-0.5px', color: 'var(--text-secondary)', paddingLeft: 'calc(10px + var(--space-sm))' }}>
           {formatDate(session.session_date)}
+          {session.session_datetime ? ` · ${formatTime(session.session_datetime)}` : ''}
           {' · '}{session.exercises.length} exercises
           {' · '}{formatDuration(session.duration_mins)}
         </div>
@@ -708,6 +710,12 @@ function OrphanCard({
   );
 }
 
+const EFFORT_ICON: Record<EffortLevel, ReactNode> = {
+  lets_go: <Flame size={11} />,
+  mid: <Zap size={11} />,
+  basic: <Sunrise size={11} />,
+};
+
 function EffortBadge({ effort, isUnreviewed }: { effort: EffortLevel; isUnreviewed: boolean }) {
   const isLetsGo = effort === 'lets_go';
   return (
@@ -720,7 +728,9 @@ function EffortBadge({ effort, isUnreviewed }: { effort: EffortLevel; isUnreview
         color: isLetsGo ? 'var(--bg-base)' : 'var(--text-muted)',
         font: '600 11px/1 Inter, sans-serif',
         whiteSpace: 'nowrap' as const,
+        display: 'inline-flex', alignItems: 'center', gap: 4,
       }}>
+        {EFFORT_ICON[effort]}
         {EFFORT_LABEL[effort]}
       </span>
       {isUnreviewed && (
