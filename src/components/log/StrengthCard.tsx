@@ -145,6 +145,14 @@ function LoadTypePill({ value, onChange }: { value: LoadType; onChange: (v: Load
   );
 }
 
+function computeCurrentStats(sets: WorkoutSet[]): { sets: number; reps: number; volume: number } {
+  return {
+    sets: sets.length,
+    reps: sets.reduce((s, set) => s + set.reps, 0),
+    volume: sets.reduce((s, set) => set.load_type === 'bw' ? s : s + set.kg * set.reps, 0),
+  };
+}
+
 function ExerciseCard({
   exercise, exerciseIndex, onUpdate, onRemove, exerciseList,
 }: {
@@ -187,6 +195,26 @@ function ExerciseCard({
     const last = exercise.sets[exercise.sets.length - 1] ?? DEFAULT_SET;
     onUpdate(exerciseIndex, { ...exercise, sets: [...exercise.sets, { ...last }] });
   };
+
+  const currentStats = computeCurrentStats(exercise.sets);
+  let diffStr: string | null = null;
+  let diffPositive = true;
+  if (prevSession) {
+    const lastVol = prevSession.session_volume_kg;
+    if (lastVol > 0 && currentStats.volume > 0) {
+      const pct = ((currentStats.volume - lastVol) / lastVol) * 100;
+      if (Math.abs(pct) >= 0.5) {
+        diffPositive = pct >= 0;
+        diffStr = (pct > 0 ? '+' : '') + Math.round(pct) + '%';
+      }
+    } else if (lastVol === 0 && currentStats.volume === 0 && prevSession.total_reps > 0) {
+      const pct = ((currentStats.reps - prevSession.total_reps) / prevSession.total_reps) * 100;
+      if (Math.abs(pct) >= 0.5) {
+        diffPositive = pct >= 0;
+        diffStr = (pct > 0 ? '+' : '') + Math.round(pct) + '% reps';
+      }
+    }
+  }
 
   return (
     <div style={{
@@ -264,12 +292,31 @@ function ExerciseCard({
 
       {prevSession && (
         <div style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-muted)', paddingLeft: 2 }}>
-          {prevSession.top_weight_kg > 0
-            ? `Last: ${prevSession.top_weight_kg}kg top · ${prevSession.sets} sets · ${formatShortDate(prevSession.session_date)}`
-            : `Last: ${prevSession.sets} sets × ${prevSession.total_reps} reps · ${formatShortDate(prevSession.session_date)}`
-          }
+          {'Last: '}
+          {prevSession.sets} sets · {prevSession.total_reps} reps
+          {prevSession.session_volume_kg > 0 ? ` · ${prevSession.session_volume_kg}kg vol` : ''}
+          {' · '}
+          {formatShortDate(prevSession.session_date)}
         </div>
       )}
+      <div style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-secondary)', paddingLeft: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span>
+          {'Now: '}
+          {currentStats.sets} sets · {currentStats.reps} reps
+          {currentStats.volume > 0 ? ` · ${currentStats.volume}kg vol` : ''}
+        </span>
+        {diffStr && (
+          <span style={{
+            font: '600 10px/1 Inter, sans-serif',
+            color: diffPositive ? 'var(--signal-good)' : 'var(--signal-poor)',
+            background: diffPositive ? 'rgba(232,196,122,0.12)' : 'rgba(196,122,106,0.12)',
+            padding: '1px 5px',
+            borderRadius: 'var(--radius-pill)',
+          }}>
+            {diffStr}
+          </span>
+        )}
+      </div>
 
       {exercise.sets.map((set, si) => {
         const isCompact = set.completed && editingSet !== si;
