@@ -257,6 +257,7 @@ export default function CalendarPage() {
         date={selectedDate}
         dots={selectedDots}
         onClose={handleCloseSheet}
+        onSessionDeleted={refetch}
       />
     </div>
   );

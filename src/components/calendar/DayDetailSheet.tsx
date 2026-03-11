@@ -132,14 +132,16 @@ type Props = {
   date: string | null;
   dots: CategoryDot[];
   onClose: () => void;
+  onSessionDeleted?: () => void;
 };
 
 /* ─── Component ──────────────────────────────────────────────────────── */
-export default function DayDetailSheet({ date, dots, onClose }: Props) {
+export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted }: Props) {
   const [sessions, setSessions]               = useState<SessionDetail[]>([]);
   const [loadingStrength, setLoadingStrength] = useState(false);
   const [expandedKey, setExpandedKey]         = useState<string | null>(null);
   const [unlinking, setUnlinking]             = useState<number | null>(null);
+  const [deletingId, setDeletingId]           = useState<number | null>(null);
 
   const hasStrength = dots.some((d) => d.category === "strength");
 
@@ -264,6 +266,20 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
       console.error("[DayDetailSheet] unlink error:", err);
     } finally {
       setUnlinking(null);
+    }
+  };
+
+  const handleDelete = async (sessionId: number) => {
+    if (!window.confirm('Delete this strength session?')) return;
+    setDeletingId(sessionId);
+    try {
+      await apiFetch(`/api/log/strength/${sessionId}`, { method: 'DELETE' });
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      onSessionDeleted?.();
+    } catch (err) {
+      console.error('[DayDetailSheet] delete error:', err);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -398,9 +414,30 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
                       </div>
                     )}
 
-                    {/* Unlink button — only shown when linked to a Withings activity */}
-                    {s.activityLogId !== null && (
-                      <div style={{ marginTop: 10 }}>
+                    {/* Action buttons */}
+                    <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(s.id);
+                        }}
+                        disabled={deletingId === s.id}
+                        style={{
+                          flex: 1,
+                          font: "500 10px/1 'Inter',sans-serif",
+                          letterSpacing: "0.3px",
+                          padding: "7px 10px",
+                          borderRadius: 6,
+                          border: "1px solid var(--signal-bad)",
+                          background: "transparent",
+                          color: "var(--signal-bad)",
+                          cursor: deletingId === s.id ? "wait" : "pointer",
+                          opacity: deletingId === s.id ? 0.5 : 1,
+                        }}
+                      >
+                        {deletingId === s.id ? "Deleting…" : "Delete session"}
+                      </button>
+                      {s.activityLogId !== null && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -408,9 +445,10 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
                           }}
                           disabled={unlinking === s.id}
                           style={{
+                            flex: 1,
                             font: "500 10px/1 'Inter',sans-serif",
                             letterSpacing: "0.3px",
-                            padding: "5px 10px",
+                            padding: "7px 10px",
                             borderRadius: 6,
                             border: "1px solid rgba(255,255,255,0.12)",
                             background: "rgba(255,255,255,0.04)",
@@ -419,10 +457,10 @@ export default function DayDetailSheet({ date, dots, onClose }: Props) {
                             opacity: unlinking === s.id ? 0.5 : 1,
                           }}
                         >
-                          {unlinking === s.id ? "Unlinking…" : "Unlink Withings workout"}
+                          {unlinking === s.id ? "Unlinking…" : "Unlink Withings"}
                         </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
 
                     {/* Totals row */}
                     <div style={{

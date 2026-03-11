@@ -91,19 +91,37 @@ export default function IntradayHRChart({ data, loading }: Props) {
   const maxSteps = hasSteps ? Math.max(...stepValues) : 0;
   const totalSteps = stepValues.reduce((a, b) => a + b, 0);
 
-  // Build SVG polyline points for steps (one point per hour, centred in column)
   const colWidth = CHART_WIDTH / 24;
-  const stepsPoints = hasSteps
-    ? Array.from({ length: 24 }, (_, hour) => {
+
+  // Build smooth bezier path for steps using Catmull-Rom interpolation
+  function catmullRomPath(pts: { x: number; y: number }[]): string {
+    if (pts.length < 2) return "";
+    let d = `M ${pts[0].x},${pts[0].y}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[Math.max(0, i - 1)];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[Math.min(pts.length - 1, i + 2)];
+      const cp1x = p1.x + (p2.x - p0.x) / 6;
+      const cp1y = p1.y + (p2.y - p0.y) / 6;
+      const cp2x = p2.x - (p3.x - p1.x) / 6;
+      const cp2y = p2.y - (p3.y - p1.y) / 6;
+      d += ` C ${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(2)},${cp2y.toFixed(2)} ${p2.x},${p2.y}`;
+    }
+    return d;
+  }
+
+  const stepsPathData = hasSteps
+    ? (Array.from({ length: 24 }, (_, hour) => {
         const b = byHour.get(hour);
         const s = b?.steps_count ?? null;
-        if (s === null || s === 0) return null;
-        const x = hour * colWidth + colWidth / 2;
-        // Invert Y: high steps = top of the area (0 in SVG = top)
-        const y = STEPS_HEIGHT - Math.round((s / maxSteps) * (STEPS_HEIGHT - 4));
-        return `${x},${y}`;
-      }).filter(Boolean).join(" ")
-    : "";
+        if (!s || s === 0) return null;
+        return {
+          x: hour * colWidth + colWidth / 2,
+          y: STEPS_HEIGHT - Math.round((s / maxSteps) * (STEPS_HEIGHT - 4)),
+        };
+      }).filter(Boolean) as { x: number; y: number }[])
+    : [];
 
   return (
     <div
@@ -141,49 +159,33 @@ export default function IntradayHRChart({ data, loading }: Props) {
       </div>
 
       {/* Steps line chart — only render if there's data */}
-      {hasSteps && (
+      {hasSteps && stepsPathData.length > 0 && (
         <svg
           viewBox={`0 0 ${CHART_WIDTH} ${STEPS_HEIGHT}`}
           preserveAspectRatio="none"
           style={{ width: "100%", height: STEPS_HEIGHT, display: "block", marginBottom: 2 }}
         >
-          {/* Subtle area fill */}
-          <defs>
-            <linearGradient id="stepsGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#7FAABC" stopOpacity="0.25" />
-              <stop offset="100%" stopColor="#7FAABC" stopOpacity="0.02" />
-            </linearGradient>
-          </defs>
-          {/* Dots for each hour with steps */}
-          {Array.from({ length: 24 }, (_, hour) => {
-            const b = byHour.get(hour);
-            const s = b?.steps_count ?? null;
-            if (!s || s === 0) return null;
-            const x = hour * colWidth + colWidth / 2;
-            const y = STEPS_HEIGHT - Math.round((s / maxSteps) * (STEPS_HEIGHT - 4));
-            return (
-              <circle
-                key={hour}
-                cx={x}
-                cy={y}
-                r={2}
-                fill="#7FAABC"
-                opacity={0.85}
-              />
-            );
-          })}
-          {/* Connecting polyline */}
-          {stepsPoints && (
-            <polyline
-              points={stepsPoints}
-              fill="none"
-              stroke="#7FAABC"
-              strokeWidth={1.5}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-              opacity={0.6}
+          {/* Smooth connecting path */}
+          <path
+            d={catmullRomPath(stepsPathData)}
+            fill="none"
+            stroke="#7FAABC"
+            strokeWidth={2}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            opacity={0.85}
+          />
+          {/* Dots for each data point */}
+          {stepsPathData.map((pt, i) => (
+            <circle
+              key={i}
+              cx={pt.x}
+              cy={pt.y}
+              r={3}
+              fill="#7FAABC"
+              strokeWidth={0}
             />
-          )}
+          ))}
         </svg>
       )}
 

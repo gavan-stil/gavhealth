@@ -213,11 +213,13 @@ export default function ActivityFeed() {
   const handleDelete = async (sessionId: number) => {
     if (!window.confirm('Delete this strength session?')) return;
     setDeletingId(sessionId);
+    // Optimistically remove immediately
+    setStrengthSessions((prev) => prev.filter((s) => s.id !== sessionId));
     try {
       await apiFetch(`/api/log/strength/${sessionId}`, { method: 'DELETE' });
-      await fetchStrengthSessions();
     } catch {
-      // silently ignore
+      // On failure, re-fetch to restore state
+      await fetchStrengthSessions();
     } finally {
       setDeletingId(null);
     }
