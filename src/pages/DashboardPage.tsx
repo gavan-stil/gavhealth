@@ -187,13 +187,22 @@ export default function DashboardPage() {
       <QuickStatsRow stats={v2.todayStats} moodEntries={v2.mood.data} />
 
       {/* Goal rings */}
-      <GoalRingsRow
-        sleepScore={goalRings.sleepScore}
-        steps={goalRings.steps}
-        proteinG={v2.todayStats.protein_g}
-        readinessScore={readiness.data?.score ?? null}
-        loading={goalRings.loading || readiness.loading}
-      />
+      {(() => {
+        const stepsFromIntraday = intradayHR.loading
+          ? null
+          : intradayHR.data
+            ? intradayHR.data.buckets.reduce((sum, b) => sum + (b.steps_count ?? 0), 0)
+            : null;
+        return (
+          <GoalRingsRow
+            sleepScore={goalRings.sleepScore}
+            steps={stepsFromIntraday}
+            proteinG={v2.todayStats.protein_g}
+            readinessScore={readiness.data?.score ?? null}
+            loading={goalRings.loading || readiness.loading}
+          />
+        );
+      })()}
 
       {/* Sleep stages */}
       {sleepStages.loading ? null : sleepStages.data ? (
