@@ -248,8 +248,16 @@ BRISBANE_TZ = timezone(timedelta(hours=10))
 
 
 async def sync_sleep(db: AsyncSession, access_token: str, since_ts: int) -> int:
-    """Pull sleep summaries from Withings and upsert into sleep_logs."""
-    start_date = datetime.fromtimestamp(since_ts, tz=timezone.utc).strftime("%Y-%m-%d")
+    """Pull sleep summaries from Withings and upsert into sleep_logs.
+
+    Always looks back at least 3 days so that Withings processing delays
+    (sleep data is sometimes published hours after the scheduled sync windows)
+    don't cause permanent gaps.
+    """
+    # Always look back at least 3 days — Withings can be slow to publish sleep summaries.
+    three_days_ago = int((datetime.now(timezone.utc) - timedelta(days=3)).timestamp())
+    effective_since = min(since_ts, three_days_ago)
+    start_date = datetime.fromtimestamp(effective_since, tz=timezone.utc).strftime("%Y-%m-%d")
     # Use Brisbane local date — Withings files sleep under the wake date (local)
     end_date = datetime.now(BRISBANE_TZ).strftime("%Y-%m-%d")
 
