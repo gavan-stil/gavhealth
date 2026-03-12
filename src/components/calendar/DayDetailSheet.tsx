@@ -273,7 +273,7 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted }
     if (!window.confirm('Delete this strength session?')) return;
     setDeletingId(sessionId);
     try {
-      await apiFetch(`/api/log/strength/${sessionId}`, { method: 'DELETE' });
+      await apiFetch(`/api/strength/sessions/${sessionId}`, { method: 'DELETE' });
       setSessions((prev) => prev.filter((s) => s.id !== sessionId));
       onSessionDeleted?.();
     } catch (err) {

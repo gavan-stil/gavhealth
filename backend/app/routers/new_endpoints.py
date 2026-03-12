@@ -918,6 +918,59 @@ async def unlink_strength_session(id: int, db: AsyncSession = Depends(get_db)):
 
 
 # ---------------------------------------------------------------------------
+# A3c. PATCH /api/strength/sessions/{id}/link
+# Sets the activity_log_id on a strength session.
+# ---------------------------------------------------------------------------
+class LinkBody(BaseModel):
+    activity_id: int
+
+@router.patch("/strength/sessions/{id}/link")
+async def link_strength_session(id: int, body: LinkBody, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        text("""
+            UPDATE strength_sessions
+            SET activity_log_id = :aid
+            WHERE id = :id
+            RETURNING id
+        """),
+        {"aid": body.activity_id, "id": id},
+    )
+    row = result.mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Session not found")
+    await db.commit()
+    return {"ok": True, "id": id}
+
+
+# ---------------------------------------------------------------------------
+# A3d. DELETE /api/strength/sessions/{id}
+# Deletes a strength session and its related manual_strength_logs entry.
+# ---------------------------------------------------------------------------
+@router.delete("/strength/sessions/{id}")
+async def delete_strength_session(id: int, db: AsyncSession = Depends(get_db)):
+    # Check session exists
+    row = await db.execute(
+        text("SELECT id FROM strength_sessions WHERE id = :id"),
+        {"id": id},
+    )
+    if not row.mappings().first():
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Delete related manual_strength_logs (via bridged_session_id)
+    await db.execute(
+        text("DELETE FROM manual_strength_logs WHERE bridged_session_id = :id"),
+        {"id": id},
+    )
+    # Delete the session itself
+    await db.execute(
+        text("DELETE FROM strength_sessions WHERE id = :id"),
+        {"id": id},
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
 # A4. GET /api/strength/exercise/{exercise_id}/history?days=N
 # Returns per-session history for one exercise (sparkline data).
 # Epley 1RM formula: weight × (1 + reps/30)

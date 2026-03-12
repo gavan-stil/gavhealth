@@ -186,7 +186,7 @@ export default function ActivityFeed() {
   const handleLink = async (sessionId: number, activityId: number) => {
     setLinkingSessionId(sessionId);
     try {
-      await apiFetch(`/api/log/strength/${sessionId}/relink`, {
+      await apiFetch(`/api/strength/sessions/${sessionId}/link`, {
         method: 'PATCH',
         body: JSON.stringify({ activity_id: activityId }),
       });
@@ -202,7 +202,7 @@ export default function ActivityFeed() {
 
   const handleUnlink = async (sessionId: number) => {
     try {
-      await apiFetch(`/api/log/strength/${sessionId}/unlink`, { method: 'PATCH' });
+      await apiFetch(`/api/strength/sessions/${sessionId}/unlink`, { method: 'PATCH' });
       await fetchStrengthSessions();
       setSelectedItem(null);
     } catch {
@@ -216,7 +216,7 @@ export default function ActivityFeed() {
     // Optimistically remove immediately
     setStrengthSessions((prev) => prev.filter((s) => s.id !== sessionId));
     try {
-      await apiFetch(`/api/log/strength/${sessionId}`, { method: 'DELETE' });
+      await apiFetch(`/api/strength/sessions/${sessionId}`, { method: 'DELETE' });
     } catch {
       // On failure, re-fetch to restore state
       await fetchStrengthSessions();
