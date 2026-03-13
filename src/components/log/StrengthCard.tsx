@@ -304,7 +304,7 @@ function ExerciseCard({
         <div style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-muted)', paddingLeft: 2 }}>
           {'Last: '}
           {prevSession.sets} sets · {prevSession.total_reps} reps
-          {prevSession.session_volume_kg > 0 ? ` · ${prevSession.session_volume_kg}kg vol` : ''}
+          {prevSession.session_volume_kg > 0 ? ` · ${Math.round(prevSession.session_volume_kg)}kg vol` : ''}
           {' · '}
           {formatShortDate(prevSession.session_date)}
         </div>
@@ -804,7 +804,7 @@ export default function StrengthCard({
                         display: 'flex', flexDirection: 'column', gap: 4,
                       }}>
                         <div style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-muted)' }}>
-                          Last {lastSplitSession.session_date}: {lastSplitSession.total_reps} reps · {lastSplitSession.total_volume_kg}kg
+                          Last {lastSplitSession.session_date}: {lastSplitSession.total_reps} reps · {Math.round(lastSplitSession.total_volume_kg)}kg
                         </div>
                         <div style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           <span>
