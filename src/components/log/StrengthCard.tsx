@@ -146,22 +146,29 @@ function LoadTypePill({ value, onChange }: { value: LoadType; onChange: (v: Load
   );
 }
 
-function computeCurrentStats(sets: WorkoutSet[]): { sets: number; reps: number; volume: number } {
+function computeCurrentStats(sets: WorkoutSet[], bwKg: number | null): { sets: number; reps: number; volume: number | null } {
+  const hasBw = sets.some(s => s.load_type === 'bw' || s.load_type === 'bw+');
+  const vol = sets.reduce((s, set) => {
+    if (set.load_type === 'bw') return bwKg !== null ? s + bwKg * set.reps : s;
+    if (set.load_type === 'bw+') return bwKg !== null ? s + (bwKg + set.kg) * set.reps : s + set.kg * set.reps;
+    return s + set.kg * set.reps;
+  }, 0);
   return {
     sets: sets.length,
     reps: sets.reduce((s, set) => s + set.reps, 0),
-    volume: sets.reduce((s, set) => set.load_type === 'bw' ? s : s + set.kg * set.reps, 0),
+    volume: hasBw && bwKg === null ? null : vol,
   };
 }
 
 function ExerciseCard({
-  exercise, exerciseIndex, onUpdate, onRemove, exerciseList,
+  exercise, exerciseIndex, onUpdate, onRemove, exerciseList, bodyweightKg,
 }: {
   exercise: WorkoutExercise;
   exerciseIndex: number;
   onUpdate: (idx: number, ex: WorkoutExercise) => void;
   onRemove: (idx: number) => void;
   exerciseList: Exercise[];
+  bodyweightKg: number | null;
 }) {
   const [inputFocused, setInputFocused] = useState(false);
   const [prevSession, setPrevSession] = useState<ExerciseSession | null>(null);
@@ -197,22 +204,24 @@ function ExerciseCard({
     onUpdate(exerciseIndex, { ...exercise, sets: [...exercise.sets, { ...last }] });
   };
 
-  const currentStats = computeCurrentStats(exercise.sets);
-  let diffStr: string | null = null;
-  let diffPositive = true;
+  const currentStats = computeCurrentStats(exercise.sets, bodyweightKg);
+  let repsDiffStr: string | null = null;
+  let repsDiffPositive = true;
+  let volDiffStr: string | null = null;
+  let volDiffPositive = true;
   if (prevSession) {
-    const lastVol = prevSession.session_volume_kg;
-    if (lastVol > 0 && currentStats.volume > 0) {
-      const pct = ((currentStats.volume - lastVol) / lastVol) * 100;
-      if (Math.abs(pct) >= 0.5) {
-        diffPositive = pct >= 0;
-        diffStr = (pct > 0 ? '+' : '') + Math.round(pct) + '%';
-      }
-    } else if (lastVol === 0 && currentStats.volume === 0 && prevSession.total_reps > 0) {
+    if (prevSession.total_reps > 0) {
       const pct = ((currentStats.reps - prevSession.total_reps) / prevSession.total_reps) * 100;
       if (Math.abs(pct) >= 0.5) {
-        diffPositive = pct >= 0;
-        diffStr = (pct > 0 ? '+' : '') + Math.round(pct) + '% reps';
+        repsDiffPositive = pct >= 0;
+        repsDiffStr = (pct > 0 ? '+' : '') + Math.round(pct) + '% reps';
+      }
+    }
+    if (prevSession.session_volume_kg > 0 && currentStats.volume !== null && currentStats.volume > 0) {
+      const pct = ((currentStats.volume - prevSession.session_volume_kg) / prevSession.session_volume_kg) * 100;
+      if (Math.abs(pct) >= 0.5) {
+        volDiffPositive = pct >= 0;
+        volDiffStr = (pct > 0 ? '+' : '') + Math.round(pct) + '% vol';
       }
     }
   }
@@ -300,21 +309,34 @@ function ExerciseCard({
           {formatShortDate(prevSession.session_date)}
         </div>
       )}
-      <div style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-secondary)', paddingLeft: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-secondary)', paddingLeft: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
         <span>
           {'Now: '}
           {currentStats.sets} sets · {currentStats.reps} reps
-          {currentStats.volume > 0 ? ` · ${currentStats.volume}kg vol` : ''}
+          {currentStats.volume !== null && currentStats.volume > 0
+            ? ` · ${Math.round(currentStats.volume)}kg vol`
+            : currentStats.volume === null ? ' · ~BW vol' : ''}
         </span>
-        {diffStr && (
+        {repsDiffStr && (
           <span style={{
             font: '600 10px/1 Inter, sans-serif',
-            color: diffPositive ? 'var(--signal-good)' : 'var(--signal-poor)',
-            background: diffPositive ? 'rgba(232,196,122,0.12)' : 'rgba(196,122,106,0.12)',
+            color: repsDiffPositive ? 'var(--signal-good)' : 'var(--signal-poor)',
+            background: repsDiffPositive ? 'rgba(232,196,122,0.12)' : 'rgba(196,122,106,0.12)',
             padding: '1px 5px',
             borderRadius: 'var(--radius-pill)',
           }}>
-            {diffStr}
+            {repsDiffStr}
+          </span>
+        )}
+        {volDiffStr && (
+          <span style={{
+            font: '600 10px/1 Inter, sans-serif',
+            color: volDiffPositive ? 'var(--signal-good)' : 'var(--signal-poor)',
+            background: volDiffPositive ? 'rgba(232,196,122,0.12)' : 'rgba(196,122,106,0.12)',
+            padding: '1px 5px',
+            borderRadius: 'var(--radius-pill)',
+          }}>
+            {volDiffStr}
           </span>
         )}
       </div>
@@ -444,6 +466,8 @@ export default function StrengthCard({
   const [exerciseList, setExerciseList] = useState<Exercise[]>([]);
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [savedDraft, setSavedDraft] = useState<StrengthDraft | null>(() => readDraft());
+  const [bodyweightKg, setBodyweightKg] = useState<number | null>(null);
+  const [lastSplitSession, setLastSplitSession] = useState<{ session_date: string; total_reps: number; total_volume_kg: number } | null>(null);
 
   // Persist draft whenever meaningful state changes
   useEffect(() => {
@@ -484,6 +508,18 @@ export default function StrengthCard({
       .then(data => setExerciseList(data))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    apiFetch<{ data: Array<{ recorded_at: string; weight_kg: number }> }>('/api/weight?limit=1')
+      .then(r => { if (r.data?.[0]) setBodyweightKg(r.data[0].weight_kg); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    apiFetch<{ session_date: string; total_reps: number; total_volume_kg: number } | null>(`/api/strength/sessions/last-by-split/${selectedSplit}`)
+      .then(r => setLastSplitSession(r ?? null))
+      .catch(() => setLastSplitSession(null));
+  }, [selectedSplit]);
 
   const updateExercise = (idx: number, ex: WorkoutExercise) => {
     setExercises(prev => prev.map((e, i) => i === idx ? ex : e));
@@ -746,6 +782,59 @@ export default function StrengthCard({
                     Load a recent session…
                   </button>
 
+                  {/* Session comparison header */}
+                  {(() => {
+                    if (!lastSplitSession || exercises.length === 0) return null;
+                    const sessionReps = exercises.reduce((a, e) => a + e.sets.reduce((s, set) => s + set.reps, 0), 0);
+                    const sessionVolume = exercises.reduce((a, e) => {
+                      const stats = computeCurrentStats(e.sets, bodyweightKg);
+                      return stats.volume !== null ? a + stats.volume : a;
+                    }, 0);
+                    const volApprox = bodyweightKg === null && exercises.some(e => e.sets.some(s => s.load_type === 'bw' || s.load_type === 'bw+'));
+                    const repsPct = lastSplitSession.total_reps > 0
+                      ? ((sessionReps - lastSplitSession.total_reps) / lastSplitSession.total_reps) * 100 : null;
+                    const volPct = !volApprox && lastSplitSession.total_volume_kg > 0 && sessionVolume > 0
+                      ? ((sessionVolume - lastSplitSession.total_volume_kg) / lastSplitSession.total_volume_kg) * 100 : null;
+                    return (
+                      <div style={{
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: 'var(--space-sm) var(--space-md)',
+                        display: 'flex', flexDirection: 'column', gap: 4,
+                      }}>
+                        <div style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-muted)' }}>
+                          Last {lastSplitSession.session_date}: {lastSplitSession.total_reps} reps · {lastSplitSession.total_volume_kg}kg
+                        </div>
+                        <div style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span>
+                            Now: {sessionReps} reps · {volApprox ? '~' : ''}{Math.round(sessionVolume)}kg
+                          </span>
+                          {repsPct !== null && Math.abs(repsPct) >= 0.5 && (
+                            <span style={{
+                              font: '600 10px/1 Inter, sans-serif',
+                              color: repsPct >= 0 ? 'var(--signal-good)' : 'var(--signal-poor)',
+                              background: repsPct >= 0 ? 'rgba(232,196,122,0.12)' : 'rgba(196,122,106,0.12)',
+                              padding: '1px 5px', borderRadius: 'var(--radius-pill)',
+                            }}>
+                              {(repsPct > 0 ? '+' : '') + Math.round(repsPct)}% reps
+                            </span>
+                          )}
+                          {volPct !== null && Math.abs(volPct) >= 0.5 && (
+                            <span style={{
+                              font: '600 10px/1 Inter, sans-serif',
+                              color: volPct >= 0 ? 'var(--signal-good)' : 'var(--signal-poor)',
+                              background: volPct >= 0 ? 'rgba(232,196,122,0.12)' : 'rgba(196,122,106,0.12)',
+                              padding: '1px 5px', borderRadius: 'var(--radius-pill)',
+                            }}>
+                              {(volPct > 0 ? '+' : '') + Math.round(volPct)}% vol
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Exercise cards */}
                   {exercises.map((ex, i) => (
                     <ExerciseCard
@@ -755,6 +844,7 @@ export default function StrengthCard({
                       onUpdate={updateExercise}
                       onRemove={removeExercise}
                       exerciseList={exerciseList}
+                      bodyweightKg={bodyweightKg}
                     />
                   ))}
 
@@ -774,13 +864,20 @@ export default function StrengthCard({
                   </button>
 
                   {/* Running totals */}
-                  {exercises.length > 0 && (
-                    <div style={{ font: '400 12px/1.4 Inter, sans-serif', color: 'var(--text-muted)', textAlign: 'center' }}>
-                      {exercises.length} {exercises.length === 1 ? 'exercise' : 'exercises'}{' · '}
-                      {exercises.reduce((a, e) => a + e.sets.length, 0)} sets{' · '}
-                      {exercises.reduce((a, e) => a + e.sets.reduce((s, set) => set.load_type === 'bw' ? s : s + set.kg * set.reps, 0), 0).toLocaleString()} kg
-                    </div>
-                  )}
+                  {exercises.length > 0 && (() => {
+                    const totalVol = exercises.reduce((a, e) => {
+                      const stats = computeCurrentStats(e.sets, bodyweightKg);
+                      return stats.volume !== null ? a + stats.volume : a;
+                    }, 0);
+                    const volApprox = bodyweightKg === null && exercises.some(e => e.sets.some(s => s.load_type === 'bw' || s.load_type === 'bw+'));
+                    return (
+                      <div style={{ font: '400 12px/1.4 Inter, sans-serif', color: 'var(--text-muted)', textAlign: 'center' }}>
+                        {exercises.length} {exercises.length === 1 ? 'exercise' : 'exercises'}{' · '}
+                        {exercises.reduce((a, e) => a + e.sets.length, 0)} sets{' · '}
+                        {volApprox ? '~' : ''}{Math.round(totalVol).toLocaleString()} kg
+                      </div>
+                    );
+                  })()}
 
                   {/* Start time + Duration */}
                   <div style={{ display: 'flex', gap: 'var(--space-md)' }}>

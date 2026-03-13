@@ -14,7 +14,11 @@ All 9 tasks shipped. App is live, logging flows work end-to-end.
 
 ## Active Task
 
-None. See backlog.
+**T18** — Strength Volume Fix + Per-Exercise & Session-Level Comparison — In Progress (2026-03-13)
+Task file: `tasks/active/T18-strength-volume-fix.md`
+- Fix `session_volume_kg` to include `bodyweight_at_session` in exercise history SQL
+- Frontend: fetch user bodyweight, correct `computeCurrentStats`, dual badges (reps Δ + vol Δ)
+- New endpoint `GET /api/strength/sessions/last-by-split/{split}` for session-level comparison header
 
 ---
 

@@ -43,7 +43,8 @@ All require `X-API-Key` header. All support `?days=N` unless noted.
 | `/api/strength/sessions?days=N` | Per-session aggregates: id, **date** (non-null after T15-2b fix), session_date, activity_log_id, duration_mins, avg_hr, calories, total_sets, total_reps, total_load_kg, avg_load_per_set_kg, exercises[], **category** (push/pull/legs/abs/mixed) | — |
 | `/api/energy-balance?days=N` | Daily energy balance (T15-1b, added 2026-03-10). Array of `{ date, calories_in, protein_g, calories_burned_total (Withings TDEE or null), weight_kg (or null) }`. Only returns days with food logs. | 30 |
 | `PATCH /api/strength/sessions/:id/unlink` | Sets `activity_log_id = NULL` on strength session. Returns `{ ok: true, id }`. | — |
-| `/api/strength/exercise/:id/history?days=N` | Per-exercise session history (chronological): `[{ session_date, sets: int, total_reps, top_weight_kg, session_volume_kg, estimated_1rm }]`. `sets` is a count integer. BW exercises have `top_weight_kg: 0`. Use last element for "previous session". | — |
+| `/api/strength/exercise/:id/history?days=N` | Per-exercise session history (chronological): `[{ session_date, sets: int, total_reps, top_weight_kg, session_volume_kg, estimated_1rm }]`. `sets` is a count integer. BW exercises have `top_weight_kg: 0`. **`session_volume_kg` includes `bodyweight_at_session` (fixed T18)** — formula: `reps × (bodyweight_at_session + weight_kg)`. Use last element for "previous session". | — |
+| `GET /api/strength/sessions/last-by-split/:split` | **NEW (T18)** Most recent saved session for a split (push/pull/legs/abs). Returns `{ session_date, total_reps, total_volume_kg }` using BW-inclusive formula. Used by StrengthCard session-level comparison header. Returns `null` if no prior session. | — |
 | `/api/sauna` | Sauna sessions | ~65 |
 | `/api/dexa` | DEXA scan results | 1 |
 

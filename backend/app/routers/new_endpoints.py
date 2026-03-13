@@ -988,7 +988,7 @@ async def exercise_history(
                 COUNT(st.id)                           AS sets,
                 SUM(st.reps)                           AS total_reps,
                 MAX(COALESCE(st.weight_kg, 0))         AS top_weight_kg,
-                SUM(st.reps * COALESCE(st.weight_kg, 0)) AS session_volume_kg,
+                SUM(st.reps * (COALESCE(st.bodyweight_at_session, 0) + COALESCE(st.weight_kg, 0))) AS session_volume_kg,
                 MAX(COALESCE(st.weight_kg, 0) * (1.0 + st.reps / 30.0)) AS estimated_1rm
             FROM strength_sessions ss
             JOIN strength_sets st ON st.session_id = ss.id
@@ -1011,6 +1011,45 @@ async def exercise_history(
         }
         for r in rows
     ]
+
+
+# ---------------------------------------------------------------------------
+# T18. GET /api/strength/sessions/last-by-split/{split}
+# Returns total_reps + BW-inclusive total_volume_kg for the most recent saved
+# session of the given split.  Used by StrengthCard session-level comparison.
+# ---------------------------------------------------------------------------
+@router.get("/strength/sessions/last-by-split/{split}")
+async def last_session_by_split(split: str, db: AsyncSession = Depends(get_db)):
+    VALID_SPLITS = ("push", "pull", "legs", "abs")
+    if split not in VALID_SPLITS:
+        raise HTTPException(status_code=400, detail=f"split must be one of: {', '.join(VALID_SPLITS)}")
+
+    result = await db.execute(
+        text("""
+            SELECT
+                ss.session_datetime::date                                         AS session_date,
+                COALESCE(SUM(st.reps), 0)                                        AS total_reps,
+                COALESCE(SUM(
+                    st.reps * (COALESCE(st.bodyweight_at_session, 0) + COALESCE(st.weight_kg, 0))
+                ), 0)                                                             AS total_volume_kg
+            FROM strength_sessions ss
+            LEFT JOIN strength_sets st ON st.session_id = ss.id
+            WHERE ss.session_label = :split
+              AND ss.source = 'manual'
+            GROUP BY ss.id, ss.session_datetime
+            ORDER BY ss.session_datetime DESC
+            LIMIT 1
+        """),
+        {"split": split},
+    )
+    row = result.mappings().first()
+    if not row:
+        return None
+    return {
+        "session_date": row["session_date"].isoformat() if row["session_date"] else None,
+        "total_reps": int(row["total_reps"]),
+        "total_volume_kg": round(float(row["total_volume_kg"])),
+    }
 
 
 # ---------------------------------------------------------------------------
