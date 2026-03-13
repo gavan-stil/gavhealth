@@ -211,10 +211,10 @@ function ExerciseCard({
   let volDiffPositive = true;
   if (prevSession) {
     if (prevSession.total_reps > 0) {
-      const pct = ((currentStats.reps - prevSession.total_reps) / prevSession.total_reps) * 100;
-      if (Math.abs(pct) >= 0.5) {
-        repsDiffPositive = pct >= 0;
-        repsDiffStr = (pct > 0 ? '+' : '') + Math.round(pct) + '% reps';
+      const diff = currentStats.reps - prevSession.total_reps;
+      if (Math.abs(diff) >= 1) {
+        repsDiffPositive = diff >= 0;
+        repsDiffStr = (diff > 0 ? '+' : '') + diff + ' reps';
       }
     }
     if (prevSession.session_volume_kg > 0 && currentStats.volume !== null && currentStats.volume > 0) {
@@ -791,8 +791,8 @@ export default function StrengthCard({
                       return stats.volume !== null ? a + stats.volume : a;
                     }, 0);
                     const volApprox = bodyweightKg === null && exercises.some(e => e.sets.some(s => s.load_type === 'bw' || s.load_type === 'bw+'));
-                    const repsPct = lastSplitSession.total_reps > 0
-                      ? ((sessionReps - lastSplitSession.total_reps) / lastSplitSession.total_reps) * 100 : null;
+                    const repsDiff = lastSplitSession.total_reps > 0
+                      ? sessionReps - lastSplitSession.total_reps : null;
                     const volPct = !volApprox && lastSplitSession.total_volume_kg > 0 && sessionVolume > 0
                       ? ((sessionVolume - lastSplitSession.total_volume_kg) / lastSplitSession.total_volume_kg) * 100 : null;
                     return (
@@ -810,14 +810,14 @@ export default function StrengthCard({
                           <span>
                             Now: {sessionReps} reps · {volApprox ? '~' : ''}{Math.round(sessionVolume)}kg
                           </span>
-                          {repsPct !== null && Math.abs(repsPct) >= 0.5 && (
+                          {repsDiff !== null && Math.abs(repsDiff) >= 1 && (
                             <span style={{
                               font: '600 10px/1 Inter, sans-serif',
-                              color: repsPct >= 0 ? 'var(--signal-good)' : 'var(--signal-poor)',
-                              background: repsPct >= 0 ? 'rgba(232,196,122,0.12)' : 'rgba(196,122,106,0.12)',
+                              color: repsDiff >= 0 ? 'var(--signal-good)' : 'var(--signal-poor)',
+                              background: repsDiff >= 0 ? 'rgba(232,196,122,0.12)' : 'rgba(196,122,106,0.12)',
                               padding: '1px 5px', borderRadius: 'var(--radius-pill)',
                             }}>
-                              {(repsPct > 0 ? '+' : '') + Math.round(repsPct)}% reps
+                              {(repsDiff > 0 ? '+' : '') + repsDiff} reps
                             </span>
                           )}
                           {volPct !== null && Math.abs(volPct) >= 0.5 && (
