@@ -17,6 +17,8 @@ interface FeedItem {
   avg_bpm: number | null;
   min_hr: number | null;
   max_hr: number | null;
+  distance_km: number | null;
+  avg_pace_secs: number | null;
   effort: EffortLevel;
   effort_manually_set: boolean;
 }
@@ -85,6 +87,12 @@ function formatDuration(mins: number) {
   const h = Math.floor(mins / 60);
   const m = Math.round(mins % 60);
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function formatPace(secs: number) {
+  const m = Math.floor(secs / 60);
+  const s = Math.round(secs % 60);
+  return `${m}:${String(s).padStart(2, '0')}/km`;
 }
 
 /* ── Orphan exercise helpers ─────────────────────────────────────────────── */
@@ -389,6 +397,17 @@ export default function ActivityFeed() {
                   {' · '}{formatDuration(item.duration_minutes)}
                   {item.avg_bpm ? ` · ${item.avg_bpm}bpm` : ''}
                 </div>
+
+                {(item.type === 'run' || item.type === 'ride') && (item.distance_km || item.avg_pace_secs) && (
+                  <div style={{
+                    font: '600 13px/1 JetBrains Mono, monospace', letterSpacing: '-0.5px',
+                    color: 'var(--text-secondary)', paddingLeft: 'calc(10px + var(--space-sm))',
+                  }}>
+                    {item.distance_km ? `${item.distance_km.toFixed(2)}km` : ''}
+                    {item.distance_km && item.avg_pace_secs ? ' · ' : ''}
+                    {item.avg_pace_secs ? formatPace(item.avg_pace_secs) : ''}
+                  </div>
+                )}
 
                 {isWorkout(item.type) && linkedByActivityId[item.id] && (
                   <div style={{

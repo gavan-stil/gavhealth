@@ -14,6 +14,8 @@ export interface FeedItemForSheet {
   avg_bpm: number | null;
   min_hr: number | null;
   max_hr: number | null;
+  distance_km: number | null;
+  avg_pace_secs: number | null;
   effort: EffortLevel;
   effort_manually_set: boolean;
 }
@@ -339,6 +341,42 @@ export default function ActivityDetailSheet({
           {item.start_time && <span>{formatTime(item.start_time)}</span>}
           <span>{formatDuration(item.duration_minutes)}</span>
         </div>
+
+        {/* Distance / pace block — runs and rides only */}
+        {(item.type === 'run' || item.type === 'ride') && (item.distance_km || item.avg_pace_secs) && (
+          <div style={{
+            display: 'flex',
+            marginBottom: 20,
+            background: 'var(--bg-card)',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--border-default)',
+            overflow: 'hidden',
+          }}>
+            {[
+              ...(item.distance_km != null ? [{ val: `${item.distance_km.toFixed(2)}`, lbl: 'km' }] : []),
+              ...(item.avg_pace_secs != null ? [{
+                val: `${Math.floor(item.avg_pace_secs / 60)}:${String(Math.round(item.avg_pace_secs % 60)).padStart(2, '0')}`,
+                lbl: 'min/km',
+              }] : []),
+            ].map((stat, i) => (
+              <div key={stat.lbl} style={{
+                flex: 1, padding: '10px 14px',
+                borderLeft: i > 0 ? '1px solid var(--border-default)' : 'none',
+                display: 'flex', flexDirection: 'column', gap: 3,
+              }}>
+                <span style={{
+                  font: '700 15px/1 JetBrains Mono, monospace',
+                  letterSpacing: '-0.5px', color: 'var(--text-primary)',
+                }}>{stat.val}</span>
+                <span style={{
+                  font: '600 9px/1 Inter, sans-serif',
+                  letterSpacing: '1px', textTransform: 'uppercase',
+                  color: 'var(--text-muted)',
+                }}>{stat.lbl}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* HR block — only shown when at least avg HR is available */}
         {(item.avg_bpm || item.min_hr || item.max_hr) && (

@@ -12,14 +12,13 @@ type Props = {
   onDaySelect: (date: string) => void;
 };
 
-/** Active sub-metric values to display below bar, joined with " · " */
-function buildSubText(dot: CategoryDot, subToggles: Record<string, boolean>): string {
-  if (!dot.subMetrics || Object.keys(subToggles).length === 0) return "";
+/** Active sub-metric values to display below bar, one per line */
+function buildSubLines(dot: CategoryDot, subToggles: Record<string, boolean>): string[] {
+  if (!dot.subMetrics || Object.keys(subToggles).length === 0) return [];
   return Object.entries(subToggles)
     .filter(([, active]) => active)
     .map(([k]) => dot.subMetrics?.[k])
-    .filter((v): v is string => !!v && v !== "—")
-    .join(" · ");
+    .filter((v): v is string => !!v && v !== "—");
 }
 
 const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
@@ -263,14 +262,14 @@ export default function MonthGrid({
                     const hasMarker = dot && dot.category !== "strength"
                       ? !!(dot.isLetsGo || dot.isInterval || dot.saunaHasDevotion)
                       : false;
-                    const subText = dot ? buildSubText(dot, subToggles) : "";
+                    const subLines = dot ? buildSubLines(dot, subToggles) : [];
 
                     return (
                       <div
                         key={di}
                         style={{
                           padding: "3px 1px",
-                          minHeight: subText ? 34 : 22,
+                          minHeight: subLines.length > 0 ? 22 + subLines.length * 11 : 22,
                           display: "flex",
                           flexDirection: "column",
                           alignItems: "center",
@@ -306,23 +305,21 @@ export default function MonthGrid({
                                 </span>
                               )}
                             </div>
-                            {/* Sub-metrics row — shown when sub-toggles active */}
-                            {subText && (
+                            {/* Sub-metrics — one line per active metric */}
+                            {subLines.map((line, li) => (
                               <div
+                                key={li}
                                 style={{
                                   font: "400 7px/1.3 'JetBrains Mono', monospace",
                                   color: "var(--text-muted)",
-                                  marginTop: 2,
+                                  marginTop: li === 0 ? 2 : 0,
                                   width: "calc(100% - 2px)",
                                   textAlign: "center",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  whiteSpace: "nowrap",
                                 }}
                               >
-                                {subText}
+                                {line}
                               </div>
-                            )}
+                            ))}
                           </>
                         )}
                       </div>

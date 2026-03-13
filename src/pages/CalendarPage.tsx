@@ -24,7 +24,7 @@ export default function CalendarPage() {
   const [showDuration, setShowDuration] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showPatterns, setShowPatterns] = useState(false);
-  const [showWk, setShowWk] = useState(true);
+  const [showWk, setShowWk] = useState(false);
   const [subToggles, setSubToggles] = useState<Record<string, boolean>>({});
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 

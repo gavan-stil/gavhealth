@@ -52,7 +52,7 @@ export const CATEGORY_COLORS: Record<CategoryName, string> = {
   weight: "#e8c47a",
   sleep: "#7FAABC",
   heart: "#c4856a",
-  running: "#b8a878",
+  running: "#7a6848",
   strength: "#b47050",
   ride: "#c4789a",
   sauna: "#c45a4a",
