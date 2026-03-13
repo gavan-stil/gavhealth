@@ -106,6 +106,44 @@ All 4 blocking strength trends backend tasks are live. Verified via curl.
 - Returns per-session data per exercise: date, sets, reps, top_weight, session_volume
 - Curl-verified 200 OK
 
+---
+
+## Sync Reliability Protocol (implemented 2026-03-13)
+
+Withings delivers data lazily — GPS distance, HR data, and daily summary step counts can arrive hours after the workout completes. The sync strategy is designed so that **every sync can correct previously incomplete data**.
+
+### Upsert strategy per endpoint
+
+| Endpoint | Lookback window | Upsert behaviour |
+|---|---|---|
+| `getworkouts` | min(since_ts, 30 days) | **COALESCE** per field — new non-NULL wins, existing non-NULL preserved if new is NULL |
+| `getactivity` (daily summaries) | min(since_ts, 7 days) | Blind overwrite — daily rollup always replaced with latest aggregated data |
+| `getsummary` (sleep) | min(since_ts, 3 days) | COALESCE per field |
+| `getintradayactivity` (intraday HR) | Today + yesterday (2 days) | Upsert by hour bucket |
+
+### Why COALESCE for workouts?
+Withings sometimes attaches HR and GPS data hours after initial upload. If we blindly overwrote on re-sync, a second pass (before data arrives) would null out previously-good values. COALESCE ensures:
+- Incoming non-NULL value → always written (correct stale wrong values, fill NULLs)
+- Incoming NULL → keep existing value (ignore late-delivery gaps)
+
+### backfill_incomplete_workouts
+Runs inside every `run_full_sync`. Queries for workout rows with `avg_hr IS NULL`, `distance_km IS NULL` (for runs/walks), or `steps IS NULL` within 60 days. If found, extends the workout lookback to 60 days to catch all pending late-delivery rows.
+
+### Known late-delivery fields
+- **GPS distance** (`data.distance`): can be step-estimated on first sync, replaced with GPS value later. Re-sync within 30-day window corrects this automatically via COALESCE.
+- **HR average/min/max**: typically arrives within minutes but can lag on cellular sync.
+- **Daily steps** (`getactivity`): Withings finalises daily totals overnight.
+
+### Category map corrections (2026-03-13)
+- Category `187` = outdoor GPS run (was incorrectly mapped to `"other"`, now `"run"`)
+- Category `188` = indoor cycling (was `"other"`, now `"ride"`)
+- Category `99` = treadmill run → `"run"`
+
+### API cost impact
+No per-call billing — Withings API is free for OAuth personal use. Rate limit is ~120 req/min; our sync uses 6–12 calls per run well under this. The 30-day workout lookback returns ~30–100 rows in 1–3 paginated calls — negligible. Even 10 syncs/day = <150 calls/day.
+
+---
+
 ### 5. Store HR zones from Withings (MEDIUM — intensity tracking)
 - Alter `activity_log` to add `hr_zone_0/1/2/3` integer columns (seconds in each zone)
 - Update Withings sync to populate them

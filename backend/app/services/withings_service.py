@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -71,8 +71,8 @@ WORKOUT_CATEGORY_MAP = {
     35: "other",     # zumba
     36: "other",     # miscellaneous — SAUNA lives here
     99: "run",       # treadmill
-    187: "other",    # outdoor run (sometimes separate)
-    188: "other",    # indoor cycling
+    187: "run",      # outdoor run (Withings v2 specific category)
+    188: "ride",     # indoor cycling
 }
 SCOPES = "user.info,user.metrics,user.activity"
 
@@ -579,8 +579,15 @@ async def cleanup_anomalous_rhr(db: AsyncSession) -> dict:
 
 
 async def sync_activities(db: AsyncSession, access_token: str, since_ts: int) -> int:
-    """Pull activities from Withings and upsert into activity_logs."""
-    start_date = datetime.fromtimestamp(since_ts, tz=timezone.utc).strftime("%Y-%m-%d")
+    """Pull activities from Withings and upsert into activity_logs.
+
+    Always looks back at least 7 days so that daily summaries Withings finalises
+    late (step counts, HR averages) are picked up on the next sync even if
+    since_ts is more recent than the update.
+    """
+    seven_days_ago = int((datetime.now(timezone.utc) - timedelta(days=7)).timestamp())
+    effective_since = min(since_ts, seven_days_ago)
+    start_date = datetime.fromtimestamp(effective_since, tz=timezone.utc).strftime("%Y-%m-%d")
     end_date = datetime.now(BRISBANE_TZ).strftime("%Y-%m-%d")
 
     body = await _withings_get(access_token, WITHINGS_ACTIVITY_URL, {
@@ -722,12 +729,35 @@ async def sync_workouts(db: AsyncSession, access_token: str, since_ts: int) -> i
                 "hr_zone_1": data.get("hr_zone_1"),
                 "hr_zone_2": data.get("hr_zone_2"),
                 "hr_zone_3": data.get("hr_zone_3"),
+                "steps": data.get("steps"),
                 "source": SOURCE,
             }
 
+            # COALESCE upsert: always overwrite non-nullable fields; for nullable
+            # fields prefer the incoming value but fall back to the stored value
+            # so that Withings late-delivery (HR/distance arrive hours after upload)
+            # never overwrites previously-good data with NULL.
             stmt = pg_insert(ActivityLog).values(**values).on_conflict_do_update(
                 index_elements=["external_id", "source"],
-                set_={k: v for k, v in values.items() if k not in ("external_id", "source")},
+                set_={
+                    "activity_type": text("EXCLUDED.activity_type"),
+                    "activity_date": text("EXCLUDED.activity_date"),
+                    "started_at":    text("EXCLUDED.started_at"),
+                    "duration_mins":  text("COALESCE(EXCLUDED.duration_mins,  activity_logs.duration_mins)"),
+                    "distance_km":    text("COALESCE(EXCLUDED.distance_km,    activity_logs.distance_km)"),
+                    "avg_pace_secs":  text("COALESCE(EXCLUDED.avg_pace_secs,  activity_logs.avg_pace_secs)"),
+                    "avg_hr":         text("COALESCE(EXCLUDED.avg_hr,         activity_logs.avg_hr)"),
+                    "min_hr":         text("COALESCE(EXCLUDED.min_hr,         activity_logs.min_hr)"),
+                    "max_hr":         text("COALESCE(EXCLUDED.max_hr,         activity_logs.max_hr)"),
+                    "calories_burned":text("COALESCE(EXCLUDED.calories_burned,activity_logs.calories_burned)"),
+                    "elevation_m":    text("COALESCE(EXCLUDED.elevation_m,    activity_logs.elevation_m)"),
+                    "zone_seconds":   text("COALESCE(EXCLUDED.zone_seconds,   activity_logs.zone_seconds)"),
+                    "hr_zone_0":      text("COALESCE(EXCLUDED.hr_zone_0,      activity_logs.hr_zone_0)"),
+                    "hr_zone_1":      text("COALESCE(EXCLUDED.hr_zone_1,      activity_logs.hr_zone_1)"),
+                    "hr_zone_2":      text("COALESCE(EXCLUDED.hr_zone_2,      activity_logs.hr_zone_2)"),
+                    "hr_zone_3":      text("COALESCE(EXCLUDED.hr_zone_3,      activity_logs.hr_zone_3)"),
+                    "steps":          text("COALESCE(EXCLUDED.steps,          activity_logs.steps)"),
+                },
             )
             result = await db.execute(stmt)
             count += 1
@@ -751,37 +781,42 @@ async def sync_workouts(db: AsyncSession, access_token: str, since_ts: int) -> i
     return count
 
 
-async def backfill_missing_workout_hr(db: AsyncSession, access_token: str) -> int:
-    """Re-fetch workouts that have avg_hr = NULL within the last 60 days.
+async def backfill_incomplete_workouts(db: AsyncSession, access_token: str) -> int:
+    """Re-fetch workouts that have any critical field NULL within the last 60 days.
 
-    Withings sometimes processes HR data hours after the workout is uploaded.
-    The regular sync window (30 days) covers most cases, but this function
-    provides an explicit targeted backfill by extending the lookback to 60 days
-    only when NULL-HR rows exist in that window.
+    Withings sometimes processes HR and GPS data hours after the workout is
+    uploaded, so the first sync can produce incomplete rows.  This catches:
+      - Any workout with avg_hr IS NULL
+      - Runs/walks with distance_km IS NULL (GPS not yet processed)
+      - Workouts with steps IS NULL
 
-    Returns count of rows re-fetched.
+    Returns the number of workout rows touched by the re-fetch.
     """
-    from sqlalchemy import text as sa_text
-
     sixty_days_ago = datetime.now(timezone.utc) - timedelta(days=60)
 
-    # Check if there are any NULL-HR workout rows in the last 60 days
     result = await db.execute(
-        sa_text(
+        text(
             "SELECT COUNT(*) FROM activity_logs "
-            "WHERE avg_hr IS NULL "
-            "  AND activity_type != 'daily_summary' "
-            "  AND activity_date >= :cutoff"
+            "WHERE activity_type != 'daily_summary' "
+            "  AND activity_date >= :cutoff "
+            "  AND ("
+            "    avg_hr IS NULL "
+            "    OR (activity_type IN ('run','walk') AND distance_km IS NULL) "
+            "    OR steps IS NULL"
+            "  )"
         ),
         {"cutoff": sixty_days_ago.date()},
     )
-    null_count = result.scalar_one()
+    incomplete_count = result.scalar_one()
 
-    if null_count == 0:
-        logger.info("backfill_missing_workout_hr: no NULL-HR rows found, skipping")
+    if incomplete_count == 0:
+        logger.info("backfill_incomplete_workouts: no incomplete rows found, skipping")
         return 0
 
-    logger.info("backfill_missing_workout_hr: %d NULL-HR rows — extending sync to 60 days", null_count)
+    logger.info(
+        "backfill_incomplete_workouts: %d incomplete rows — extending sync to 60 days",
+        incomplete_count,
+    )
     since_ts = int(sixty_days_ago.timestamp())
     return await sync_workouts(db, access_token, since_ts)
 
@@ -840,13 +875,13 @@ async def run_full_sync(db: AsyncSession) -> dict:
                     batch_id=batch_id,
                 ))
 
-        # HR backfill: re-fetch workouts with NULL HR (Withings sometimes attaches HR late)
+        # Backfill: re-fetch workouts with any critical field NULL (HR/distance/steps arrive late)
         try:
-            backfilled = await backfill_missing_workout_hr(db, access_token)
-            results["hr_backfill"] = backfilled
+            backfilled = await backfill_incomplete_workouts(db, access_token)
+            results["backfill"] = backfilled
         except Exception as e:
-            logger.warning("backfill_missing_workout_hr error: %s", e)
-            results["hr_backfill"] = f"error: {str(e)}"
+            logger.warning("backfill_incomplete_workouts error: %s", e)
+            results["backfill"] = f"error: {str(e)}"
 
         # Sync sleep stages + intraday HR for last 2 days (Brisbane local date)
         today = datetime.now(BRISBANE_TZ).date()
