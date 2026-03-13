@@ -543,6 +543,27 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted }
               .map(({ id, label: lbl }) => ({ lbl, val: dot.subMetrics?.[id] }))
               .filter((e): e is { lbl: string; val: string } => Boolean(e.val));
 
+            // Stat block groups for running/ride (horizontal bordered layout)
+            const isRunRide = dot.category === "running" || dot.category === "ride";
+            const statGroups: Array<Array<{ val: string; lbl: string }>> = isRunRide
+              ? (dot.category === "running"
+                ? [
+                    [
+                      ...(dot.subMetrics?.dist ? [{ val: dot.subMetrics.dist, lbl: "dist" }] : []),
+                      ...(dot.subMetrics?.pace ? [{ val: dot.subMetrics.pace, lbl: "pace" }] : []),
+                    ],
+                    [
+                      ...(dot.subMetrics?.time ? [{ val: dot.subMetrics.time, lbl: "time" }] : []),
+                      ...(dot.subMetrics?.bpm ? [{ val: dot.subMetrics.bpm, lbl: "bpm" }] : []),
+                    ],
+                  ].filter(g => g.length > 0)
+                : [
+                    [
+                      ...(dot.subMetrics?.dist ? [{ val: dot.subMetrics.dist, lbl: "dist" }] : []),
+                    ],
+                  ].filter(g => g.length > 0))
+              : [];
+
             return (
               <div key={key} style={CARD}>
                 {/* Card header */}
@@ -645,34 +666,67 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted }
                       </div>
                     )}
 
-                    {/* Sub-metric grid */}
+                    {/* Sub-metric blocks (running/ride) or grid (everything else) */}
                     {subEntries.length > 0 && (
-                      <div style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: "10px 12px",
-                        marginTop: 12,
-                      }}>
-                        {subEntries.map(({ lbl, val }) => (
-                          <div key={lbl}>
-                            <div style={{
-                              font: "500 9px/1 'Inter',sans-serif",
-                              letterSpacing: "0.4px",
-                              textTransform: "uppercase",
-                              color: "var(--text-muted)",
-                              marginBottom: 3,
+                      isRunRide ? (
+                        <div style={{ marginTop: 12 }}>
+                          {statGroups.map((stats, gi) => (
+                            <div key={gi} style={{
+                              display: "flex",
+                              marginBottom: gi < statGroups.length - 1 ? 8 : 0,
+                              background: "var(--bg-card)",
+                              borderRadius: "var(--radius-md)",
+                              border: "1px solid var(--border-default)",
+                              overflow: "hidden",
                             }}>
-                              {lbl}
+                              {stats.map((stat, i) => (
+                                <div key={stat.lbl} style={{
+                                  flex: 1, padding: "10px 14px",
+                                  borderLeft: i > 0 ? "1px solid var(--border-default)" : "none",
+                                  display: "flex", flexDirection: "column", gap: 3,
+                                }}>
+                                  <span style={{
+                                    font: "700 15px/1 'JetBrains Mono',monospace",
+                                    letterSpacing: "-0.5px", color: "var(--text-primary)",
+                                  }}>{stat.val}</span>
+                                  <span style={{
+                                    font: "600 9px/1 'Inter',sans-serif",
+                                    letterSpacing: "1px", textTransform: "uppercase",
+                                    color: "var(--text-muted)",
+                                  }}>{stat.lbl}</span>
+                                </div>
+                              ))}
                             </div>
-                            <div style={{
-                              font: "600 14px/1 'Inter',sans-serif",
-                              color: "var(--text-primary)",
-                            }}>
-                              {val}
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          gap: "10px 12px",
+                          marginTop: 12,
+                        }}>
+                          {subEntries.map(({ lbl, val }) => (
+                            <div key={lbl}>
+                              <div style={{
+                                font: "500 9px/1 'Inter',sans-serif",
+                                letterSpacing: "0.4px",
+                                textTransform: "uppercase",
+                                color: "var(--text-muted)",
+                                marginBottom: 3,
+                              }}>
+                                {lbl}
+                              </div>
+                              <div style={{
+                                font: "600 14px/1 'Inter',sans-serif",
+                                color: "var(--text-primary)",
+                              }}>
+                                {val}
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )
                     )}
                   </div>
                 )}
