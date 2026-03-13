@@ -559,7 +559,8 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted }
                   ].filter(g => g.length > 0)
                 : [
                     [
-                      ...(dot.subMetrics?.dist ? [{ val: dot.subMetrics.dist, lbl: "dist" }] : []),
+                      ...(dot.subMetrics?.dist  ? [{ val: dot.subMetrics.dist,  lbl: "dist"  }] : []),
+                      ...(dot.subMetrics?.speed ? [{ val: dot.subMetrics.speed, lbl: "speed" }] : []),
                     ],
                   ].filter(g => g.length > 0))
               : [];
