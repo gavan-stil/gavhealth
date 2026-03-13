@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f0f0d; font-family: 'Inter', sans-serif; padding: 24px; }
+  .card {
+    background: #1a1a16;
+    border: 1px solid #2a2a24;
+    border-radius: 12px;
+    padding: 16px;
+    max-width: 380px;
+  }
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+  }
+  .header-label { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: #6b6b5a; text-transform: uppercase; }
+  .header-meta { display: flex; gap: 8px; font-size: 11px; color: #6b6b5a; }
+
+  /* Chart layout: left-axis | plot | right-axis */
+  .chart-layout {
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+  }
+  .y-axis-left {
+    width: 28px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding-bottom: 18px; /* matches x-axis label height */
+  }
+  .y-axis-right {
+    width: 28px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding-bottom: 18px;
+  }
+  .y-label {
+    font-size: 9px;
+    color: #6b6b5a;
+    text-align: right;
+    line-height: 1;
+  }
+  .y-label-right {
+    font-size: 9px;
+    color: #7FAABC;
+    text-align: left;
+    line-height: 1;
+  }
+
+  /* Plot area */
+  .plot-wrap {
+    flex: 1;
+    position: relative;
+  }
+  .plot-svg {
+    width: 100%;
+    display: block;
+  }
+  .x-axis {
+    display: flex;
+    margin-top: 3px;
+  }
+  .x-label {
+    flex: 1;
+    font-size: 9px;
+    color: #6b6b5a;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .legend {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+  .legend-swatch { width: 8px; height: 8px; border-radius: 2px; }
+  .legend-line { width: 16px; height: 2px; border-radius: 1px; background: #7FAABC; }
+  .legend-text { font-size: 10px; color: #6b6b5a; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <span class="header-label">HR THROUGH THE DAY</span>
+    <div class="header-meta">
+      <span>4,554 steps</span>
+      <span>40–124 bpm</span>
+    </div>
+  </div>
+
+  <div class="chart-layout">
+    <!-- Left axis: HR bpm -->
+    <div class="y-axis-left" id="y-left"></div>
+
+    <!-- Plot -->
+    <div class="plot-wrap">
+      <svg class="plot-svg" id="plot" style="overflow:visible"></svg>
+      <div class="x-axis" id="x-axis"></div>
+    </div>
+
+    <!-- Right axis: Steps -->
+    <div class="y-axis-right" id="y-right"></div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:#7FAABC"></div><span class="legend-text">≤50</span></div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#8B95C0"></div><span class="legend-text">51–60</span></div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#A884A0"></div><span class="legend-text">61–70</span></div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#c4856a"></div><span class="legend-text">71–80</span></div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#D4A04A"></div><span class="legend-text">&gt;80</span></div>
+    <div class="legend-item"><div class="legend-line"></div><span class="legend-text">steps</span></div>
+  </div>
+</div>
+
+<script>
+const CHART_H = 90;    // SVG height for the plot
+const GAP = 2;
+
+const data = [
+  {hr:45,steps:null},{hr:43,steps:null},{hr:44,steps:null},{hr:42,steps:null},
+  {hr:48,steps:null},{hr:50,steps:null},{hr:55,steps:80},{hr:62,steps:252},
+  {hr:68,steps:285},{hr:95,steps:506},{hr:88,steps:336},{hr:82,steps:74},
+  {hr:78,steps:159},{hr:76,steps:96},{hr:85,steps:392},{hr:90,steps:36},
+  {hr:92,steps:1100},{hr:88,steps:246},{hr:72,steps:42},{hr:65,steps:null},
+  {hr:58,steps:null},{hr:52,steps:null},{hr:48,steps:null},{hr:45,steps:null},
+];
+
+function hrColor(bpm) {
+  if (bpm <= 50) return '#7FAABC';
+  if (bpm <= 60) return '#8B95C0';
+  if (bpm <= 70) return '#A884A0';
+  if (bpm <= 80) return '#c4856a';
+  return '#D4A04A';
+}
+
+const hrs = data.map(d => d.hr).filter(Boolean);
+const maxHr = Math.max(...hrs, 100);
+const minHr = Math.min(...hrs, 40);
+const hrRange = maxHr - minHr || 1;
+
+const stepVals = data.map(d => d.steps).filter(Boolean);
+const maxSteps = Math.max(...stepVals);
+const stepsAxisMax = Math.ceil(maxSteps / 500) * 500;
+
+// Wait for layout to measure plot width
+window.addEventListener('load', () => {
+  const plotEl = document.getElementById('plot');
+  const W = plotEl.parentElement.clientWidth;
+  const colW = (W - GAP * 23) / 24;
+
+  plotEl.setAttribute('viewBox', `0 0 ${W} ${CHART_H}`);
+  plotEl.setAttribute('width', W);
+  plotEl.setAttribute('height', CHART_H);
+
+  const ns = 'http://www.w3.org/2000/svg';
+
+  // Draw bars
+  data.forEach((d, i) => {
+    const x = i * (colW + GAP);
+    const barPct = Math.max(0.06, (d.hr - minHr) / hrRange);
+    const barH = Math.round(barPct * CHART_H);
+    const color = hrColor(d.hr);
+
+    const rect = document.createElementNS(ns, 'rect');
+    rect.setAttribute('x', x);
+    rect.setAttribute('y', CHART_H - barH);
+    rect.setAttribute('width', colW);
+    rect.setAttribute('height', barH);
+    rect.setAttribute('fill', color);
+    rect.setAttribute('rx', 2);
+    plotEl.appendChild(rect);
+  });
+
+  // Build steps line points (using steps right-axis scale)
+  const stepPts = data.map((d, i) => {
+    if (!d.steps || d.steps === 0) return null;
+    const x = i * (colW + GAP) + colW / 2;
+    const y = CHART_H - Math.round((d.steps / stepsAxisMax) * CHART_H);
+    return { x, y };
+  }).filter(Boolean);
+
+  // Catmull-Rom
+  function catmullRom(pts) {
+    if (pts.length < 2) return '';
+    let d = `M ${pts[0].x},${pts[0].y}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[Math.max(0, i-1)];
+      const p1 = pts[i];
+      const p2 = pts[i+1];
+      const p3 = pts[Math.min(pts.length-1, i+2)];
+      const cp1x = p1.x + (p2.x - p0.x) / 6;
+      const cp1y = p1.y + (p2.y - p0.y) / 6;
+      const cp2x = p2.x - (p3.x - p1.x) / 6;
+      const cp2y = p2.y - (p3.y - p1.y) / 6;
+      d += ` C ${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(2)},${cp2y.toFixed(2)} ${p2.x},${p2.y}`;
+    }
+    return d;
+  }
+
+  const path = document.createElementNS(ns, 'path');
+  path.setAttribute('d', catmullRom(stepPts));
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke', '#7FAABC');
+  path.setAttribute('stroke-width', 1.5);
+  path.setAttribute('stroke-linejoin', 'round');
+  path.setAttribute('stroke-linecap', 'round');
+  path.setAttribute('opacity', 0.9);
+  plotEl.appendChild(path);
+
+  stepPts.forEach(pt => {
+    const c = document.createElementNS(ns, 'circle');
+    c.setAttribute('cx', pt.x);
+    c.setAttribute('cy', pt.y);
+    c.setAttribute('r', 2);
+    c.setAttribute('fill', '#7FAABC');
+    plotEl.appendChild(c);
+  });
+
+  // X-axis labels
+  const HOUR_LABELS = ['12a','','','3a','','','6a','','','9a','','','12p','','','3p','','','6p','','','9p','',''];
+  const xEl = document.getElementById('x-axis');
+  HOUR_LABELS.forEach(l => {
+    const d = document.createElement('div');
+    d.className = 'x-label';
+    d.style.color = l ? '#6b6b5a' : 'transparent';
+    d.textContent = l || '.';
+    xEl.appendChild(d);
+  });
+
+  // Left Y-axis: HR (top = maxHr, bottom = minHr)
+  const yLeft = document.getElementById('y-left');
+  // 3 ticks: max, mid, min
+  const hrMid = Math.round((maxHr + minHr) / 2);
+  [maxHr, hrMid, minHr].forEach(v => {
+    const el = document.createElement('div');
+    el.className = 'y-label';
+    el.textContent = v + '';
+    yLeft.appendChild(el);
+  });
+
+  // Right Y-axis: Steps (top = stepsAxisMax, bottom = 0)
+  const yRight = document.getElementById('y-right');
+  const stepsMid = Math.round(stepsAxisMax / 2);
+  [stepsAxisMax >= 1000 ? (stepsAxisMax/1000).toFixed(1)+'k' : stepsAxisMax,
+   stepsMid >= 1000 ? (stepsMid/1000).toFixed(1)+'k' : stepsMid,
+   '0'
+  ].forEach(v => {
+    const el = document.createElement('div');
+    el.className = 'y-label-right';
+    el.textContent = v;
+    yRight.appendChild(el);
+  });
+});
+</script>
+</body>
+</html>

@@ -14,11 +14,14 @@ All 9 tasks shipped. App is live, logging flows work end-to-end.
 
 ## Active Task
 
-**T18** — Strength Volume Fix + Per-Exercise & Session-Level Comparison — In Progress (2026-03-13)
-Task file: `tasks/active/T18-strength-volume-fix.md`
-- Fix `session_volume_kg` to include `bodyweight_at_session` in exercise history SQL
-- Frontend: fetch user bodyweight, correct `computeCurrentStats`, dual badges (reps Δ + vol Δ)
-- New endpoint `GET /api/strength/sessions/last-by-split/{split}` for session-level comparison header
+None — backlog next.
+
+---
+
+**T18** — Strength Volume Fix + Per-Exercise & Session-Level Comparison — ✅ complete (2026-03-13).
+Commits: `5838fd9`, `7e1d89c`
+- Backend: exercise history SQL now includes `bodyweight_at_session`; new `GET /api/strength/sessions/last-by-split/{split}` endpoint
+- Frontend: bodyweight fetched from `/api/weight?limit=1`; `computeCurrentStats` handles bw/bw+ correctly; dual reps+vol badges; session comparison header; whole-kg rounding throughout
 
 ---
 
@@ -49,6 +52,7 @@ Full task list: `tasks/T14-sprint.md`
 
 | Task | Date | Summary |
 |------|------|---------|
+| T18 BW volume fix + session header | 2026-03-13 | Backend SQL fixed (bodyweight_at_session in session_volume_kg). New last-by-split endpoint. Frontend: correct bw/bw+ volume formula, dual reps+vol badges, session comparison header, whole-kg rounding. commits: 5838fd9, 7e1d89c |
 | StrengthCard last/now tally | 2026-03-11 | Exercise cards show Last: sets·reps·vol·date + live Now: tally + % diff badge (gold/red, ≥0.5% threshold). BW+ extra kg included in volume. commit: 7227eb4 |
 | T15 Trends Redesign | 2026-03-10 | EnergyBalanceChart (intake/burn bars + weight line, dual y-axis, protein-first summary row). StrengthQualityChart (scatter: duration vs avg_hr, bubble=sets, category colour). Both at top of TrendsPage; CorrelationSummary removed. Data quality fix: kJ→kcal CASE guard in energy-balance endpoint (daily_summary rows from CSV bulk import stored kJ). Commits: 29dbae4, 382fd68, f82dd9a |
 | Withings timezone + HR detail sheet | 2026-03-10 | Bug 1: sync_workouts was using UTC .date() — morning Brisbane workouts landed on previous day. Fixed: .astimezone(BRISBANE_TZ).date(). Bug 2: on_conflict_do_nothing → on_conflict_do_update so re-syncs overwrite stale data. Bug 3: ActivityLog model missing started_at + min_hr columns — pg_insert upsert silently failed. Bug 4: sync_workouts used lastupdate=last_sync_at so Withings skipped already-sent workouts; fixed by capping lookback to 14 days. Feature: ActivityDetailSheet now shows start time + Avg/Low/High HR block (new started_at TIMESTAMPTZ + min_hr INTEGER columns). commits: 6bca5d0, 39ba1c0 |
