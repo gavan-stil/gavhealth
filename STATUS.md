@@ -17,9 +17,9 @@ All 9 tasks shipped. App is live, logging flows work end-to-end.
 **T22** — Momentum Card + Goals System — ✅ complete (2026-03-14)
 - Backend: `health_goals` table (append-only, seed targets for all 6 signals)
 - Backend: `GET /api/momentum`, `GET /api/momentum/signals`, `GET /api/goals`, `POST /api/goals`, `GET /api/goals/{signal}/history`
-- Frontend: `MomentumCard` replaces `ReadinessCard` on Dashboard (collapsed dots + trend + expanded signal rows)
-- Frontend: `GoalDetailSheet` — bottom sheet with 7-day deviation chart + target stats
-- Frontend: `SignalDeviationChart` — bar chart: ochre above baseline, dawn-blue below
+- Frontend: `MomentumCard` — positioned above SleepCard on Dashboard; collapsed state: dual-area gradient chart (Recovery gold fill + Strain clay dashed, 14-day) + signal dots + count; expanded: 6 signal rows each with mini gradient sparkline (colour-matched to status)
+- Frontend: `GoalDetailSheet` — bottom sheet via `createPortal` (fixes position:fixed in scroll container); gradient area chart via `SignalDeviationChart`
+- Frontend: `SignalDeviationChart` — gradient area chart (gold line + fill gradient); dashed baseline at y=0; ochre target-zone ReferenceArea band; used in GoalDetailSheet + GoalsPage
 - Frontend: `/goals` route (`GoalsPage`) — all 6 signals, 7-day sparkline, set-new-target form, append-only history
 - Protein + water targets in Trends components now read from `/api/goals` (no more hardcoded 180g / 3L)
 

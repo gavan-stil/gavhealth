@@ -8,7 +8,7 @@
 
 ## Dashboard (`/`)
 
-- **MomentumCard** — replaces ReadinessCard; three-layer model (target range → 28d baseline → 7d trend); collapsed state: status dots (ochre=on-track/improving, muted=off-track), trend label (Trending toward/away from goals), "Edit Goals →" link; expanded state: 6 signal rows (Sleep, Resting HR, Weight, Calories, Protein, Water) each showing today value, deviation vs avg, and trend arrow; tap row → GoalDetailSheet; card background tinted dawn-blue when majority signals off-track
+- **MomentumCard** — replaces ReadinessCard; positioned above SleepCard; three-layer model (target range → 28d baseline → 7d trend); collapsed state: dual-area gradient chart (Recovery = avg normalised deviation of sleep/protein/water/calories vs baseline, gold filled area; Strain = RHR/weight inverted, clay dashed line; 14-day window) + signal dots + "N of 6 on track" count; expanded state: 6 signal rows each showing label, today value, deviation vs avg, and 56×28px mini gradient sparkline colour-matched to status; tap row → GoalDetailSheet (portal); card background tinted dawn-blue when majority signals off-track
 - **GoalRingsRow** — 4 SVG progress rings (sleep, steps, protein, recovery); Apple Watch-style overflow; icons inside rings (moon, slash, fork, bolt)
 - **QuickStatsRow** — compact horizontal metrics reflecting selected date
 - **SleepCard** — last night sleep duration + deep %; tap → **SleepHistorySheet** bottom sheet (30 days, proportional stage bars: deep/light/awake, sleep score pill, slide-up animation)
@@ -85,9 +85,9 @@
 
 - **GoalsPage** — 6 signal sections (Sleep, Resting HR, Weight, Calories, Protein, Water); no tab bar entry, reachable from MomentumCard "Edit Goals →"
 - **Per-signal section** — current target range, 28-day average, collapsible 7-day trend sparkline (`SignalDeviationChart`), "Set New Target" inline form (min + max inputs + optional notes), append-only save (old targets preserved in history), collapsible history timeline (newest entry highlighted)
-- **SignalDeviationChart** — bar chart showing daily deviation from 28d baseline; ochre bars above baseline, dawn-blue below; dashed baseline at zero; ochre shaded target zone band; dawn-blue underwater fill when baseline < target_min
-- **GoalDetailSheet** — bottom sheet (tap signal row in MomentumCard); today/28d avg/target stats; 7-day deviation chart; "Edit Target →" link to GoalsPage
+- **SignalDeviationChart** — gradient area chart (gold stroke + top-to-transparent fill gradient); dashed baseline reference line at y=0; ochre target-zone ReferenceArea band; used in GoalDetailSheet + GoalsPage per-signal sparklines
+- **GoalDetailSheet** — bottom sheet via `createPortal` to `document.body` (fixes position:fixed inside scroll container); today/28d avg/target stats; 7-day `SignalDeviationChart`; "Edit Target →" link to GoalsPage
 
 ---
 
-*Last updated: 2026-03-14 (T22)*
+*Last updated: 2026-03-14 (T22 polish)*
