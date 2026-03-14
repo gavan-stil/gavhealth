@@ -698,6 +698,16 @@ async def sync_workouts(db: AsyncSession, access_token: str, since_ts: int) -> i
             distance_m = data.get("distance", 0)
             distance_km = round(distance_m / 1000, 2) if distance_m else None
 
+            # Log every workout so we can see exactly what Withings returned in Railway logs.
+            # This is critical for debugging late-delivery GPS/HR data issues.
+            logger.info(
+                "sync_workouts: id=%s type=%s date=%s "
+                "distance_m=%s distance_km=%s avg_hr=%s steps=%s",
+                w_id, activity_type, activity_date,
+                distance_m, distance_km,
+                data.get("hr_average"), data.get("steps"),
+            )
+
             # Pace for runs/walks (sec per km)
             avg_pace_secs = None
             if distance_km and distance_km > 0.01 and duration_mins and activity_type in ("run", "walk"):
@@ -787,7 +797,7 @@ async def backfill_incomplete_workouts(db: AsyncSession, access_token: str) -> i
     Withings sometimes processes HR and GPS data hours after the workout is
     uploaded, so the first sync can produce incomplete rows.  This catches:
       - Any workout with avg_hr IS NULL
-      - Runs/walks with distance_km IS NULL (GPS not yet processed)
+      - Runs/walks/rides with distance_km IS NULL (GPS not yet processed)
       - Workouts with steps IS NULL
 
     Returns the number of workout rows touched by the re-fetch.
@@ -801,7 +811,7 @@ async def backfill_incomplete_workouts(db: AsyncSession, access_token: str) -> i
             "  AND activity_date >= :cutoff "
             "  AND ("
             "    avg_hr IS NULL "
-            "    OR (activity_type IN ('run','walk') AND distance_km IS NULL) "
+            "    OR (activity_type IN ('run','walk','ride') AND distance_km IS NULL) "
             "    OR steps IS NULL"
             "  )"
         ),
@@ -819,6 +829,32 @@ async def backfill_incomplete_workouts(db: AsyncSession, access_token: str) -> i
     )
     since_ts = int(sixty_days_ago.timestamp())
     return await sync_workouts(db, access_token, since_ts)
+
+
+async def force_refresh_workout(db: AsyncSession, external_id: str) -> dict:
+    """Force a targeted re-fetch for a single workout by external_id.
+
+    Use this for one-off corrections when the DB has stale/wrong data for a
+    specific workout and waiting for the next scheduled sync isn't acceptable.
+    The external_id format is 'withings_workout_{id}'.
+    """
+    # Extract the numeric Withings workout ID
+    prefix = "withings_workout_"
+    if not external_id.startswith(prefix):
+        raise ValueError(f"external_id must start with '{prefix}', got: {external_id!r}")
+    w_id_str = external_id[len(prefix):]
+    if not w_id_str.isdigit():
+        raise ValueError(f"Cannot parse numeric workout id from: {external_id!r}")
+
+    access_token = await get_valid_token(db)
+
+    # Fetch 60-day window — Withings filters by lastupdate, not by specific ID.
+    # The targeted re-fetch calls the same sync path; the upsert will only update
+    # the matching row (conflict on external_id + source).
+    sixty_days_ago = int((datetime.now(timezone.utc) - timedelta(days=60)).timestamp())
+    count = await sync_workouts(db, access_token, sixty_days_ago)
+    logger.info("force_refresh_workout: external_id=%s triggered sync; %d rows touched", external_id, count)
+    return {"external_id": external_id, "rows_touched": count}
 
 
 async def run_full_sync(db: AsyncSession) -> dict:
@@ -882,6 +918,27 @@ async def run_full_sync(db: AsyncSession) -> dict:
         except Exception as e:
             logger.warning("backfill_incomplete_workouts error: %s", e)
             results["backfill"] = f"error: {str(e)}"
+
+        # Guaranteed 48-hour refresh: ALWAYS re-fetch all workouts from the last 48 hours.
+        #
+        # Root cause of recurring "stale distance/HR" bug:
+        #   Withings processes GPS data 30–60+ minutes after workout upload. The first
+        #   sync captures the workout with null/incomplete GPS values. The backfill above
+        #   handles the NULL case, but if Withings sends a non-null watch-estimated
+        #   distance first (e.g. 1.23 km for a 5.58 km run), backfill's IS NULL check
+        #   misses it. The COALESCE upsert WILL correctly overwrite the wrong value when
+        #   Withings finally returns the GPS value — but only if we actually re-fetch.
+        #   This 48h window guarantees that any workout from the last two days is always
+        #   re-fetched on the NEXT scheduled sync (5:30am and 8:00am Brisbane), well after
+        #   Withings GPS processing completes.
+        try:
+            recent_since = int((datetime.now(timezone.utc) - timedelta(hours=48)).timestamp())
+            recent_refreshed = await sync_workouts(db, access_token, recent_since)
+            results["recent_48h_refresh"] = recent_refreshed
+            logger.info("recent 48h workout refresh: %d rows touched", recent_refreshed)
+        except Exception as e:
+            logger.warning("recent 48h workout refresh error: %s", e)
+            results["recent_48h_refresh"] = f"error: {str(e)}"
 
         # Sync sleep stages + intraday HR for last 2 days (Brisbane local date)
         today = datetime.now(BRISBANE_TZ).date()

@@ -52,6 +52,38 @@ Record of significant decisions with rationale. AI appends here when decisions a
 
 ---
 
+## D007 — Withings GPS late-delivery: 48h guaranteed re-fetch strategy (2026-03-13)
+
+**Problem (recurring — multiple sessions failed to fully fix this):**
+Withings processes GPS data asynchronously, 30–60+ minutes after a workout is uploaded. The first sync captures the workout with missing or watch-estimated distance. Subsequent syncs don't always correct it. This has caused workout distance to be wrong or null in the DB even when the correct value is visible in the Withings app.
+
+**Root causes identified:**
+
+1. **GPS processed after first sync** — Withings upload and GPS processing are decoupled. A run uploaded at 7:00am may have GPS attached at 7:30am. The 5:30am and 8:00am scheduled syncs can straddle this window. The first sync captures null or watch-estimated distance; the 8:00am sync should catch the GPS value — but only if the workout is re-fetched.
+
+2. **`backfill_incomplete_workouts` only catches NULL** — The backfill extends the sync window to 60 days when any row has a NULL critical field. But if Withings sends a non-null watch-estimated value first (e.g. 1.23 km before GPS sync), `distance_km IS NULL` is false, so the backfill never fires. The COALESCE upsert logic (`COALESCE(EXCLUDED.distance_km, activity_logs.distance_km)`) IS correct and would update 1.23 → 5.58 when Withings returns the GPS value — but only if the workout is actually re-fetched.
+
+3. **`'ride'` missing from backfill condition** — The backfill checked `activity_type IN ('run','walk')` for distance. Ride activities were excluded from the GPS-null check.
+
+4. **No per-workout logging** — `sync_workouts` had no log lines showing what Withings returned per workout. This made production debugging impossible.
+
+**Fix applied (2026-03-13):**
+
+- Added `logger.info` per workout in `sync_workouts` showing `w_id`, `activity_type`, `activity_date`, `distance_m` (raw from Withings), `distance_km`, `avg_hr`, `steps`. Visible in Railway logs.
+- Added `'ride'` to the `activity_type IN (...)` check in `backfill_incomplete_workouts`.
+- Added a **guaranteed 48h re-fetch** step in `run_full_sync` (after the existing backfill). On every sync, all workouts from the last 48 hours are unconditionally re-fetched via `sync_workouts` with `since_ts = now - 48h`. The COALESCE upsert correctly updates any wrong non-null value when Withings returns the real GPS value.
+- Added `POST /api/withings/refresh-workout/{external_id}` endpoint for one-off manual corrections (e.g. `withings_workout_12345`). Triggers a 60-day `sync_workouts` call.
+
+**Why 48 hours?** GPS processing at worst takes a few hours. 48h gives a 2-day buffer covering any edge cases (overnight workouts, slow Withings servers). Running the re-fetch on every sync has negligible cost — Withings returns a compact JSON list; the upsert is a no-op for unchanged rows.
+
+**COALESCE logic (correct, do not change):**
+```sql
+COALESCE(EXCLUDED.distance_km, activity_logs.distance_km)
+```
+This always prefers an incoming non-null value (so GPS-corrected data overwrites watch-estimate), and falls back to stored if incoming is null (so a bad sync never wipes good data). This is correct for ALL columns in `sync_workouts`.
+
+---
+
 ## D006 — Calendar is Phase 1 core (2026-03-04)
 
 **Decision:** Calendar overview is a core Phase 1 feature, not deferred to Phase 2.

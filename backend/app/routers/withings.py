@@ -12,6 +12,7 @@ from app.database import get_db
 from app.services.withings_service import (
     cleanup_anomalous_rhr,
     exchange_code,
+    force_refresh_workout,
     get_auth_url,
     run_full_sync,
     store_tokens,
@@ -93,6 +94,25 @@ async def withings_sync(db: AsyncSession = Depends(get_db)):
         return result
     except Exception as e:
         logger.error("Withings sync failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/refresh-workout/{external_id}", dependencies=[Depends(verify_api_key)])
+async def refresh_workout(external_id: str, db: AsyncSession = Depends(get_db)):
+    """Force re-fetch a single workout by external_id (format: withings_workout_{id}).
+
+    Use this for one-off corrections when the DB has stale/wrong data (e.g.
+    watch-estimated distance before GPS processing completed) and you can't
+    wait for the next scheduled sync.
+    """
+    try:
+        result = await force_refresh_workout(db, external_id)
+        await db.commit()
+        return {"status": "success", **result}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error("force_refresh_workout failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
