@@ -117,6 +117,13 @@ All require `X-API-Key` header.
 | `PATCH /api/sleep/{id}` | `total_sleep_hrs`, `deep_sleep_hrs`, `light_sleep_hrs`, `sleep_hr_avg`, `sleep_score` | Dynamic SET. |
 | `PATCH /api/sauna/{id}` | `duration_mins`, `temperature_c`, `did_breathing`, `did_devotions` | Dynamic SET. |
 
+### Delete Endpoints
+
+| Endpoint | Notes |
+|----------|-------|
+| `DELETE /api/activity-logs/{id}` | Deletes a workout activity record from `activity_logs`. Returns `{ ok: true }`. Used by "Delete workout" button in DayDetailSheet and ActivityFeed. |
+| `DELETE /api/strength/sessions/{id}` | Deletes a strength session and its related `manual_strength_logs` (via bridged_session_id). Returns `{ ok: true }`. |
+
 ### Habits History (planned — Task 8)
 
 | Endpoint | Method | Body | Notes |

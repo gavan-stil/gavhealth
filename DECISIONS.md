@@ -104,6 +104,24 @@ This always prefers an incoming non-null value (so GPS-corrected data overwrites
 
 ---
 
+## D009 — Naive UTC datetimes for asyncpg text() queries (2026-03-14)
+
+**Decision:** All Python datetimes passed as parameters to SQLAlchemy `text()` queries must be naive UTC (no tzinfo). Convert with `.astimezone(timezone.utc).replace(tzinfo=None)`.
+
+**Problem:** asyncpg internally computes `tz_aware_dt - naive_epoch` when serialising datetime parameters for PostgreSQL. If the datetime has tzinfo attached (even UTC), this raises `"can't subtract offset-naive and offset-aware datetimes"`, surfacing as a 500 error.
+
+**Why not use ORM models?** Several endpoints use raw `text()` SQL for performance and flexibility (dynamic SET clauses, complex JOINs). ORM model inserts handle timezone conversion automatically, but `text()` params go through asyncpg's raw serialiser which has this bug.
+
+**Rule:** Any `datetime.fromisoformat(user_input)` that will be passed to a `text()` query must go through:
+```python
+if dt.tzinfo is not None:
+    dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+```
+
+**Full docs:** `reference/timezone.md`
+
+---
+
 ## D006 — Calendar is Phase 1 core (2026-03-04)
 
 **Decision:** Calendar overview is a core Phase 1 feature, not deferred to Phase 2.

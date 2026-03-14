@@ -133,7 +133,7 @@ export default function ActivityFeed() {
   const [error, setError] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<FeedItem | null>(null);
   const [strengthSheetActivityId, setStrengthSheetActivityId] = useState<number | null>(null);
-  const [filter, setFilter] = useState<FeedFilter>('all');
+  const [filter, setFilter] = useState<FeedFilter>('weights');
 
   // Strength session state
   const [strengthSessions, setStrengthSessions] = useState<StrengthSession[]>([]);

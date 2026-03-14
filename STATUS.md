@@ -14,6 +14,32 @@ All 9 tasks shipped. App is live, logging flows work end-to-end.
 
 ## Active Task
 
+None — ready for next task.
+
+---
+
+## Recent Session (2026-03-14)
+
+**Datetime audit + asyncpg fix + feed default**
+- Full datetime audit across frontend and backend — documented in `reference/timezone.md`
+- Fixed `HabitsCard.tsx` — `today()` was using `.toISOString().slice(0,10)` (UTC date), now uses `.toLocaleDateString('en-CA')` (Brisbane local)
+- Fixed `SaunaCard.tsx` — was sending `.toISOString()` (UTC), now sends Brisbane local datetime with `+10:00` offset
+- Fixed asyncpg crash in `save_strength_log` — stripping tzinfo after UTC conversion (`.astimezone(timezone.utc).replace(tzinfo=None)`) so asyncpg receives naive UTC datetimes. Same fix applied to all 5 affected endpoints.
+- ActivityFeed default filter changed from "All" to "Weights"
+- Commits: `d1ad57f` (HabitsCard + SaunaCard + initial asyncpg fix), `796391f` (naive UTC fix)
+
+**DB + Calendar cleanup** — 2026-03-14
+- Withings CSV had been imported 3× — 805 duplicate activity records removed
+- Bad activity records deleted: 25 workouts >300 mins, 12 zero-duration workouts, 39 near-duplicate workouts (within 3 mins), 35 bad runs (<2 mins or >240 mins), 45 near-duplicate runs (within 2 mins)
+- Orphaned strength session (id=16, no activity_log_id) deleted — was ghosting on every calendar day
+- DayDetailSheet fallback bug fixed: no longer shows sessions from wrong dates when a day has no session (commit: `317b404`)
+- Withings sync re-run for 2026-03-07 to 2026-03-14 to restore workout records deleted in error
+- 24 unlinked exercises deleted from `exercises` table — only 3 remain (linked to active sessions)
+- `DELETE /api/activity-logs/{id}` endpoint added to backend
+- "Delete workout" button added to DayDetailSheet (calendar) and ActivityFeed (log page) (commit: `bbbf3f9`)
+
+---
+
 **T22** — Momentum Card + Goals System — ✅ complete (2026-03-14)
 - Backend: `health_goals` table (append-only, seed targets for all 6 signals)
 - Backend: `GET /api/momentum`, `GET /api/momentum/signals`, `GET /api/goals`, `POST /api/goals`, `GET /api/goals/{signal}/history`
@@ -152,6 +178,7 @@ Full list with notes: `tasks/backlog.md`
 |------|---------|
 | `reference/architecture.md` | Component tree, data patterns, build/deploy |
 | `reference/api.md` | All verified API endpoints (curl-tested 2026-03-06) |
+| `reference/timezone.md` | Timezone & datetime handling: Brisbane UTC+10, asyncpg rules, debugging checklist |
 | `reference/withings-data.md` | Withings field map, DB gaps, backend tasks for T11 |
 | `reference/brand.md` | Design tokens v1.2: colors, typography, motion, spacing |
 | `reference/stack.md` | Tech stack, deployment credentials |
