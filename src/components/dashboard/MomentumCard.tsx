@@ -44,16 +44,18 @@ function fmtDeviation(signal: MomentumSignal) {
 
 // Fixed absolute scales per signal:
 // Recovery: ±this value from target midpoint = full swing (contrib ±1)
-// Strain:   this value = maximum expected load (contrib 1 = maximum drag)
+// Strain:   this value = deviation ABOVE tMax that represents full strain.
+//           e.g. sleep_deficit tMax=0.75h + scale=2h → deficit of 2.75h = full drag.
+//           non_exercise_hr tMax=80bpm + scale=15 → 95bpm = full drag.
 const SIGNAL_ABS_SCALE: Record<keyof MomentumDay, number | undefined> = {
   date:             undefined,
-  sleep_hrs:        2.0,   // recovery: ±2 hrs from target midpoint (8.25h)
+  sleep_hrs:        2.0,   // recovery: ±2 hrs from target midpoint
   protein_g:        150,   // recovery: ±150g from target midpoint
   water_ml:         2000,  // recovery: ±2000ml from target midpoint
   calorie_balance:  600,   // recovery: ±600 kcal from target midpoint
-  sleep_deficit:    2,     // strain: 0–2h range (2h = max drag)
-  calorie_deficit:  800,   // strain: 0–800 kcal range
-  non_exercise_hr:  20,    // strain: 0–20 bpm above ideal daytime HR
+  sleep_deficit:    2,     // strain: tMax + 2h deficit = full drag
+  calorie_deficit:  800,   // strain: tMax + 800 kcal deficit = full drag
+  non_exercise_hr:  15,    // strain: tMax + 15 bpm above target = full drag
   // legacy fields — not used in chart
   rhr_bpm:          undefined,
   weight_kg:        undefined,
@@ -79,12 +81,16 @@ function recSignalContrib(
   return Math.max(-1, Math.min(1, (v - ref) / absScale));
 }
 
-// Strain: absolute load model — lower is always better, no baseline or user goal needed.
-// 0 = no load (no drag on momentum), abs_scale = maximum expected value (full drag).
-function strainAbsContrib(v: number, key: keyof MomentumDay): number {
+// Strain: threshold-relative load model.
+// tMax = acceptable ceiling (e.g. sleep_deficit tMax=0.75h, non_exercise_hr tMax=80bpm).
+// Below tMax → 0 strain (within acceptable range).
+// Above tMax by abs_scale → full strain (1.0).
+// This prevents absolute-value signals like HR from always maxing out.
+function strainAbsContrib(v: number, tMax: number | null, key: keyof MomentumDay): number {
   const absScale = SIGNAL_ABS_SCALE[key];
   if (!absScale) return 0;
-  return Math.max(0, Math.min(1, v / absScale));
+  const floor = tMax ?? 0;
+  return Math.max(0, Math.min(1, (v - floor) / absScale));
 }
 
 const RECOVERY_TOTAL    = 4;  // sleep_hrs, protein_g, water_ml, calorie_balance
@@ -111,13 +117,14 @@ function computeChartPoints(
       if (c !== null) recSum += c;
     }
 
-    // Strain: absolute load — 0=no drag, abs_scale=maximum drag. Null days are skipped.
+    // Strain: threshold-relative — 0 when within acceptable range, rises above tMax.
     let strainSum = 0;
     let strainCount = 0;
     for (const key of strainFields) {
       const v = d[key];
       if (v === null) continue;
-      strainSum += strainAbsContrib(v, key);
+      const t = targets[key];
+      strainSum += strainAbsContrib(v, t?.max ?? null, key);
       strainCount++;
     }
 
