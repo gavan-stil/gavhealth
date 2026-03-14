@@ -401,3 +401,17 @@ class UserSettings(Base):
     body_fat_goal_pct: Mapped[float | None] = mapped_column(Float)
     max_heart_rate: Mapped[int | None] = mapped_column(Integer)
     timezone: Mapped[str] = mapped_column(String(50), default="Australia/Sydney")
+
+
+# ---------------------------------------------------------------------------
+# health_goals  (append-only — never update, always insert)
+# ---------------------------------------------------------------------------
+class HealthGoal(Base):
+    __tablename__ = "health_goals"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    signal: Mapped[str] = mapped_column(String(50), nullable=False)
+    target_min: Mapped[float | None] = mapped_column(Float)
+    target_max: Mapped[float | None] = mapped_column(Float)
+    set_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text)

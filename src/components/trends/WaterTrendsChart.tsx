@@ -10,10 +10,9 @@ import {
 } from "recharts";
 import type { WaterPoint } from "@/hooks/useTrendsData";
 
-const WATER_TARGET_ML = 3000;
-
 interface Props {
   water: WaterPoint[];
+  waterTarget?: number;
 }
 
 function dayLabel(dateStr: string): string {
@@ -26,10 +25,10 @@ interface TooltipPayload {
   payload: WaterPoint;
 }
 
-function CustomTooltip({ active, payload }: { active?: boolean; payload?: TooltipPayload[] }) {
+function CustomTooltip({ active, payload, target }: { active?: boolean; payload?: TooltipPayload[]; target: number }) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
-  const met = d.total_ml >= WATER_TARGET_ML;
+  const met = d.total_ml >= target;
   return (
     <div style={{
       background: "var(--bg-elevated)",
@@ -46,7 +45,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Toolti
   );
 }
 
-export default function WaterTrendsChart({ water }: Props) {
+export default function WaterTrendsChart({ water, waterTarget = 3000 }: Props) {
   if (!water.length) {
     return (
       <div style={{
@@ -66,6 +65,7 @@ export default function WaterTrendsChart({ water }: Props) {
   }
 
   const sliced = water.slice(-28);
+  const targetLabel = waterTarget >= 1000 ? `${(waterTarget / 1000).toFixed(1)}L` : `${waterTarget}ml`;
 
   return (
     <div style={{
@@ -78,7 +78,7 @@ export default function WaterTrendsChart({ water }: Props) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "var(--space-md)" }}>
         <span className="label-text" style={{ color: "var(--text-muted)" }}>WATER</span>
         <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-          target <span style={{ color: "var(--gold)" }}>3L</span> / day
+          target <span style={{ color: "var(--gold)" }}>{targetLabel}</span> / day
         </span>
       </div>
 
@@ -97,21 +97,21 @@ export default function WaterTrendsChart({ water }: Props) {
               />
               <YAxis
                 hide
-                domain={[0, (dataMax: number) => Math.max(dataMax * 1.15, WATER_TARGET_ML * 1.2)]}
+                domain={[0, (dataMax: number) => Math.max(dataMax * 1.15, waterTarget * 1.2)]}
                 tickFormatter={(v: number) => `${(v / 1000).toFixed(1)}L`}
               />
               <ReferenceLine
-                y={WATER_TARGET_ML}
+                y={waterTarget}
                 stroke="var(--gold)"
                 strokeDasharray="4 3"
                 strokeWidth={1.5}
               />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+              <Tooltip content={<CustomTooltip target={waterTarget} />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
               <Bar dataKey="total_ml" radius={[3, 3, 0, 0]}>
                 {sliced.map((entry, i) => (
                   <Cell
                     key={i}
-                    fill={entry.total_ml >= WATER_TARGET_ML ? "var(--signal-good)" : "var(--ochre)"}
+                    fill={entry.total_ml >= waterTarget ? "var(--signal-good)" : "var(--ochre)"}
                     fillOpacity={0.85}
                   />
                 ))}
@@ -125,7 +125,7 @@ export default function WaterTrendsChart({ water }: Props) {
       <div style={{ display: "flex", gap: "var(--space-md)", marginTop: "var(--space-sm)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <div style={{ width: 8, height: 8, borderRadius: 2, background: "var(--signal-good)" }} />
-          <span style={{ fontSize: 10, color: "var(--text-muted)" }}>≥ 3L</span>
+          <span style={{ fontSize: 10, color: "var(--text-muted)" }}>≥ {targetLabel}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <div style={{ width: 8, height: 8, borderRadius: 2, background: "var(--ochre)" }} />

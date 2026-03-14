@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import engine
 from app.models.base import Base
-from app.routers import data, export, logging, new_endpoints, summary, test, withings
+from app.routers import data, export, logging, momentum, new_endpoints, summary, test, withings
 
 
 @asynccontextmanager
@@ -106,6 +106,30 @@ async def lifespan(app: FastAPI):
             WHERE name LIKE '% - %'
               AND SPLIT_PART(name, ' - ', 2) != ''
             """,
+            # T22: health goals table (append-only, signal + target range)
+            """
+            CREATE TABLE IF NOT EXISTS health_goals (
+                id          SERIAL PRIMARY KEY,
+                signal      VARCHAR(50) NOT NULL,
+                target_min  NUMERIC(10,2),
+                target_max  NUMERIC(10,2),
+                set_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                notes       TEXT
+            )
+            """,
+            # T22: seed initial targets if table is empty
+            """
+            INSERT INTO health_goals (signal, target_min, target_max, notes)
+            SELECT * FROM (VALUES
+                ('sleep_hrs',   7.0,    8.5,    'Initial goal'),
+                ('rhr_bpm',     45.0,   50.0,   'Initial goal'),
+                ('weight_kg',   82.0,   86.0,   'Initial goal'),
+                ('calories_in', 2000.0, 2400.0, 'Initial goal'),
+                ('protein_g',   160.0,  200.0,  'Initial goal'),
+                ('water_ml',    2500.0, 3500.0, 'Initial goal')
+            ) AS seeds(signal, target_min, target_max, notes)
+            WHERE NOT EXISTS (SELECT 1 FROM health_goals LIMIT 1)
+            """,
             # manual_strength_logs: strength workouts logged via app
             """
             CREATE TABLE IF NOT EXISTS manual_strength_logs (
@@ -156,6 +180,7 @@ app.include_router(logging.router)
 app.include_router(withings.router)
 app.include_router(export.router)
 app.include_router(new_endpoints.router)
+app.include_router(momentum.router)
 
 
 # ---------------------------------------------------------------------------

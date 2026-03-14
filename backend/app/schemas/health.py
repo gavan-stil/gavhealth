@@ -471,3 +471,79 @@ class WeeklySummaryResponse(BaseModel):
     total_sauna_sessions: int = 0
     avg_calories: float | None = None
     avg_protein_g: float | None = None
+
+
+# ---------------------------------------------------------------------------
+# Health Goals
+# ---------------------------------------------------------------------------
+class GoalCreate(BaseModel):
+    signal: str
+    target_min: float | None = None
+    target_max: float | None = None
+    notes: str | None = None
+
+
+class GoalResponse(BaseModel):
+    id: int
+    signal: str
+    label: str
+    unit: str
+    group: str
+    target_min: float | None = None
+    target_max: float | None = None
+    set_at: datetime
+    notes: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class GoalHistoryResponse(BaseModel):
+    id: int
+    target_min: float | None = None
+    target_max: float | None = None
+    set_at: datetime
+    notes: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+# ---------------------------------------------------------------------------
+# Momentum
+# ---------------------------------------------------------------------------
+class MomentumSignalResponse(BaseModel):
+    signal: str
+    label: str
+    unit: str
+    group: str       # "recovery" | "strain"
+    target_min: float | None = None
+    target_max: float | None = None
+    baseline_28d: float | None = None
+    today: float | None = None
+    avg_7d: float | None = None
+    trend_7d: str    # "improving" | "declining" | "stable"
+    gap_pct: float | None = None
+    status: str      # "on_track" | "improving" | "off_track"
+
+
+class MomentumResponse(BaseModel):
+    overall_trend: str   # "improving" | "declining" | "stable"
+    signals_on_track: int
+    signals_total: int
+    signals: list[MomentumSignalResponse]
+
+
+class MomentumDayResponse(BaseModel):
+    date: date
+    sleep_hrs: float | None = None
+    rhr_bpm: float | None = None
+    weight_kg: float | None = None
+    calories_in: float | None = None
+    protein_g: float | None = None
+    water_ml: float | None = None
+    training_load_mins: float | None = None
+
+
+class MomentumSignalsResponse(BaseModel):
+    baselines: dict[str, float | None]
+    targets: dict[str, dict[str, float | None]]
+    days: list[MomentumDayResponse]

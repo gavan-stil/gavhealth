@@ -17,7 +17,6 @@
 
 ## High Priority
 
-- **T22 — Momentum Card + Goals System** — Replace ReadinessCard with Momentum (three-layer model: target range → baseline → 7-day trend). New `health_goals` table, 5 new API endpoints, `MomentumCard`, `/goals` route, `GoalDetailSheet`. Full spec: `specs/momentum.md`. Task: `tasks/T22-momentum.md`. Pending HTML mockup approval before coding.
 - **Sleep dashboard** — Stage bars + consistency % + debt tracker + score trend. Original design reference: `archive/gavhealth[original-design].html` (sleep section). API: `GET /api/sleep?days=N`.
 - **T16 — Run HR Zones backend** — Populate `activity_logs.hr_zone_0/1/2/3/4` from Withings workout payload in `withings.py`. Columns already exist (always NULL). Unlocks T15-3 Run HR Zones chart.
 - **Deploy `GET /api/habits`** — Endpoint exists in `new_endpoints.py`, needs deploying to Railway. Unlocks habits history view in HabitsCard.

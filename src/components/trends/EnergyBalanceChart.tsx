@@ -27,7 +27,7 @@ interface EnergyDay {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const PROTEIN_TARGET = 180; // grams
+// proteinTarget is now a prop; fallback 180 used inline
 
 function dayLabel(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
@@ -55,10 +55,12 @@ function CustomTooltip({
   active,
   payload,
   label,
+  target = 180,
 }: {
   active?: boolean;
   payload?: PayloadEntry[];
   label?: string;
+  target?: number;
 }) {
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload;
@@ -88,7 +90,7 @@ function CustomTooltip({
         <span
           style={{
             color:
-              d.protein_g >= PROTEIN_TARGET
+              d.protein_g >= target
                 ? "var(--signal-good)"
                 : "var(--ochre)",
             fontWeight: 700,
@@ -132,7 +134,7 @@ function CustomTooltip({
 // Summary row
 // ---------------------------------------------------------------------------
 
-function SummaryRow({ days }: { days: EnergyDay[] }) {
+function SummaryRow({ days, target = 180 }: { days: EnergyDay[]; target?: number }) {
   if (!days.length) return null;
 
   const foodDays = days.filter((d) => d.calories_in > 0);
@@ -161,7 +163,7 @@ function SummaryRow({ days }: { days: EnergyDay[] }) {
   const weightDelta =
     firstWeight != null && lastWeight != null ? lastWeight - firstWeight : null;
 
-  const proteinOk = avgProtein >= PROTEIN_TARGET;
+  const proteinOk = avgProtein >= target;
 
   const cellStyle: React.CSSProperties = {
     display: "flex",
@@ -198,7 +200,7 @@ function SummaryRow({ days }: { days: EnergyDay[] }) {
           {avgProtein}g
         </span>
         <span style={{ fontSize: 9, color: "var(--text-muted)" }}>
-          / {PROTEIN_TARGET}g
+          / {target}g
         </span>
       </div>
 
@@ -253,7 +255,7 @@ function SummaryRow({ days }: { days: EnergyDay[] }) {
 
 type Range = 7 | 30;
 
-export default function EnergyBalanceChart() {
+export default function EnergyBalanceChart({ proteinTarget = 180 }: { proteinTarget?: number } = {}) {
   const [range, setRange] = useState<Range>(7);
   const [data, setData] = useState<EnergyDay[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -474,7 +476,7 @@ export default function EnergyBalanceChart() {
                 tickFormatter={(v) => `${v}kg`}
                 width={40}
               />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomTooltip target={proteinTarget} />} />
               {/* Calories in bars */}
               <Bar
                 yAxisId="cal"
@@ -512,7 +514,7 @@ export default function EnergyBalanceChart() {
       </div>
 
       {/* Summary row */}
-      <SummaryRow days={days} />
+      <SummaryRow days={days} target={proteinTarget} />
     </div>
   );
 }

@@ -27,7 +27,7 @@ interface EnergyDay {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const PROTEIN_TARGET = 180;
+// proteinTarget is now a prop; fallback 180 used inline
 
 function shortLabel(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
@@ -51,14 +51,16 @@ interface PayloadEntry {
 function CustomTooltip({
   active,
   payload,
+  target = 180,
 }: {
   active?: boolean;
   payload?: PayloadEntry[];
+  target?: number;
 }) {
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload;
   if (!d) return null;
-  const hit = d.protein_g >= PROTEIN_TARGET;
+  const hit = d.protein_g >= target;
 
   return (
     <div
@@ -78,7 +80,7 @@ function CustomTooltip({
           {Math.round(d.protein_g)}g
         </span>
         <span style={{ color: "var(--text-muted)", fontSize: 10, marginLeft: 4 }}>
-          / {PROTEIN_TARGET}g
+          / {target}g
         </span>
       </div>
       {d.weight_kg != null && (
@@ -94,12 +96,12 @@ function CustomTooltip({
 // Summary row
 // ---------------------------------------------------------------------------
 
-function SummaryRow({ days }: { days: EnergyDay[] }) {
+function SummaryRow({ days, target = 180 }: { days: EnergyDay[]; target?: number }) {
   if (!days.length) return null;
 
   const proteinDays = days.filter((d) => d.protein_g > 0);
   const weightDays = days.filter((d) => d.weight_kg != null);
-  const daysOnTarget = proteinDays.filter((d) => d.protein_g >= PROTEIN_TARGET).length;
+  const daysOnTarget = proteinDays.filter((d) => d.protein_g >= target).length;
 
   const avgProtein =
     proteinDays.length > 0
@@ -111,7 +113,7 @@ function SummaryRow({ days }: { days: EnergyDay[] }) {
   const weightDelta =
     firstWeight != null && lastWeight != null ? lastWeight - firstWeight : null;
 
-  const proteinOk = avgProtein >= PROTEIN_TARGET;
+  const proteinOk = avgProtein >= target;
 
   const cellStyle: React.CSSProperties = {
     display: "flex",
@@ -146,7 +148,7 @@ function SummaryRow({ days }: { days: EnergyDay[] }) {
         <span style={valueStyle(proteinOk ? "var(--signal-good)" : "var(--ochre)")}>
           {avgProtein}g
         </span>
-        <span style={{ fontSize: 9, color: "var(--text-muted)" }}>/ {PROTEIN_TARGET}g</span>
+        <span style={{ fontSize: 9, color: "var(--text-muted)" }}>/ {target}g</span>
       </div>
 
       {proteinDays.length > 0 && (
@@ -197,7 +199,7 @@ function SummaryRow({ days }: { days: EnergyDay[] }) {
 
 type Range = 7 | 30;
 
-export default function ProteinWeightChart() {
+export default function ProteinWeightChart({ proteinTarget = 180 }: { proteinTarget?: number } = {}) {
   const [range, setRange] = useState<Range>(7);
   const [data, setData] = useState<EnergyDay[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -270,7 +272,7 @@ export default function ProteinWeightChart() {
   const weightMax = weightVals.length ? Math.ceil(Math.max(...weightVals) + 1) : 110;
 
   // Protein scale (left y-axis) — always include target + some headroom
-  const maxProtein = Math.max(...days.map((d) => d.protein_g), PROTEIN_TARGET);
+  const maxProtein = Math.max(...days.map((d) => d.protein_g), proteinTarget);
   const proteinMax = Math.ceil(maxProtein * 1.2 / 20) * 20;
 
   return (
@@ -320,7 +322,7 @@ export default function ProteinWeightChart() {
               background: "var(--ochre)", display: "inline-block",
             }}
           />
-          <span style={{ color: "var(--text-muted)" }}>Below {PROTEIN_TARGET}g</span>
+          <span style={{ color: "var(--text-muted)" }}>Below {proteinTarget}g</span>
         </span>
         <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <span
@@ -371,11 +373,11 @@ export default function ProteinWeightChart() {
                 tickFormatter={(v) => `${v}kg`}
                 width={40}
               />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomTooltip target={proteinTarget} />} />
               {/* 180g target reference line */}
               <ReferenceLine
                 yAxisId="prot"
-                y={PROTEIN_TARGET}
+                y={proteinTarget}
                 stroke="rgba(255,255,255,0.2)"
                 strokeDasharray="4 3"
               />
@@ -391,7 +393,7 @@ export default function ProteinWeightChart() {
                   <Cell
                     key={i}
                     fill={
-                      d.protein_g >= PROTEIN_TARGET
+                      d.protein_g >= proteinTarget
                         ? "var(--signal-good)"
                         : "var(--ochre)"
                     }
@@ -415,7 +417,7 @@ export default function ProteinWeightChart() {
         </div>
       </div>
 
-      <SummaryRow days={days} />
+      <SummaryRow days={days} target={proteinTarget} />
     </div>
   );
 }

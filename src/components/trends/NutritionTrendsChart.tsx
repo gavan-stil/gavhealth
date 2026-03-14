@@ -10,10 +10,9 @@ import {
 } from "recharts";
 import type { NutritionPoint } from "@/hooks/useTrendsData";
 
-const PROTEIN_TARGET = 180;
-
 interface Props {
   nutrition: NutritionPoint[];
+  proteinTarget?: number;
 }
 
 function weekLabel(weekStart: string): string {
@@ -27,10 +26,10 @@ interface TooltipPayload {
   payload: NutritionPoint;
 }
 
-function CustomTooltip({ active, payload }: { active?: boolean; payload?: TooltipPayload[] }) {
+function CustomTooltip({ active, payload, target }: { active?: boolean; payload?: TooltipPayload[]; target: number }) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
-  const over = d.avg_protein_g >= PROTEIN_TARGET;
+  const over = d.avg_protein_g >= target;
   return (
     <div style={{
       background: "var(--bg-elevated)",
@@ -50,7 +49,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Toolti
   );
 }
 
-export default function NutritionTrendsChart({ nutrition }: Props) {
+export default function NutritionTrendsChart({ nutrition, proteinTarget = 180 }: Props) {
   if (!nutrition.length) {
     return (
       <div style={{
@@ -83,7 +82,7 @@ export default function NutritionTrendsChart({ nutrition }: Props) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "var(--space-md)" }}>
         <span className="label-text" style={{ color: "var(--text-muted)" }}>PROTEIN</span>
         <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-          target <span style={{ color: "var(--gold)" }}>{PROTEIN_TARGET}g</span> / day avg
+          target <span style={{ color: "var(--gold)" }}>{proteinTarget}g</span> / day avg
         </span>
       </div>
 
@@ -99,19 +98,19 @@ export default function NutritionTrendsChart({ nutrition }: Props) {
                 axisLine={false}
                 tickLine={false}
               />
-              <YAxis hide domain={[0, (dataMax: number) => Math.max(dataMax * 1.15, PROTEIN_TARGET * 1.2)]} />
+              <YAxis hide domain={[0, (dataMax: number) => Math.max(dataMax * 1.15, proteinTarget * 1.2)]} />
               <ReferenceLine
-                y={PROTEIN_TARGET}
+                y={proteinTarget}
                 stroke="var(--gold)"
                 strokeDasharray="4 3"
                 strokeWidth={1.5}
               />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+              <Tooltip content={<CustomTooltip target={proteinTarget} />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
               <Bar dataKey="avg_protein_g" radius={[3, 3, 0, 0]}>
                 {sliced.map((entry, i) => (
                   <Cell
                     key={i}
-                    fill={entry.avg_protein_g >= PROTEIN_TARGET ? "var(--signal-good)" : "var(--ochre)"}
+                    fill={entry.avg_protein_g >= proteinTarget ? "var(--signal-good)" : "var(--ochre)"}
                     fillOpacity={0.85}
                   />
                 ))}
@@ -125,7 +124,7 @@ export default function NutritionTrendsChart({ nutrition }: Props) {
       <div style={{ display: "flex", gap: "var(--space-md)", marginTop: "var(--space-sm)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <div style={{ width: 8, height: 8, borderRadius: 2, background: "var(--signal-good)" }} />
-          <span style={{ fontSize: 10, color: "var(--text-muted)" }}>≥ {PROTEIN_TARGET}g</span>
+          <span style={{ fontSize: 10, color: "var(--text-muted)" }}>≥ {proteinTarget}g</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <div style={{ width: 8, height: 8, borderRadius: 2, background: "var(--ochre)" }} />

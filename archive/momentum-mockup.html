@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=375, initial-scale=1">
+<title>Momentum — GOE Health Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Backgrounds */
+    --bg-base: #0d0d0a;
+    --bg-card: #14130f;
+    --bg-card-hover: #1c1b15;
+    --bg-elevated: #1e1d18;
+
+    /* Borders */
+    --border-default: #222018;
+    --border-subtle: #1a1914;
+
+    /* Text */
+    --text-primary: #f0ece4;
+    --text-secondary: #b0a890;
+    --text-tertiary: #9a9080;
+    --text-muted: #7a7060;
+
+    /* Brand */
+    --ochre: #d4a04a;
+    --ochre-light: #e8c47a;
+    --ochre-dim: #a07830;
+    --sand: #b8a878;
+    --clay: #c4856a;
+    --rust: #b47050;
+    --dawn: #7FAABC;
+    --ember: #c45a4a;
+
+    /* Signal */
+    --signal-good: #e8c47a;
+    --signal-caution: #d4a04a;
+    --signal-poor: #c47a6a;
+
+    /* Momentum-specific */
+    --m-underwater: rgba(100, 140, 170, 0.55);
+    --m-underwater-deep: rgba(70, 110, 140, 0.35);
+    --m-underwater-card: rgba(90, 130, 160, 0.06);
+    --m-target-glow: rgba(212, 160, 74, 0.12);
+
+    /* Spacing */
+    --xs: 4px; --sm: 8px; --md: 14px; --lg: 20px; --xl: 32px;
+    --radius-sm: 8px; --radius-md: 14px; --radius-lg: 20px; --radius-pill: 100px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #000;
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 0 80px;
+    gap: 60px;
+  }
+
+  .screen-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ochre-dim);
+    margin-bottom: 12px;
+    text-align: center;
+  }
+
+  .phone {
+    width: 375px;
+    background: var(--bg-base);
+    border-radius: 40px;
+    overflow: hidden;
+    border: 2px solid #1a1a16;
+    box-shadow: 0 20px 80px rgba(0,0,0,0.6);
+    position: relative;
+  }
+
+  .phone-content {
+    padding: 60px 16px 100px;
+    min-height: 700px;
+  }
+
+  /* Subtle sand-grain noise texture */
+  .phone::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23n)' opacity='0.015'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .phone-content > * { position: relative; z-index: 2; }
+
+  /* Status bar */
+  .status-bar {
+    position: absolute;
+    top: 16px;
+    left: 0;
+    right: 0;
+    height: 44px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 24px;
+    z-index: 10;
+  }
+  .status-bar span {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  /* Typography */
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .hero-value { font-family: 'JetBrains Mono', monospace; font-size: 40px; font-weight: 800; letter-spacing: -2px; }
+  .stat-number { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 800; letter-spacing: -1.5px; }
+  .small-number { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; letter-spacing: -0.5px; }
+  .label { font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-muted); }
+  .body-text { font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--text-secondary); }
+  .section-head { font-size: 16px; font-weight: 700; letter-spacing: -0.5px; }
+
+  /* Card base */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: var(--lg);
+    margin-bottom: var(--md);
+  }
+
+  /* ---- MOMENTUM CARD: COLLAPSED ---- */
+  .momentum-card {
+    position: relative;
+    overflow: hidden;
+  }
+  .momentum-card.underwater {
+    background: linear-gradient(
+      175deg,
+      rgba(90, 130, 160, 0.07) 0%,
+      var(--bg-card) 60%
+    );
+    border-color: rgba(127, 170, 188, 0.12);
+  }
+
+  .momentum-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--md);
+  }
+
+  .trend-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .trend-arrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px;
+    font-weight: 800;
+  }
+  .trend-arrow.down { color: var(--dawn); transform: rotate(180deg) translateY(-2px); display: inline-block; }
+  .trend-arrow.up { color: var(--ochre-light); }
+  .trend-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: -0.3px;
+  }
+
+  .signal-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+  .signal-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: var(--radius-pill);
+    background: rgba(255,255,255, 0.03);
+    border: 1px solid rgba(255,255,255, 0.04);
+  }
+  .signal-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+  }
+  .signal-dot.good { background: var(--ochre-light); box-shadow: 0 0 6px rgba(232, 196, 122, 0.4); }
+  .signal-dot.improving { background: var(--ochre); }
+  .signal-dot.off { background: var(--dawn); opacity: 0.7; }
+  .signal-chip-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    letter-spacing: 0.2px;
+  }
+
+  .track-count {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 10px;
+  }
+  .track-count strong {
+    color: var(--ochre);
+    font-weight: 700;
+  }
+
+  .edit-link {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ochre-dim);
+    text-decoration: none;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .edit-link:hover { color: var(--ochre); }
+
+  /* ---- EXPANDED SIGNAL ROWS ---- */
+  .signal-rows {
+    margin-top: var(--lg);
+    padding-top: var(--lg);
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .signal-row {
+    display: grid;
+    grid-template-columns: 70px 1fr auto;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255, 0.02);
+    gap: 8px;
+  }
+  .signal-row:last-child { border-bottom: none; }
+
+  .signal-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: -0.2px;
+  }
+
+  .signal-mid {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .signal-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    min-width: 48px;
+  }
+  .signal-delta {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .signal-delta .pos { color: var(--ochre); }
+  .signal-delta .neg { color: var(--dawn); }
+
+  .signal-sparkline { flex-shrink: 0; }
+
+  .signal-status {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    white-space: nowrap;
+  }
+  .signal-status.on-track {
+    color: var(--ochre-light);
+    background: rgba(232, 196, 122, 0.1);
+  }
+  .signal-status.improving {
+    color: var(--ochre);
+    background: rgba(212, 160, 74, 0.08);
+  }
+  .signal-status.off-track {
+    color: var(--dawn);
+    background: rgba(127, 170, 188, 0.1);
+  }
+
+  /* ---- SIGNAL DETAIL CHART ---- */
+  .detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: var(--lg);
+  }
+  .detail-title {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  .chart-container {
+    position: relative;
+    width: 100%;
+    height: 220px;
+    margin: var(--lg) 0;
+  }
+  .chart-container svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .chart-legend {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    margin-top: 8px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .legend-swatch {
+    width: 12px;
+    height: 3px;
+    border-radius: 2px;
+  }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px;
+    background: var(--border-subtle);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    margin-top: var(--lg);
+  }
+  .stat-cell {
+    background: var(--bg-card);
+    padding: 12px;
+    text-align: center;
+  }
+  .stat-cell .label { margin-bottom: 4px; }
+  .stat-cell .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -1px;
+  }
+  .stat-cell .subtext {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* ---- GOALS PAGE ---- */
+  .goals-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: var(--xl);
+  }
+  .back-btn {
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: rgba(255,255,255, 0.04);
+    border: 1px solid var(--border-default);
+    color: var(--text-secondary);
+    font-size: 16px;
+    cursor: pointer;
+  }
+  .goals-title {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  .goal-section {
+    margin-bottom: var(--lg);
+    padding: var(--lg);
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+  }
+  .goal-section.underwater-goal {
+    border-color: rgba(127, 170, 188, 0.15);
+  }
+
+  .goal-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+  }
+
+  .goal-signal-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+  }
+  .goal-target-range {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ochre);
+    letter-spacing: -0.5px;
+  }
+
+  .goal-baseline-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255, 0.03);
+  }
+  .goal-baseline-label {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .goal-baseline-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+  }
+
+  .goal-gap-indicator {
+    margin-top: 10px;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .goal-gap-indicator.below {
+    background: rgba(127, 170, 188, 0.08);
+    color: var(--dawn);
+  }
+  .goal-gap-indicator.on-target {
+    background: rgba(232, 196, 122, 0.08);
+    color: var(--ochre-light);
+  }
+
+  .goal-edit-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 10px;
+    margin-top: 12px;
+    border: 1px dashed rgba(212, 160, 74, 0.3);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--ochre-dim);
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .goal-edit-btn:hover {
+    background: rgba(212, 160, 74, 0.05);
+    border-color: var(--ochre);
+    color: var(--ochre);
+  }
+
+  .goal-history {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255, 0.03);
+  }
+  .history-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 11px;
+  }
+  .history-date { color: var(--text-muted); }
+  .history-range {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-tertiary);
+    font-weight: 500;
+  }
+  .history-note {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-top: 2px;
+  }
+
+  /* ---- TAB BAR (placeholder) ---- */
+  .tab-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background: linear-gradient(180deg, transparent 0%, rgba(13,13,10,0.95) 30%);
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+    padding-bottom: 24px;
+    z-index: 10;
+  }
+  .tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+  }
+  .tab-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    background: rgba(255,255,255, 0.06);
+  }
+  .tab-label {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+  .tab-item.active .tab-icon { background: var(--ochre-dim); }
+  .tab-item.active .tab-label { color: var(--ochre); }
+
+  /* Divider between screens */
+  .screen-divider {
+    width: 200px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--ochre-dim), transparent);
+  }
+</style>
+</head>
+<body>
+
+<!-- ========== SCREEN 1: MOMENTUM CARD COLLAPSED ========== -->
+<div class="screen-label">DASHBOARD &mdash; MOMENTUM COLLAPSED</div>
+<div class="phone">
+  <div class="status-bar">
+    <span>9:41</span>
+    <span style="opacity:0.5">GOE</span>
+  </div>
+  <div class="phone-content">
+
+    <!-- Momentum Card: Collapsed + Underwater -->
+    <div class="card momentum-card underwater">
+      <div class="momentum-header">
+        <span class="label">MOMENTUM</span>
+        <a class="edit-link" href="#">Edit Goals <span style="font-size:10px">&rsaquo;</span></a>
+      </div>
+
+      <div class="trend-line">
+        <span class="trend-arrow down">&uarr;</span>
+        <span class="trend-text">Drifting from targets</span>
+      </div>
+
+      <div class="signal-chips">
+        <div class="signal-chip">
+          <div class="signal-dot improving"></div>
+          <span class="signal-chip-label">Sleep</span>
+        </div>
+        <div class="signal-chip">
+          <div class="signal-dot off"></div>
+          <span class="signal-chip-label">RHR</span>
+        </div>
+        <div class="signal-chip">
+          <div class="signal-dot improving"></div>
+          <span class="signal-chip-label">Weight</span>
+        </div>
+        <div class="signal-chip">
+          <div class="signal-dot good"></div>
+          <span class="signal-chip-label">Calories</span>
+        </div>
+        <div class="signal-chip">
+          <div class="signal-dot improving"></div>
+          <span class="signal-chip-label">Protein</span>
+        </div>
+        <div class="signal-chip">
+          <div class="signal-dot off"></div>
+          <span class="signal-chip-label">Water</span>
+        </div>
+      </div>
+
+      <div class="track-count">
+        <strong>1</strong> of 6 on track &middot; <strong>3</strong> improving
+      </div>
+    </div>
+
+    <!-- Sleep card placeholder -->
+    <div class="card" style="opacity: 0.4; height: 100px;">
+      <span class="label">SLEEP</span>
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 800; letter-spacing: -1.5px; margin-top: 8px; color: var(--dawn);">6.4<span style="font-size:14px; color: var(--text-muted); font-weight:400">hr</span></div>
+    </div>
+
+    <!-- Steps placeholder -->
+    <div class="card" style="opacity: 0.25; height: 80px;">
+      <span class="label">ACTIVITY</span>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab-item active"><div class="tab-icon"></div><span class="tab-label">Home</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Calendar</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Log</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Trends</span></div>
+  </div>
+</div>
+
+<div class="screen-divider"></div>
+
+<!-- ========== SCREEN 2: MOMENTUM CARD EXPANDED ========== -->
+<div class="screen-label">DASHBOARD &mdash; MOMENTUM EXPANDED</div>
+<div class="phone">
+  <div class="status-bar">
+    <span>9:41</span>
+    <span style="opacity:0.5">GOE</span>
+  </div>
+  <div class="phone-content">
+
+    <div class="card momentum-card underwater">
+      <div class="momentum-header">
+        <span class="label">MOMENTUM</span>
+        <a class="edit-link" href="#">Edit Goals <span style="font-size:10px">&rsaquo;</span></a>
+      </div>
+
+      <div class="trend-line">
+        <span class="trend-arrow down">&uarr;</span>
+        <span class="trend-text">Drifting from targets</span>
+      </div>
+
+      <div class="signal-chips">
+        <div class="signal-chip">
+          <div class="signal-dot improving"></div>
+          <span class="signal-chip-label">Sleep</span>
+        </div>
+        <div class="signal-chip">
+          <div class="signal-dot off"></div>
+          <span class="signal-chip-label">RHR</span>
+        </div>
+        <div class="signal-chip">
+          <div class="signal-dot improving"></div>
+          <span class="signal-chip-label">Weight</span>
+        </div>
+        <div class="signal-chip">
+          <div class="signal-dot good"></div>
+          <span class="signal-chip-label">Calories</span>
+        </div>
+        <div class="signal-chip">
+          <div class="signal-dot improving"></div>
+          <span class="signal-chip-label">Protein</span>
+        </div>
+        <div class="signal-chip">
+          <div class="signal-dot off"></div>
+          <span class="signal-chip-label">Water</span>
+        </div>
+      </div>
+
+      <div class="track-count">
+        <strong>1</strong> of 6 on track &middot; <strong>3</strong> improving
+      </div>
+
+      <!-- Expanded: Signal Rows -->
+      <div class="signal-rows">
+        <!-- Sleep -->
+        <div class="signal-row">
+          <div class="signal-name">Sleep</div>
+          <div class="signal-mid">
+            <span class="signal-value" style="color: var(--dawn);">6.4<span style="font-size:11px; color:var(--text-muted); font-weight:400">hr</span></span>
+            <span class="signal-delta"><span class="pos">+0.4</span> vs avg</span>
+            <svg class="signal-sparkline" width="50" height="20" viewBox="0 0 50 20">
+              <!-- Sleep 7d: 4.72, 7.25, 4.45, 6.55, 7.15, 6.68, 6.42 — normalized -->
+              <defs>
+                <linearGradient id="sp-sleep" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#d4a04a" stop-opacity="0.5"/>
+                  <stop offset="100%" stop-color="#7FAABC" stop-opacity="0.3"/>
+                </linearGradient>
+              </defs>
+              <path d="M2,16 L10,3 L18,18 L26,9 L34,4 L42,6 L48,8" fill="none" stroke="var(--ochre)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="48" cy="8" r="2" fill="var(--ochre-light)" />
+            </svg>
+          </div>
+          <span class="signal-status improving">Improving</span>
+        </div>
+
+        <!-- RHR -->
+        <div class="signal-row">
+          <div class="signal-name">Resting HR</div>
+          <div class="signal-mid">
+            <span class="signal-value" style="color: var(--clay);">73<span style="font-size:11px; color:var(--text-muted); font-weight:400">bpm</span></span>
+            <span class="signal-delta"><span class="neg">+7</span> vs avg</span>
+            <svg class="signal-sparkline" width="50" height="20" viewBox="0 0 50 20">
+              <!-- RHR 7d: 88,75,52,61,58,68,73 — higher=worse, normalized inverted -->
+              <path d="M2,2 L10,5 L18,18 L26,14 L34,15 L42,10 L48,8" fill="none" stroke="var(--clay)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="48" cy="8" r="2" fill="var(--clay)" />
+            </svg>
+          </div>
+          <span class="signal-status off-track">Off Track</span>
+        </div>
+
+        <!-- Weight -->
+        <div class="signal-row">
+          <div class="signal-name">Weight</div>
+          <div class="signal-mid">
+            <span class="signal-value" style="color: var(--ochre-light);">68.3<span style="font-size:11px; color:var(--text-muted); font-weight:400">kg</span></span>
+            <span class="signal-delta"><span class="neg">&minus;0.1</span> vs avg</span>
+            <svg class="signal-sparkline" width="50" height="20" viewBox="0 0 50 20">
+              <!-- Weight 7d: 67.64,68.13,68.36,67.25,67.46,68.64,68.27 — tight range -->
+              <path d="M2,8 L10,5 L18,4 L26,16 L34,15 L42,2 L48,4" fill="none" stroke="var(--ochre-light)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="48" cy="4" r="2" fill="var(--ochre-light)" />
+            </svg>
+          </div>
+          <span class="signal-status improving">Improving</span>
+        </div>
+
+        <!-- Calories -->
+        <div class="signal-row">
+          <div class="signal-name">Calories</div>
+          <div class="signal-mid">
+            <span class="signal-value" style="color: var(--ochre-light);">2050<span style="font-size:11px; color:var(--text-muted); font-weight:400">kcal</span></span>
+            <span class="signal-delta"><span class="pos">&minus;130</span> vs avg</span>
+            <svg class="signal-sparkline" width="50" height="20" viewBox="0 0 50 20">
+              <path d="M2,6 L10,10 L18,4 L26,8 L34,12 L42,6 L48,7" fill="none" stroke="var(--ochre-light)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="48" cy="7" r="2" fill="var(--ochre-light)" />
+            </svg>
+          </div>
+          <span class="signal-status on-track">On Track</span>
+        </div>
+
+        <!-- Protein -->
+        <div class="signal-row">
+          <div class="signal-name">Protein</div>
+          <div class="signal-mid">
+            <span class="signal-value" style="color: var(--ochre);">149<span style="font-size:11px; color:var(--text-muted); font-weight:400">g</span></span>
+            <span class="signal-delta"><span class="pos">+7</span> vs avg</span>
+            <svg class="signal-sparkline" width="50" height="20" viewBox="0 0 50 20">
+              <path d="M2,14 L10,12 L18,16 L26,10 L34,8 L42,6 L48,5" fill="none" stroke="var(--ochre)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="48" cy="5" r="2" fill="var(--ochre)" />
+            </svg>
+          </div>
+          <span class="signal-status improving">Improving</span>
+        </div>
+
+        <!-- Water -->
+        <div class="signal-row">
+          <div class="signal-name">Water</div>
+          <div class="signal-mid">
+            <span class="signal-value" style="color: var(--dawn);">750<span style="font-size:11px; color:var(--text-muted); font-weight:400">ml</span></span>
+            <span class="signal-delta"><span class="neg">&minus;285</span> vs avg</span>
+            <svg class="signal-sparkline" width="50" height="20" viewBox="0 0 50 20">
+              <!-- Water 7d: 0, 2000, 750, 2000, 1000, 750, 750 -->
+              <path d="M2,18 L10,2 L18,14 L26,2 L34,10 L42,14 L48,14" fill="none" stroke="var(--dawn)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="48" cy="14" r="2" fill="var(--dawn)" />
+            </svg>
+          </div>
+          <span class="signal-status off-track">Off Track</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab-item active"><div class="tab-icon"></div><span class="tab-label">Home</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Calendar</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Log</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Trends</span></div>
+  </div>
+</div>
+
+<div class="screen-divider"></div>
+
+<!-- ========== SCREEN 3: SIGNAL DETAIL — SLEEP ========== -->
+<div class="screen-label">SIGNAL DETAIL &mdash; SLEEP (BOTTOM SHEET)</div>
+<div class="phone">
+  <div class="status-bar">
+    <span>9:41</span>
+    <span style="opacity:0.5">GOE</span>
+  </div>
+  <div class="phone-content">
+
+    <div class="card" style="padding: var(--lg) var(--lg) var(--xl);">
+      <div class="detail-header">
+        <div>
+          <span class="label" style="color: var(--dawn);">SLEEP</span>
+          <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">7-day trend vs your baseline</div>
+        </div>
+        <a class="edit-link" href="#">Edit Target <span style="font-size:10px">&rsaquo;</span></a>
+      </div>
+
+      <!-- Chart: Sleep deviation from baseline -->
+      <div class="chart-container">
+        <svg viewBox="0 0 340 220" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <!-- Warm gradient: above baseline -->
+            <linearGradient id="grad-warm" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#d4a04a" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="#d4a04a" stop-opacity="0.02"/>
+            </linearGradient>
+            <!-- Cool gradient: below baseline -->
+            <linearGradient id="grad-cool" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#7FAABC" stop-opacity="0.02"/>
+              <stop offset="100%" stop-color="#7FAABC" stop-opacity="0.30"/>
+            </linearGradient>
+            <!-- Underwater zone: below target -->
+            <linearGradient id="grad-deep" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#5a8298" stop-opacity="0.04"/>
+              <stop offset="60%" stop-color="#3d6478" stop-opacity="0.10"/>
+              <stop offset="100%" stop-color="#2a4a5a" stop-opacity="0.18"/>
+            </linearGradient>
+            <!-- Today dot glow -->
+            <radialGradient id="glow-ochre">
+              <stop offset="0%" stop-color="#e8c47a" stop-opacity="0.8"/>
+              <stop offset="50%" stop-color="#e8c47a" stop-opacity="0.2"/>
+              <stop offset="100%" stop-color="#e8c47a" stop-opacity="0"/>
+            </radialGradient>
+            <!-- Target zone glow -->
+            <linearGradient id="target-zone" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#d4a04a" stop-opacity="0.06"/>
+              <stop offset="50%" stop-color="#d4a04a" stop-opacity="0.10"/>
+              <stop offset="100%" stop-color="#d4a04a" stop-opacity="0.06"/>
+            </linearGradient>
+          </defs>
+
+          <!--
+            Chart mapping:
+            Y-axis: 3hr (bottom, y=200) to 9hr (top, y=20)
+            Scale: 1hr = (200-20)/6 = 30px per hour
+            Baseline 6.0hr: y = 200 - (6.0-3)*30 = 200-90 = 110
+            Target min 7.0hr: y = 200 - (7.0-3)*30 = 200-120 = 80
+            Target max 8.5hr: y = 200 - (8.5-3)*30 = 200-165 = 35
+
+            Data points (real):
+            Mar 8:  4.72hr → y = 200-(4.72-3)*30 = 200-51.6 = 148.4
+            Mar 9:  7.25hr → y = 200-(7.25-3)*30 = 200-127.5 = 72.5
+            Mar 10: 4.45hr → y = 200-(4.45-3)*30 = 200-43.5 = 156.5
+            Mar 11: 6.55hr → y = 200-(6.55-3)*30 = 200-106.5 = 93.5
+            Mar 12: 7.15hr → y = 200-(7.15-3)*30 = 200-124.5 = 75.5
+            Mar 13: 6.68hr → y = 200-(6.68-3)*30 = 200-110.4 = 89.6
+            Mar 14: 6.42hr → y = 200-(6.42-3)*30 = 200-102.6 = 97.4
+
+            X positions: 30, 80, 130, 180, 230, 280, 320
+          -->
+
+          <!-- Underwater deep zone: below target zone (y=80 to bottom) -->
+          <rect x="20" y="80" width="310" height="120" fill="url(#grad-deep)" rx="4"/>
+
+          <!-- Target zone band -->
+          <rect x="20" y="35" width="310" height="45" fill="url(#target-zone)" rx="2"/>
+          <!-- Target zone edges -->
+          <line x1="20" y1="35" x2="330" y2="35" stroke="#d4a04a" stroke-opacity="0.15" stroke-width="0.5"/>
+          <line x1="20" y1="80" x2="330" y2="80" stroke="#d4a04a" stroke-opacity="0.2" stroke-width="0.5"/>
+
+          <!-- Target labels -->
+          <text x="335" y="38" font-family="JetBrains Mono, monospace" font-size="8" fill="#d4a04a" opacity="0.5" text-anchor="end">8.5</text>
+          <text x="335" y="83" font-family="JetBrains Mono, monospace" font-size="8" fill="#d4a04a" opacity="0.5" text-anchor="end">7.0</text>
+
+          <!-- Baseline dashed line at y=110 -->
+          <line x1="20" y1="110" x2="330" y2="110" stroke="#7a7060" stroke-dasharray="4 3" stroke-width="0.8" opacity="0.6"/>
+          <text x="335" y="113" font-family="JetBrains Mono, monospace" font-size="8" fill="#7a7060" opacity="0.6" text-anchor="end">6.0</text>
+
+          <!-- Area fill: above baseline (warm) -->
+          <path d="
+            M30,148  C55,110 55,72 80,72  C105,72 105,156 130,156
+            C155,156 155,93 180,93  C205,93 205,75 230,75
+            C255,75 255,89 280,89  C305,89 305,97 320,97
+            L320,110 L30,110 Z
+          " fill="url(#grad-warm)" clip-path="url(#clip-above)"/>
+
+          <clipPath id="clip-above">
+            <rect x="0" y="0" width="340" height="110"/>
+          </clipPath>
+
+          <!-- Area fill: below baseline (cool) -->
+          <path d="
+            M30,148  C55,110 55,72 80,72  C105,72 105,156 130,156
+            C155,156 155,93 180,93  C205,93 205,75 230,75
+            C255,75 255,89 280,89  C305,89 305,97 320,97
+            L320,110 L30,110 Z
+          " fill="url(#grad-cool)" clip-path="url(#clip-below)"/>
+
+          <clipPath id="clip-below">
+            <rect x="0" y="110" width="340" height="100"/>
+          </clipPath>
+
+          <!-- The curve line itself -->
+          <path d="
+            M30,148  C55,110 55,72 80,72  C105,72 105,156 130,156
+            C155,156 155,93 180,93  C205,93 205,75 230,75
+            C255,75 255,89 280,89  C305,89 305,97 320,97
+          " fill="none" stroke="url(#line-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+          <linearGradient id="line-grad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#7FAABC"/>
+            <stop offset="30%" stop-color="#d4a04a"/>
+            <stop offset="50%" stop-color="#7FAABC"/>
+            <stop offset="65%" stop-color="#d4a04a"/>
+            <stop offset="100%" stop-color="#d4a04a"/>
+          </linearGradient>
+
+          <!-- Data points -->
+          <circle cx="30" cy="148" r="3" fill="#7FAABC" opacity="0.6"/>
+          <circle cx="80" cy="72" r="3" fill="#d4a04a" opacity="0.6"/>
+          <circle cx="130" cy="156" r="3" fill="#7FAABC" opacity="0.6"/>
+          <circle cx="180" cy="93" r="3" fill="#d4a04a" opacity="0.6"/>
+          <circle cx="230" cy="75" r="3" fill="#d4a04a" opacity="0.6"/>
+          <circle cx="280" cy="89" r="3" fill="#d4a04a" opacity="0.6"/>
+
+          <!-- Today: glowing dot -->
+          <circle cx="320" cy="97" r="10" fill="url(#glow-ochre)"/>
+          <circle cx="320" cy="97" r="3.5" fill="#e8c47a"/>
+          <circle cx="320" cy="97" r="2" fill="#f0ece4"/>
+
+          <!-- Day labels -->
+          <text x="30" y="212" font-family="Inter, sans-serif" font-size="9" fill="#7a7060" text-anchor="middle">Sat</text>
+          <text x="80" y="212" font-family="Inter, sans-serif" font-size="9" fill="#7a7060" text-anchor="middle">Sun</text>
+          <text x="130" y="212" font-family="Inter, sans-serif" font-size="9" fill="#7a7060" text-anchor="middle">Mon</text>
+          <text x="180" y="212" font-family="Inter, sans-serif" font-size="9" fill="#7a7060" text-anchor="middle">Tue</text>
+          <text x="230" y="212" font-family="Inter, sans-serif" font-size="9" fill="#7a7060" text-anchor="middle">Wed</text>
+          <text x="280" y="212" font-family="Inter, sans-serif" font-size="9" fill="#7a7060" text-anchor="middle">Thu</text>
+          <text x="320" y="212" font-family="Inter, sans-serif" font-size="9" fill="#e8c47a" font-weight="600" text-anchor="middle">Today</text>
+
+          <!-- Value annotations on hover points -->
+          <text x="30" y="142" font-family="JetBrains Mono, monospace" font-size="9" fill="#7FAABC" opacity="0.7" text-anchor="middle">4.7</text>
+          <text x="80" y="66" font-family="JetBrains Mono, monospace" font-size="9" fill="#d4a04a" opacity="0.7" text-anchor="middle">7.3</text>
+          <text x="130" y="168" font-family="JetBrains Mono, monospace" font-size="9" fill="#7FAABC" opacity="0.7" text-anchor="middle">4.5</text>
+          <text x="180" y="87" font-family="JetBrains Mono, monospace" font-size="9" fill="#d4a04a" opacity="0.7" text-anchor="middle">6.6</text>
+          <text x="230" y="69" font-family="JetBrains Mono, monospace" font-size="9" fill="#d4a04a" opacity="0.7" text-anchor="middle">7.2</text>
+          <text x="280" y="83" font-family="JetBrains Mono, monospace" font-size="9" fill="#d4a04a" opacity="0.7" text-anchor="middle">6.7</text>
+          <text x="320" y="91" font-family="JetBrains Mono, monospace" font-size="9" fill="#e8c47a" font-weight="600" text-anchor="middle">6.4</text>
+
+          <!-- Zone labels (left side) -->
+          <text x="15" y="58" font-family="Inter, sans-serif" font-size="8" fill="#d4a04a" opacity="0.4" text-anchor="end" transform="rotate(-90, 15, 58)">TARGET</text>
+        </svg>
+      </div>
+
+      <div class="chart-legend">
+        <div class="legend-item">
+          <div class="legend-swatch" style="background: var(--ochre); opacity: 0.6;"></div>
+          Target zone
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background: var(--text-muted); border-top: 1px dashed var(--text-muted); height: 0;"></div>
+          Baseline (28d)
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background: var(--dawn); opacity: 0.5;"></div>
+          Below baseline
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div class="stats-row">
+        <div class="stat-cell">
+          <div class="label">TARGET</div>
+          <div class="value" style="color: var(--ochre);">7.0<span style="font-size:11px; opacity:0.5">&ndash;</span>8.5</div>
+          <div class="subtext">hours</div>
+        </div>
+        <div class="stat-cell">
+          <div class="label">BASELINE</div>
+          <div class="value" style="color: var(--text-secondary);">6.0</div>
+          <div class="subtext">28-day avg</div>
+        </div>
+        <div class="stat-cell">
+          <div class="label">GAP</div>
+          <div class="value" style="color: var(--dawn);">&minus;1.0</div>
+          <div class="subtext">below target min</div>
+        </div>
+      </div>
+
+      <!-- Gap indicator -->
+      <div class="goal-gap-indicator below" style="margin-top: var(--md);">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M7 2v7M4 6l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Baseline is 1.0hr below your target floor &mdash; trending up this week
+      </div>
+    </div>
+
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab-item active"><div class="tab-icon"></div><span class="tab-label">Home</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Calendar</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Log</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Trends</span></div>
+  </div>
+</div>
+
+<div class="screen-divider"></div>
+
+<!-- ========== SCREEN 4: SIGNAL DETAIL — RHR ========== -->
+<div class="screen-label">SIGNAL DETAIL &mdash; RESTING HR</div>
+<div class="phone">
+  <div class="status-bar">
+    <span>9:41</span>
+    <span style="opacity:0.5">GOE</span>
+  </div>
+  <div class="phone-content">
+
+    <div class="card" style="padding: var(--lg) var(--lg) var(--xl);">
+      <div class="detail-header">
+        <div>
+          <span class="label" style="color: var(--clay);">RESTING HR</span>
+          <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">7-day trend vs your baseline</div>
+        </div>
+        <a class="edit-link" href="#">Edit Target <span style="font-size:10px">&rsaquo;</span></a>
+      </div>
+
+      <div class="chart-container">
+        <svg viewBox="0 0 340 220" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <linearGradient id="rhr-grad-warm" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#d4a04a" stop-opacity="0.02"/>
+              <stop offset="100%" stop-color="#d4a04a" stop-opacity="0.30"/>
+            </linearGradient>
+            <linearGradient id="rhr-grad-cool" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#c4856a" stop-opacity="0.30"/>
+              <stop offset="100%" stop-color="#c4856a" stop-opacity="0.02"/>
+            </linearGradient>
+            <linearGradient id="rhr-deep" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#c4856a" stop-opacity="0.12"/>
+              <stop offset="60%" stop-color="#8a5040" stop-opacity="0.06"/>
+              <stop offset="100%" stop-color="#5a3028" stop-opacity="0.02"/>
+            </linearGradient>
+            <radialGradient id="glow-clay">
+              <stop offset="0%" stop-color="#c4856a" stop-opacity="0.8"/>
+              <stop offset="50%" stop-color="#c4856a" stop-opacity="0.2"/>
+              <stop offset="100%" stop-color="#c4856a" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+
+          <!--
+            RHR: Lower is better. Y-axis: 40bpm (top, y=20) to 95bpm (bottom, y=200)
+            Scale: 1bpm = (200-20)/55 = 3.27px per bpm
+            Baseline 66bpm: y = 20 + (66-40)*3.27 = 20+85 = 105
+            Target max 55bpm: y = 20 + (55-40)*3.27 = 20+49 = 69
+            Target min 48bpm: y = 20 + (48-40)*3.27 = 20+26 = 46
+
+            Data (Feb 27 to Mar 5):
+            Feb 27: 88bpm → y = 20+(88-40)*3.27 = 20+157 = 177
+            Feb 28: 75bpm → y = 20+(75-40)*3.27 = 20+114 = 134
+            Mar 1:  52bpm → y = 20+(52-40)*3.27 = 20+39 = 59
+            Mar 2:  61bpm → y = 20+(61-40)*3.27 = 20+69 = 89
+            Mar 3:  58bpm → y = 20+(58-40)*3.27 = 20+59 = 79
+            Mar 4:  68bpm → y = 20+(68-40)*3.27 = 20+92 = 112
+            Mar 5:  73bpm → y = 20+(73-40)*3.27 = 20+108 = 128
+          -->
+
+          <!-- Above target zone (bad zone for RHR — too high) -->
+          <rect x="20" y="69" width="310" height="131" fill="url(#rhr-deep)" rx="4"/>
+
+          <!-- Target zone band (good: 48-55bpm, y=46 to y=69) -->
+          <rect x="20" y="46" width="310" height="23" fill="url(#target-zone)" rx="2"/>
+          <line x1="20" y1="46" x2="330" y2="46" stroke="#d4a04a" stroke-opacity="0.15" stroke-width="0.5"/>
+          <line x1="20" y1="69" x2="330" y2="69" stroke="#d4a04a" stroke-opacity="0.2" stroke-width="0.5"/>
+
+          <text x="335" y="49" font-family="JetBrains Mono, monospace" font-size="8" fill="#d4a04a" opacity="0.5" text-anchor="end">48</text>
+          <text x="335" y="72" font-family="JetBrains Mono, monospace" font-size="8" fill="#d4a04a" opacity="0.5" text-anchor="end">55</text>
+
+          <!-- Baseline dashed -->
+          <line x1="20" y1="105" x2="330" y2="105" stroke="#7a7060" stroke-dasharray="4 3" stroke-width="0.8" opacity="0.6"/>
+          <text x="335" y="108" font-family="JetBrains Mono, monospace" font-size="8" fill="#7a7060" opacity="0.6" text-anchor="end">66</text>
+
+          <!-- Area fill: below baseline (good for RHR = lower) -->
+          <path d="
+            M30,177 C55,155 55,134 80,134 C105,134 105,59 130,59
+            C155,59 155,89 180,89 C205,89 205,79 230,79
+            C255,79 255,112 280,112 C305,112 305,128 320,128
+            L320,105 L30,105 Z
+          " fill="url(#rhr-grad-warm)" clip-path="url(#rhr-clip-below)"/>
+          <clipPath id="rhr-clip-below">
+            <rect x="0" y="0" width="340" height="105"/>
+          </clipPath>
+
+          <!-- Area fill: above baseline (bad for RHR = higher) -->
+          <path d="
+            M30,177 C55,155 55,134 80,134 C105,134 105,59 130,59
+            C155,59 155,89 180,89 C205,89 205,79 230,79
+            C255,79 255,112 280,112 C305,112 305,128 320,128
+            L320,105 L30,105 Z
+          " fill="url(#rhr-grad-cool)" clip-path="url(#rhr-clip-above)"/>
+          <clipPath id="rhr-clip-above">
+            <rect x="0" y="105" width="340" height="100"/>
+          </clipPath>
+
+          <!-- Line -->
+          <path d="
+            M30,177 C55,155 55,134 80,134 C105,134 105,59 130,59
+            C155,59 155,89 180,89 C205,89 205,79 230,79
+            C255,79 255,112 280,112 C305,112 305,128 320,128
+          " fill="none" stroke="var(--clay)" stroke-width="2" stroke-linecap="round"/>
+
+          <!-- Points -->
+          <circle cx="30" cy="177" r="3" fill="#c4856a" opacity="0.6"/>
+          <circle cx="80" cy="134" r="3" fill="#c4856a" opacity="0.6"/>
+          <circle cx="130" cy="59" r="3" fill="#d4a04a" opacity="0.7"/>
+          <circle cx="180" cy="89" r="3" fill="#c4856a" opacity="0.6"/>
+          <circle cx="230" cy="79" r="3" fill="#c4856a" opacity="0.6"/>
+          <circle cx="280" cy="112" r="3" fill="#c4856a" opacity="0.6"/>
+
+          <!-- Today glow -->
+          <circle cx="320" cy="128" r="10" fill="url(#glow-clay)"/>
+          <circle cx="320" cy="128" r="3.5" fill="#c4856a"/>
+          <circle cx="320" cy="128" r="2" fill="#f0ece4"/>
+
+          <!-- Values -->
+          <text x="30" y="171" font-family="JetBrains Mono, monospace" font-size="9" fill="#c4856a" opacity="0.7" text-anchor="middle">88</text>
+          <text x="80" y="128" font-family="JetBrains Mono, monospace" font-size="9" fill="#c4856a" opacity="0.7" text-anchor="middle">75</text>
+          <text x="130" y="53" font-family="JetBrains Mono, monospace" font-size="9" fill="#d4a04a" opacity="0.7" text-anchor="middle">52</text>
+          <text x="180" y="83" font-family="JetBrains Mono, monospace" font-size="9" fill="#c4856a" opacity="0.7" text-anchor="middle">61</text>
+          <text x="230" y="73" font-family="JetBrains Mono, monospace" font-size="9" fill="#c4856a" opacity="0.7" text-anchor="middle">58</text>
+          <text x="280" y="106" font-family="JetBrains Mono, monospace" font-size="9" fill="#c4856a" opacity="0.7" text-anchor="middle">68</text>
+          <text x="320" y="122" font-family="JetBrains Mono, monospace" font-size="9" fill="#c4856a" font-weight="600" text-anchor="middle">73</text>
+
+          <!-- Day labels -->
+          <text x="30" y="212" font-family="Inter, sans-serif" font-size="9" fill="#7a7060" text-anchor="middle">Thu</text>
+          <text x="80" y="212" font-family="Inter, sans-serif" font-size="9" fill="#7a7060" text-anchor="middle">Fri</text>
+          <text x="130" y="212" font-family="Inter, sans-serif" font-size="9" fill="#7a7060" text-anchor="middle">Sat</text>
+          <text x="180" y="212" font-family="Inter, sans-serif" font-size="9" fill="#7a7060" text-anchor="middle">Sun</text>
+          <text x="230" y="212" font-family="Inter, sans-serif" font-size="9" fill="#7a7060" text-anchor="middle">Mon</text>
+          <text x="280" y="212" font-family="Inter, sans-serif" font-size="9" fill="#7a7060" text-anchor="middle">Tue</text>
+          <text x="320" y="212" font-family="Inter, sans-serif" font-size="9" fill="#c4856a" font-weight="600" text-anchor="middle">Wed</text>
+        </svg>
+      </div>
+
+      <div class="chart-legend">
+        <div class="legend-item">
+          <div class="legend-swatch" style="background: var(--ochre); opacity: 0.6;"></div>
+          Target zone
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background: var(--text-muted); border-top: 1px dashed var(--text-muted); height: 0;"></div>
+          Baseline (28d)
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background: var(--clay); opacity: 0.5;"></div>
+          Above baseline
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-cell">
+          <div class="label">TARGET</div>
+          <div class="value" style="color: var(--ochre);">48<span style="font-size:11px; opacity:0.5">&ndash;</span>55</div>
+          <div class="subtext">bpm</div>
+        </div>
+        <div class="stat-cell">
+          <div class="label">BASELINE</div>
+          <div class="value" style="color: var(--text-secondary);">66</div>
+          <div class="subtext">28-day avg</div>
+        </div>
+        <div class="stat-cell">
+          <div class="label">GAP</div>
+          <div class="value" style="color: var(--clay);">+11</div>
+          <div class="subtext">above target max</div>
+        </div>
+      </div>
+
+      <div class="goal-gap-indicator below" style="margin-top: var(--md); color: var(--clay); background: rgba(196,133,106,0.08);">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M7 12V5M4 8l3-3 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Baseline is 11bpm above target ceiling &mdash; volatile, trending worse
+      </div>
+    </div>
+
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab-item active"><div class="tab-icon"></div><span class="tab-label">Home</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Calendar</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Log</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Trends</span></div>
+  </div>
+</div>
+
+<div class="screen-divider"></div>
+
+<!-- ========== SCREEN 5: GOALS PAGE ========== -->
+<div class="screen-label">GOALS PAGE</div>
+<div class="phone">
+  <div class="status-bar">
+    <span>9:41</span>
+    <span style="opacity:0.5">GOE</span>
+  </div>
+  <div class="phone-content">
+
+    <div class="goals-header">
+      <div class="back-btn">&lsaquo;</div>
+      <div class="goals-title">Goals</div>
+    </div>
+
+    <!-- Sleep Goal -->
+    <div class="goal-section underwater-goal">
+      <div class="goal-top">
+        <div>
+          <div class="goal-signal-name">Sleep</div>
+          <span class="label" style="color: var(--dawn);">BASELINE BELOW TARGET</span>
+        </div>
+        <div class="goal-target-range">7.0 &ndash; 8.5 hr</div>
+      </div>
+
+      <div class="goal-baseline-row">
+        <span class="goal-baseline-label">Your 28-day average</span>
+        <span class="goal-baseline-value" style="color: var(--dawn);">6.0 hr</span>
+      </div>
+      <div class="goal-baseline-row">
+        <span class="goal-baseline-label">7-day average</span>
+        <span class="goal-baseline-value" style="color: var(--ochre);">6.2 hr</span>
+      </div>
+      <div class="goal-baseline-row">
+        <span class="goal-baseline-label">Today</span>
+        <span class="goal-baseline-value" style="color: var(--text-primary);">6.4 hr</span>
+      </div>
+
+      <div class="goal-gap-indicator below">
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 2v7M4 6l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        1.0hr below target floor &middot; improving this week
+      </div>
+
+      <button class="goal-edit-btn">Set New Target</button>
+
+      <div class="goal-history">
+        <span class="label" style="margin-bottom: 6px; display: block;">HISTORY</span>
+        <div class="history-entry">
+          <span class="history-date">14 Mar 2026</span>
+          <span class="history-range">7.0 &ndash; 8.5 hr</span>
+        </div>
+        <div class="history-note">Initial goal</div>
+      </div>
+    </div>
+
+    <!-- RHR Goal -->
+    <div class="goal-section underwater-goal">
+      <div class="goal-top">
+        <div>
+          <div class="goal-signal-name">Resting HR</div>
+          <span class="label" style="color: var(--clay);">BASELINE ABOVE TARGET</span>
+        </div>
+        <div class="goal-target-range">48 &ndash; 55 bpm</div>
+      </div>
+
+      <div class="goal-baseline-row">
+        <span class="goal-baseline-label">Your 28-day average</span>
+        <span class="goal-baseline-value" style="color: var(--clay);">66 bpm</span>
+      </div>
+      <div class="goal-baseline-row">
+        <span class="goal-baseline-label">7-day average</span>
+        <span class="goal-baseline-value" style="color: var(--clay);">68 bpm</span>
+      </div>
+
+      <div class="goal-gap-indicator below" style="color: var(--clay); background: rgba(196,133,106,0.08);">
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 12V5M4 8l3-3 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        11bpm above target ceiling &middot; trending worse
+      </div>
+
+      <button class="goal-edit-btn">Set New Target</button>
+    </div>
+
+    <!-- Weight Goal -->
+    <div class="goal-section">
+      <div class="goal-top">
+        <div>
+          <div class="goal-signal-name">Weight</div>
+          <span class="label" style="color: var(--ochre);">NEAR TARGET</span>
+        </div>
+        <div class="goal-target-range">65 &ndash; 68 kg</div>
+      </div>
+
+      <div class="goal-baseline-row">
+        <span class="goal-baseline-label">Your 28-day average</span>
+        <span class="goal-baseline-value" style="color: var(--text-secondary);">68.3 kg</span>
+      </div>
+      <div class="goal-baseline-row">
+        <span class="goal-baseline-label">Latest</span>
+        <span class="goal-baseline-value" style="color: var(--ochre-light);">68.3 kg</span>
+      </div>
+
+      <div class="goal-gap-indicator on-target">
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        0.3kg above target ceiling &middot; nearly there
+      </div>
+
+      <button class="goal-edit-btn">Set New Target</button>
+    </div>
+
+    <!-- Protein Goal -->
+    <div class="goal-section underwater-goal">
+      <div class="goal-top">
+        <div>
+          <div class="goal-signal-name">Protein</div>
+          <span class="label" style="color: var(--dawn);">BASELINE BELOW TARGET</span>
+        </div>
+        <div class="goal-target-range">160 &ndash; 200 g</div>
+      </div>
+
+      <div class="goal-baseline-row">
+        <span class="goal-baseline-label">Your 28-day average</span>
+        <span class="goal-baseline-value" style="color: var(--dawn);">142 g</span>
+      </div>
+
+      <div class="goal-gap-indicator below">
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 2v7M4 6l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        18g below target floor &middot; improving
+      </div>
+
+      <button class="goal-edit-btn">Set New Target</button>
+    </div>
+
+    <!-- Water Goal (compact) -->
+    <div class="goal-section underwater-goal">
+      <div class="goal-top">
+        <div>
+          <div class="goal-signal-name">Water</div>
+          <span class="label" style="color: var(--dawn);">BASELINE WELL BELOW TARGET</span>
+        </div>
+        <div class="goal-target-range">2500 &ndash; 3500 ml</div>
+      </div>
+
+      <div class="goal-baseline-row">
+        <span class="goal-baseline-label">Your 7-day average</span>
+        <span class="goal-baseline-value" style="color: var(--dawn);">1035 ml</span>
+      </div>
+
+      <div class="goal-gap-indicator below">
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 2v7M4 6l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        1465ml below target floor
+      </div>
+
+      <button class="goal-edit-btn">Set New Target</button>
+    </div>
+
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Home</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Calendar</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Log</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Trends</span></div>
+  </div>
+</div>
+
+</body>
+</html>

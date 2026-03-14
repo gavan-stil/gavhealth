@@ -14,6 +14,17 @@ All 9 tasks shipped. App is live, logging flows work end-to-end.
 
 ## Active Task
 
+**T22** — Momentum Card + Goals System — ✅ complete (2026-03-14)
+- Backend: `health_goals` table (append-only, seed targets for all 6 signals)
+- Backend: `GET /api/momentum`, `GET /api/momentum/signals`, `GET /api/goals`, `POST /api/goals`, `GET /api/goals/{signal}/history`
+- Frontend: `MomentumCard` replaces `ReadinessCard` on Dashboard (collapsed dots + trend + expanded signal rows)
+- Frontend: `GoalDetailSheet` — bottom sheet with 7-day deviation chart + target stats
+- Frontend: `SignalDeviationChart` — bar chart: ochre above baseline, dawn-blue below
+- Frontend: `/goals` route (`GoalsPage`) — all 6 signals, 7-day sparkline, set-new-target form, append-only history
+- Protein + water targets in Trends components now read from `/api/goals` (no more hardcoded 180g / 3L)
+
+---
+
 **T21** — Calendar multi-session + workout edit + timezone fixes (2026-03-14)
 - Calendar: all activity types show multiple sessions per day as stacked bars (no more first-wins dedup)
 - Calendar: push/pull icon always wins; leg ● appears alongside as secondary indicator
@@ -74,6 +85,7 @@ Full task list: `tasks/T14-sprint.md`
 
 | Task | Date | Summary |
 |------|------|---------|
+| T22 Momentum Card + Goals | 2026-03-14 | MomentumCard replaces ReadinessCard; 5 new API endpoints; GoalsPage /goals; SignalDeviationChart; protein+water targets dynamic from health_goals |
 | Withings GPS late-delivery fix | 2026-03-14 | Recurring bug (GPS arrives 30-60min after upload; first sync stale). Fix: guaranteed 48h re-fetch in run_full_sync, 'ride' added to backfill IS NULL check, per-workout Railway logging, force-refresh endpoint POST /api/withings/refresh-workout/{external_id}. Root causes + rationale in DECISIONS.md D007. commit: 6e11b28 |
 | Run/ride stat block standardisation | 2026-03-13 | ActivityFeed cards now show dist+pace inline. ActivityDetailSheet + DayDetailSheet both use horizontal bordered stat blocks for run/ride (dist+pace row, time+bpm row). Backend feed endpoint exposes distance_km + avg_pace_secs. commits: ad1d613, 6d9f4ce |
 | T18 BW volume fix + session header | 2026-03-13 | Backend SQL fixed (bodyweight_at_session in session_volume_kg). New last-by-split endpoint. Frontend: correct bw/bw+ volume formula, dual reps+vol badges, session comparison header, whole-kg rounding. commits: 5838fd9, 7e1d89c |

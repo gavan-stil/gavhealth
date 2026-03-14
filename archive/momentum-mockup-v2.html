@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=375, initial-scale=1">
+<title>Momentum v2 — GOE Health Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #0d0d0a;
+    --bg-card: #14130f;
+    --bg-elevated: #1e1d18;
+    --border-default: #222018;
+    --border-subtle: #1a1914;
+    --text-primary: #f0ece4;
+    --text-secondary: #b0a890;
+    --text-tertiary: #9a9080;
+    --text-muted: #7a7060;
+    --ochre: #d4a04a;
+    --ochre-light: #e8c47a;
+    --ochre-dim: #a07830;
+    --sand: #b8a878;
+    --clay: #c4856a;
+    --dawn: #7FAABC;
+    --ember: #c45a4a;
+    --signal-good: #e8c47a;
+    --signal-poor: #c47a6a;
+    --xs: 4px; --sm: 8px; --md: 14px; --lg: 20px; --xl: 32px;
+    --radius-sm: 8px; --radius-md: 14px; --radius-lg: 20px; --radius-pill: 100px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #000;
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 0 80px;
+    gap: 60px;
+  }
+
+  .screen-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ochre-dim);
+    margin-bottom: 12px;
+    text-align: center;
+  }
+
+  .phone {
+    width: 375px;
+    background: var(--bg-base);
+    border-radius: 40px;
+    overflow: hidden;
+    border: 2px solid #1a1a16;
+    box-shadow: 0 20px 80px rgba(0,0,0,0.6);
+    position: relative;
+  }
+
+  .phone::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23n)' opacity='0.015'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .phone-content {
+    padding: 60px 16px 100px;
+    min-height: 700px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .status-bar {
+    position: absolute;
+    top: 16px; left: 0; right: 0;
+    height: 44px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 24px;
+    z-index: 10;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .label { font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-muted); }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--md);
+    overflow: hidden;
+  }
+
+  /* ============================================
+     MOMENTUM CARD v2 — LANDSCAPE CHART
+     ============================================ */
+  .momentum-v2 {
+    position: relative;
+    background: linear-gradient(
+      180deg,
+      rgba(90, 130, 160, 0.05) 0%,
+      var(--bg-card) 40%
+    );
+    border-color: rgba(127, 170, 188, 0.10);
+  }
+
+  .momentum-v2-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--lg) var(--lg) 0;
+  }
+
+  .momentum-v2-summary {
+    padding: 6px var(--lg) 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .momentum-v2-summary .trend-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: -0.3px;
+  }
+  .momentum-v2-summary .trend-arrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    font-weight: 800;
+  }
+
+  .chart-full {
+    width: 100%;
+    padding: 0;
+    margin-top: 8px;
+  }
+  .chart-full svg {
+    display: block;
+    width: 100%;
+  }
+
+  .momentum-v2-footer {
+    padding: 10px var(--lg) var(--lg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .signal-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .signal-group .dot {
+    width: 5px; height: 5px; border-radius: 50%;
+  }
+  .signal-group .group-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .edit-link {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ochre-dim);
+    text-decoration: none;
+    letter-spacing: 0.3px;
+  }
+
+  /* ============================================
+     EXPANDED SIGNAL ROWS
+     ============================================ */
+  .signal-rows {
+    padding: 0 var(--lg) var(--lg);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border-top: 1px solid var(--border-subtle);
+    margin: 0 var(--lg);
+    padding-top: var(--md);
+  }
+
+  .signal-row {
+    display: grid;
+    grid-template-columns: 68px 1fr auto;
+    align-items: center;
+    padding: 8px 0;
+    gap: 6px;
+    border-bottom: 1px solid rgba(255,255,255, 0.02);
+  }
+  .signal-row:last-child { border-bottom: none; }
+
+  .signal-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  .signal-mid {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .signal-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    min-width: 42px;
+  }
+  .signal-delta {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .signal-status {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: var(--radius-pill);
+  }
+  .signal-status.on-track { color: var(--ochre-light); background: rgba(232,196,122,0.1); }
+  .signal-status.improving { color: var(--ochre); background: rgba(212,160,74,0.08); }
+  .signal-status.off-track { color: var(--dawn); background: rgba(127,170,188,0.1); }
+
+  /* Group label row */
+  .group-row {
+    padding: 10px 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .group-row .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .group-row span {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* ============================================
+     DETAIL VIEWS (kept from v1)
+     ============================================ */
+  .detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: var(--lg);
+    padding: var(--lg) var(--lg) 0;
+  }
+  .detail-title { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+
+  .chart-container {
+    position: relative;
+    width: 100%;
+    padding: 0 var(--lg);
+  }
+  .chart-container svg { width: 100%; height: auto; }
+
+  .chart-legend {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    padding: 8px var(--lg);
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .legend-swatch { width: 12px; height: 3px; border-radius: 2px; }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px;
+    background: var(--border-subtle);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    margin: var(--lg);
+  }
+  .stat-cell {
+    background: var(--bg-card);
+    padding: 12px;
+    text-align: center;
+  }
+  .stat-cell .label { margin-bottom: 4px; }
+  .stat-cell .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -1px;
+  }
+  .stat-cell .subtext { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+  .gap-indicator {
+    margin: 0 var(--lg) var(--lg);
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .gap-indicator.below { background: rgba(127,170,188,0.08); color: var(--dawn); }
+  .gap-indicator.above { background: rgba(196,133,106,0.08); color: var(--clay); }
+
+  /* Tab bar */
+  .tab-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 80px;
+    background: linear-gradient(180deg, transparent 0%, rgba(13,13,10,0.95) 30%);
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+    padding-bottom: 24px;
+    z-index: 10;
+  }
+  .tab-item { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .tab-icon { width: 20px; height: 20px; border-radius: 4px; background: rgba(255,255,255,0.06); }
+  .tab-label { font-size: 9px; font-weight: 600; color: var(--text-muted); letter-spacing: 0.5px; }
+  .tab-item.active .tab-icon { background: var(--ochre-dim); }
+  .tab-item.active .tab-label { color: var(--ochre); }
+
+  .screen-divider {
+    width: 200px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--ochre-dim), transparent);
+  }
+
+  /* Goals */
+  .goals-header { display: flex; align-items: center; gap: 12px; margin-bottom: var(--xl); }
+  .back-btn {
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-default);
+    color: var(--text-secondary);
+    font-size: 16px;
+  }
+  .goals-title { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+
+  .goal-section {
+    margin-bottom: var(--md);
+    padding: var(--lg);
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+  }
+  .goal-section.uw { border-color: rgba(127,170,188,0.15); }
+
+  .goal-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+  .goal-signal-name { font-size: 14px; font-weight: 700; letter-spacing: -0.3px; }
+  .goal-target-range { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; color: var(--ochre); letter-spacing: -0.5px; }
+
+  .goal-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+  .goal-row-label { font-size: 12px; color: var(--text-muted); }
+  .goal-row-value { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; letter-spacing: -0.5px; }
+
+  .goal-gap {
+    margin-top: 8px;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    font-weight: 600;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .goal-gap.below { background: rgba(127,170,188,0.08); color: var(--dawn); }
+  .goal-gap.near { background: rgba(232,196,122,0.08); color: var(--ochre-light); }
+  .goal-gap.above { background: rgba(196,133,106,0.08); color: var(--clay); }
+
+  .goal-edit-btn {
+    width: 100%; padding: 8px; margin-top: 10px;
+    border: 1px dashed rgba(212,160,74,0.25); border-radius: var(--radius-sm);
+    background: transparent; color: var(--ochre-dim);
+    font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.3px; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<!-- ========== SCREEN 1: MOMENTUM CARD — COLLAPSED ========== -->
+<div class="screen-label">DASHBOARD — MOMENTUM CARD (COLLAPSED)</div>
+<div class="phone">
+  <div class="status-bar"><span>9:41</span><span style="opacity:0.5">GOE</span></div>
+  <div class="phone-content">
+
+    <div class="card momentum-v2">
+      <div class="momentum-v2-header">
+        <span class="label">MOMENTUM</span>
+        <a class="edit-link" href="#">Edit Goals &rsaquo;</a>
+      </div>
+
+      <div class="momentum-v2-summary">
+        <span class="trend-arrow" style="color: var(--dawn);">&darr;</span>
+        <span class="trend-text">Recovery trailing strain this week</span>
+      </div>
+
+      <!-- LANDSCAPE CHART: Recovery vs Strain, 7 days -->
+      <div class="chart-full">
+        <svg viewBox="0 0 343 140" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <!-- Recovery area gradient (above baseline = warm) -->
+            <linearGradient id="rg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#d4a04a" stop-opacity="0.45"/>
+              <stop offset="70%" stop-color="#d4a04a" stop-opacity="0.08"/>
+              <stop offset="100%" stop-color="#d4a04a" stop-opacity="0"/>
+            </linearGradient>
+            <!-- Strain area gradient (below baseline = cool) -->
+            <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#7FAABC" stop-opacity="0"/>
+              <stop offset="30%" stop-color="#7FAABC" stop-opacity="0.06"/>
+              <stop offset="100%" stop-color="#7FAABC" stop-opacity="0.35"/>
+            </linearGradient>
+            <!-- Deep underwater -->
+            <linearGradient id="uw" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#4a7a8a" stop-opacity="0"/>
+              <stop offset="100%" stop-color="#2a5060" stop-opacity="0.15"/>
+            </linearGradient>
+            <!-- Today glow -->
+            <radialGradient id="tg">
+              <stop offset="0%" stop-color="#e8c47a" stop-opacity="0.9"/>
+              <stop offset="40%" stop-color="#e8c47a" stop-opacity="0.25"/>
+              <stop offset="100%" stop-color="#e8c47a" stop-opacity="0"/>
+            </radialGradient>
+            <!-- Recovery line gradient -->
+            <linearGradient id="rlg" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#d4a04a" stop-opacity="0.5"/>
+              <stop offset="100%" stop-color="#e8c47a" stop-opacity="1"/>
+            </linearGradient>
+            <!-- Strain line gradient -->
+            <linearGradient id="slg" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#c4856a" stop-opacity="0.5"/>
+              <stop offset="100%" stop-color="#c4856a" stop-opacity="1"/>
+            </linearGradient>
+          </defs>
+
+          <!--
+            Chart: Y 10 (top=1.0) to 130 (bottom=0.0), height=120px
+            Baseline = 0.5 → y=70
+            Target zone = 0.7-0.9 → y=34 to y=46
+
+            Real data (computed from daily summaries):
+            Recovery score (sleep+protein+water normalized):
+              Mar 8:  0.58 → y=70-(0.58-0.5)*240 = 70-19 = 51
+              Mar 9:  0.88 → y=70-(0.88-0.5)*240 = 70-91 = nah, let me rescale
+
+            Let me use a simpler mapping:
+            Y range: 10 (top, score=1.0) to 130 (bottom, score=0.0)
+            score → y = 130 - score*120
+
+            Recovery (normalized 0-1):
+              Mar 8:  0.58 → y = 130-69.6 = 60
+              Mar 9:  0.88 → y = 130-105.6 = 24
+              Mar 10: 0.66 → y = 130-79.2 = 51
+              Mar 11: 0.85 → y = 130-102 = 28
+              Mar 12: 0.82 → y = 130-98.4 = 32
+              Mar 13: 0.70 → y = 130-84 = 46
+              Mar 14: 0.44 → y = 130-52.8 = 77  (partial day — show differently)
+
+            Strain (normalized 0-1):
+              Mar 8:  0.02 → y = 130-2.4 = 128
+              Mar 9:  0.62 → y = 130-74.4 = 56
+              Mar 10: 0.86 → y = 130-103.2 = 27
+              Mar 11: 0.93 → y = 130-111.6 = 18
+              Mar 12: 0.51 → y = 130-61.2 = 69
+              Mar 13: 0.91 → y = 130-109.2 = 21
+              Mar 14: 0.005→ y = 130-0.6 = 129  (partial day)
+
+            X positions: 16, 65, 114, 163, 212, 261, 320
+
+            Baseline (0.5): y = 130-60 = 70
+            Target zone (0.7-0.85): y = 130-84=46 to 130-102=28
+          -->
+
+          <!-- Target zone band -->
+          <rect x="0" y="28" width="343" height="18" fill="rgba(212,160,74,0.06)" />
+          <line x1="0" y1="28" x2="343" y2="28" stroke="#d4a04a" stroke-opacity="0.1" stroke-width="0.5"/>
+          <line x1="0" y1="46" x2="343" y2="46" stroke="#d4a04a" stroke-opacity="0.12" stroke-width="0.5"/>
+
+          <!-- Baseline -->
+          <line x1="0" y1="70" x2="343" y2="70" stroke="#7a7060" stroke-dasharray="3 3" stroke-width="0.6" opacity="0.4"/>
+
+          <!-- Underwater fill below baseline -->
+          <rect x="0" y="70" width="343" height="60" fill="url(#uw)"/>
+
+          <!-- Recovery area fill (above baseline, clipped) -->
+          <path d="
+            M16,60 C40,42 40,24 65,24 C90,24 90,51 114,51
+            C138,51 138,28 163,28 C188,28 188,32 212,32
+            C236,32 236,46 261,46 C286,46 300,77 320,77
+            L320,70 L16,70 Z
+          " fill="url(#rg)"/>
+
+          <!-- Recovery line -->
+          <path d="
+            M16,60 C40,42 40,24 65,24 C90,24 90,51 114,51
+            C138,51 138,28 163,28 C188,28 188,32 212,32
+            C236,32 236,46 261,46 C286,46 300,77 320,77
+          " fill="none" stroke="url(#rlg)" stroke-width="1.8" stroke-linecap="round"/>
+
+          <!-- Strain area fill (below baseline) -->
+          <path d="
+            M16,128 C40,92 40,56 65,56 C90,56 90,27 114,27
+            C138,27 138,18 163,18 C188,18 188,69 212,69
+            C236,69 236,21 261,21 C286,21 300,129 320,129
+            L320,70 L16,70 Z
+          " fill="url(#sg)"/>
+
+          <!-- Strain line -->
+          <path d="
+            M16,128 C40,92 40,56 65,56 C90,56 90,27 114,27
+            C138,27 138,18 163,18 C188,18 188,69 212,69
+            C236,69 236,21 261,21 C286,21 300,129 320,129
+          " fill="none" stroke="url(#slg)" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="4 2"/>
+
+          <!-- Recovery dots -->
+          <circle cx="16" cy="60" r="2.5" fill="#d4a04a" opacity="0.5"/>
+          <circle cx="65" cy="24" r="2.5" fill="#d4a04a" opacity="0.5"/>
+          <circle cx="114" cy="51" r="2.5" fill="#d4a04a" opacity="0.5"/>
+          <circle cx="163" cy="28" r="2.5" fill="#d4a04a" opacity="0.5"/>
+          <circle cx="212" cy="32" r="2.5" fill="#d4a04a" opacity="0.5"/>
+          <circle cx="261" cy="46" r="2.5" fill="#d4a04a" opacity="0.5"/>
+
+          <!-- Strain dots -->
+          <circle cx="16" cy="128" r="2" fill="#c4856a" opacity="0.4"/>
+          <circle cx="65" cy="56" r="2" fill="#c4856a" opacity="0.4"/>
+          <circle cx="114" cy="27" r="2" fill="#c4856a" opacity="0.4"/>
+          <circle cx="163" cy="18" r="2" fill="#c4856a" opacity="0.4"/>
+          <circle cx="212" cy="69" r="2" fill="#c4856a" opacity="0.4"/>
+          <circle cx="261" cy="21" r="2" fill="#c4856a" opacity="0.4"/>
+
+          <!-- Today: recovery dot with glow -->
+          <circle cx="320" cy="77" r="8" fill="url(#tg)"/>
+          <circle cx="320" cy="77" r="3" fill="#e8c47a"/>
+          <circle cx="320" cy="77" r="1.5" fill="#f0ece4"/>
+
+          <!-- Day labels -->
+          <text x="16" y="138" font-family="Inter, sans-serif" font-size="8" fill="#7a7060" opacity="0.6" text-anchor="middle">Sat</text>
+          <text x="65" y="138" font-family="Inter, sans-serif" font-size="8" fill="#7a7060" opacity="0.6" text-anchor="middle">Sun</text>
+          <text x="114" y="138" font-family="Inter, sans-serif" font-size="8" fill="#7a7060" opacity="0.6" text-anchor="middle">Mon</text>
+          <text x="163" y="138" font-family="Inter, sans-serif" font-size="8" fill="#7a7060" opacity="0.6" text-anchor="middle">Tue</text>
+          <text x="212" y="138" font-family="Inter, sans-serif" font-size="8" fill="#7a7060" opacity="0.6" text-anchor="middle">Wed</text>
+          <text x="261" y="138" font-family="Inter, sans-serif" font-size="8" fill="#7a7060" opacity="0.6" text-anchor="middle">Thu</text>
+          <text x="320" y="138" font-family="Inter, sans-serif" font-size="8" fill="#e8c47a" font-weight="600" text-anchor="middle">Today</text>
+
+          <!-- Axis labels (right side) -->
+          <text x="340" y="32" font-family="JetBrains Mono, monospace" font-size="7" fill="#d4a04a" opacity="0.3" text-anchor="end">goal</text>
+          <text x="340" y="73" font-family="JetBrains Mono, monospace" font-size="7" fill="#7a7060" opacity="0.3" text-anchor="end">avg</text>
+        </svg>
+      </div>
+
+      <div class="momentum-v2-footer">
+        <div style="display:flex; gap: 16px;">
+          <div class="signal-group">
+            <div class="dot" style="background: var(--ochre);"></div>
+            <span class="group-label" style="color: var(--ochre-dim);">Recovery</span>
+          </div>
+          <div class="signal-group">
+            <div class="dot" style="background: var(--clay);"></div>
+            <span class="group-label" style="color: var(--clay); opacity: 0.6;">Strain</span>
+          </div>
+        </div>
+        <span style="font-size: 11px; color: var(--text-muted);">1 of 6 on track</span>
+      </div>
+    </div>
+
+    <!-- Sleep card placeholder -->
+    <div class="card" style="opacity: 0.35; height: 90px; padding: var(--lg);">
+      <span class="label">SLEEP</span>
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 800; letter-spacing: -1.5px; margin-top: 6px; color: var(--dawn);">6.4<span style="font-size:12px; color:var(--text-muted); font-weight:400">hr</span></div>
+    </div>
+
+    <div class="card" style="opacity: 0.2; height: 70px; padding: var(--lg);">
+      <span class="label">ACTIVITY</span>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab-item active"><div class="tab-icon"></div><span class="tab-label">Home</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Calendar</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Log</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Trends</span></div>
+  </div>
+</div>
+
+<div class="screen-divider"></div>
+
+<!-- ========== SCREEN 2: MOMENTUM CARD — EXPANDED ========== -->
+<div class="screen-label">MOMENTUM — EXPANDED (TAP CARD)</div>
+<div class="phone">
+  <div class="status-bar"><span>9:41</span><span style="opacity:0.5">GOE</span></div>
+  <div class="phone-content">
+
+    <div class="card momentum-v2">
+      <div class="momentum-v2-header">
+        <span class="label">MOMENTUM</span>
+        <a class="edit-link" href="#">Edit Goals &rsaquo;</a>
+      </div>
+
+      <div class="momentum-v2-summary">
+        <span class="trend-arrow" style="color: var(--dawn);">&darr;</span>
+        <span class="trend-text">Recovery trailing strain this week</span>
+      </div>
+
+      <!-- Same chart, smaller -->
+      <div class="chart-full">
+        <svg viewBox="0 0 343 100" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <linearGradient id="rg2" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#d4a04a" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="#d4a04a" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="sg2" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#7FAABC" stop-opacity="0"/>
+              <stop offset="100%" stop-color="#7FAABC" stop-opacity="0.25"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Target zone -->
+          <rect x="0" y="18" width="343" height="14" fill="rgba(212,160,74,0.06)" />
+          <line x1="0" y1="18" x2="343" y2="18" stroke="#d4a04a" stroke-opacity="0.08" stroke-width="0.5"/>
+          <line x1="0" y1="32" x2="343" y2="32" stroke="#d4a04a" stroke-opacity="0.1" stroke-width="0.5"/>
+
+          <!-- Baseline -->
+          <line x1="0" y1="50" x2="343" y2="50" stroke="#7a7060" stroke-dasharray="3 3" stroke-width="0.5" opacity="0.3"/>
+
+          <rect x="0" y="50" width="343" height="40" fill="rgba(74,122,138,0.04)"/>
+
+          <!-- Recovery -->
+          <path d="M16,42 C40,30 40,16 65,16 C90,16 90,36 114,36 C138,36 138,19 163,19 C188,19 188,22 212,22 C236,22 236,32 261,32 C286,32 300,55 320,55 L320,50 L16,50 Z" fill="url(#rg2)"/>
+          <path d="M16,42 C40,30 40,16 65,16 C90,16 90,36 114,36 C138,36 138,19 163,19 C188,19 188,22 212,22 C236,22 236,32 261,32 C286,32 300,55 320,55" fill="none" stroke="#d4a04a" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/>
+
+          <!-- Strain -->
+          <path d="M16,92 C40,66 40,40 65,40 C90,40 90,19 114,19 C138,19 138,12 163,12 C188,12 188,49 212,49 C236,49 236,14 261,14 C286,14 300,93 320,93 L320,50 L16,50 Z" fill="url(#sg2)"/>
+          <path d="M16,92 C40,66 40,40 65,40 C90,40 90,19 114,19 C138,19 138,12 163,12 C188,12 188,49 212,49 C236,49 236,14 261,14 C286,14 300,93 320,93" fill="none" stroke="#c4856a" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="3 2" opacity="0.6"/>
+
+          <!-- Today glow -->
+          <circle cx="320" cy="55" r="6" fill="url(#tg)"/>
+          <circle cx="320" cy="55" r="2.5" fill="#e8c47a"/>
+          <circle cx="320" cy="55" r="1.2" fill="#f0ece4"/>
+        </svg>
+      </div>
+
+      <div class="momentum-v2-footer">
+        <div style="display:flex; gap: 16px;">
+          <div class="signal-group">
+            <div class="dot" style="background: var(--ochre);"></div>
+            <span class="group-label" style="color: var(--ochre-dim);">Recovery</span>
+          </div>
+          <div class="signal-group">
+            <div class="dot" style="background: var(--clay);"></div>
+            <span class="group-label" style="color: var(--clay); opacity: 0.6;">Strain</span>
+          </div>
+        </div>
+        <span style="font-size: 11px; color: var(--text-muted);">1 of 6 on track</span>
+      </div>
+
+      <!-- EXPANDED: Grouped signal rows -->
+      <div class="signal-rows">
+
+        <!-- Recovery group -->
+        <div class="group-row">
+          <div class="dot" style="background: var(--ochre);"></div>
+          <span style="color: var(--ochre-dim);">Recovery</span>
+        </div>
+
+        <div class="signal-row">
+          <div class="signal-name" style="color:var(--dawn);">Sleep</div>
+          <div class="signal-mid">
+            <span class="signal-value" style="color: var(--dawn);">6.4<span style="font-size:10px; color:var(--text-muted)">hr</span></span>
+            <span class="signal-delta" style="color:var(--ochre);">+0.4 vs avg</span>
+          </div>
+          <span class="signal-status improving">Improving</span>
+        </div>
+
+        <div class="signal-row">
+          <div class="signal-name">Protein</div>
+          <div class="signal-mid">
+            <span class="signal-value" style="color: var(--ochre);">178<span style="font-size:10px; color:var(--text-muted)">g</span></span>
+            <span class="signal-delta" style="color:var(--ochre);">+36 vs avg</span>
+          </div>
+          <span class="signal-status on-track">On Track</span>
+        </div>
+
+        <div class="signal-row">
+          <div class="signal-name" style="color:var(--dawn);">Water</div>
+          <div class="signal-mid">
+            <span class="signal-value" style="color: var(--dawn);">750<span style="font-size:10px; color:var(--text-muted)">ml</span></span>
+            <span class="signal-delta" style="color:var(--dawn);">&minus;285 vs avg</span>
+          </div>
+          <span class="signal-status off-track">Off Track</span>
+        </div>
+
+        <div class="signal-row">
+          <div class="signal-name">Calories in</div>
+          <div class="signal-mid">
+            <span class="signal-value" style="color: var(--text-secondary);">1763<span style="font-size:10px; color:var(--text-muted)">kcal</span></span>
+            <span class="signal-delta" style="color:var(--ochre);">&minus;130 vs avg</span>
+          </div>
+          <span class="signal-status on-track">On Track</span>
+        </div>
+
+        <!-- Strain group -->
+        <div class="group-row" style="margin-top: 6px;">
+          <div class="dot" style="background: var(--clay);"></div>
+          <span style="color: var(--clay); opacity: 0.7;">Strain</span>
+        </div>
+
+        <div class="signal-row">
+          <div class="signal-name">Training</div>
+          <div class="signal-mid">
+            <span class="signal-value" style="color: var(--clay);">218<span style="font-size:10px; color:var(--text-muted)">min</span></span>
+            <span class="signal-delta" style="color:var(--clay);">+85 vs avg</span>
+          </div>
+          <span class="signal-status off-track" style="color:var(--clay); background:rgba(196,133,106,0.1);">Heavy</span>
+        </div>
+
+        <div class="signal-row">
+          <div class="signal-name" style="color:var(--clay);">Resting HR</div>
+          <div class="signal-mid">
+            <span class="signal-value" style="color: var(--clay);">73<span style="font-size:10px; color:var(--text-muted)">bpm</span></span>
+            <span class="signal-delta" style="color:var(--clay);">+7 vs avg</span>
+          </div>
+          <span class="signal-status off-track" style="color:var(--clay); background:rgba(196,133,106,0.1);">High</span>
+        </div>
+
+        <div class="signal-row">
+          <div class="signal-name">Weight</div>
+          <div class="signal-mid">
+            <span class="signal-value" style="color: var(--ochre-light);">68.3<span style="font-size:10px; color:var(--text-muted)">kg</span></span>
+            <span class="signal-delta" style="color:var(--ochre);">&minus;0.1 vs avg</span>
+          </div>
+          <span class="signal-status improving">Improving</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab-item active"><div class="tab-icon"></div><span class="tab-label">Home</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Calendar</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Log</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Trends</span></div>
+  </div>
+</div>
+
+<div class="screen-divider"></div>
+
+<!-- ========== SCREEN 3: SIGNAL DETAIL — SLEEP ========== -->
+<div class="screen-label">SIGNAL DETAIL — SLEEP (TAP ROW)</div>
+<div class="phone">
+  <div class="status-bar"><span>9:41</span><span style="opacity:0.5">GOE</span></div>
+  <div class="phone-content">
+
+    <div class="card" style="padding-bottom: var(--xl);">
+      <div class="detail-header">
+        <div>
+          <span class="label" style="color: var(--dawn);">SLEEP</span>
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 3px;">7-day trend vs your baseline</div>
+        </div>
+        <a class="edit-link" href="#">Edit Target &rsaquo;</a>
+      </div>
+
+      <div class="chart-container">
+        <svg viewBox="0 0 310 200" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <linearGradient id="gw" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#d4a04a" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="#d4a04a" stop-opacity="0.02"/>
+            </linearGradient>
+            <linearGradient id="gc" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#7FAABC" stop-opacity="0.02"/>
+              <stop offset="100%" stop-color="#7FAABC" stop-opacity="0.30"/>
+            </linearGradient>
+            <linearGradient id="gd" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#5a8298" stop-opacity="0.03"/>
+              <stop offset="100%" stop-color="#2a4a5a" stop-opacity="0.15"/>
+            </linearGradient>
+            <radialGradient id="gtd">
+              <stop offset="0%" stop-color="#e8c47a" stop-opacity="0.8"/>
+              <stop offset="50%" stop-color="#e8c47a" stop-opacity="0.2"/>
+              <stop offset="100%" stop-color="#e8c47a" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+
+          <!--
+            Y: 3hr(y=180) to 9hr(y=10). 1hr = 28.3px
+            Baseline 6.0hr: y=180-(6-3)*28.3 = 180-85 = 95
+            Target 7.0: y=180-(7-3)*28.3 = 180-113 = 67
+            Target 8.5: y=180-(8.5-3)*28.3 = 180-156 = 24
+
+            Data: x positions 20,65,110,155,200,245,285
+            Mar 8:  4.72 → y=180-(4.72-3)*28.3 = 180-48.7 = 131
+            Mar 9:  7.25 → y=180-(7.25-3)*28.3 = 180-120 = 60
+            Mar 10: 4.45 → y=180-(4.45-3)*28.3 = 180-41 = 139
+            Mar 11: 6.55 → y=180-(6.55-3)*28.3 = 180-100 = 80
+            Mar 12: 7.15 → y=180-(7.15-3)*28.3 = 180-117 = 63
+            Mar 13: 6.68 → y=180-(6.68-3)*28.3 = 180-104 = 76
+            Mar 14: 6.42 → y=180-(6.42-3)*28.3 = 180-97 = 83
+          -->
+
+          <!-- Underwater deep zone -->
+          <rect x="10" y="67" width="290" height="113" fill="url(#gd)" rx="3"/>
+
+          <!-- Target zone -->
+          <rect x="10" y="24" width="290" height="43" fill="rgba(212,160,74,0.07)" rx="2"/>
+          <line x1="10" y1="24" x2="300" y2="24" stroke="#d4a04a" stroke-opacity="0.12" stroke-width="0.5"/>
+          <line x1="10" y1="67" x2="300" y2="67" stroke="#d4a04a" stroke-opacity="0.18" stroke-width="0.5"/>
+          <text x="305" y="27" font-family="JetBrains Mono, monospace" font-size="7" fill="#d4a04a" opacity="0.4" text-anchor="end">8.5</text>
+          <text x="305" y="70" font-family="JetBrains Mono, monospace" font-size="7" fill="#d4a04a" opacity="0.4" text-anchor="end">7.0</text>
+
+          <!-- Baseline -->
+          <line x1="10" y1="95" x2="300" y2="95" stroke="#7a7060" stroke-dasharray="3 3" stroke-width="0.7" opacity="0.5"/>
+          <text x="305" y="98" font-family="JetBrains Mono, monospace" font-size="7" fill="#7a7060" opacity="0.4" text-anchor="end">6.0</text>
+
+          <!-- Warm fill above baseline -->
+          <clipPath id="ca"><rect x="0" y="0" width="310" height="95"/></clipPath>
+          <path d="M20,131 C42,96 42,60 65,60 C88,60 88,139 110,139 C132,139 132,80 155,80 C178,80 178,63 200,63 C222,63 222,76 245,76 C268,76 268,83 285,83 L285,95 L20,95 Z" fill="url(#gw)" clip-path="url(#ca)"/>
+
+          <!-- Cool fill below baseline -->
+          <clipPath id="cb"><rect x="0" y="95" width="310" height="90"/></clipPath>
+          <path d="M20,131 C42,96 42,60 65,60 C88,60 88,139 110,139 C132,139 132,80 155,80 C178,80 178,63 200,63 C222,63 222,76 245,76 C268,76 268,83 285,83 L285,95 L20,95 Z" fill="url(#gc)" clip-path="url(#cb)"/>
+
+          <!-- Line -->
+          <path d="M20,131 C42,96 42,60 65,60 C88,60 88,139 110,139 C132,139 132,80 155,80 C178,80 178,63 200,63 C222,63 222,76 245,76 C268,76 268,83 285,83" fill="none" stroke="#b0a070" stroke-width="1.8" stroke-linecap="round"/>
+
+          <!-- Points with values -->
+          <circle cx="20" cy="131" r="2.5" fill="#7FAABC" opacity="0.6"/>
+          <text x="20" y="125" font-family="JetBrains Mono, monospace" font-size="8" fill="#7FAABC" opacity="0.6" text-anchor="middle">4.7</text>
+
+          <circle cx="65" cy="60" r="2.5" fill="#d4a04a" opacity="0.6"/>
+          <text x="65" y="54" font-family="JetBrains Mono, monospace" font-size="8" fill="#d4a04a" opacity="0.6" text-anchor="middle">7.3</text>
+
+          <circle cx="110" cy="139" r="2.5" fill="#7FAABC" opacity="0.6"/>
+          <text x="110" y="151" font-family="JetBrains Mono, monospace" font-size="8" fill="#7FAABC" opacity="0.6" text-anchor="middle">4.5</text>
+
+          <circle cx="155" cy="80" r="2.5" fill="#d4a04a" opacity="0.6"/>
+          <text x="155" y="74" font-family="JetBrains Mono, monospace" font-size="8" fill="#d4a04a" opacity="0.6" text-anchor="middle">6.6</text>
+
+          <circle cx="200" cy="63" r="2.5" fill="#d4a04a" opacity="0.7"/>
+          <text x="200" y="57" font-family="JetBrains Mono, monospace" font-size="8" fill="#d4a04a" opacity="0.7" text-anchor="middle">7.2</text>
+
+          <circle cx="245" cy="76" r="2.5" fill="#d4a04a" opacity="0.6"/>
+          <text x="245" y="70" font-family="JetBrains Mono, monospace" font-size="8" fill="#d4a04a" opacity="0.6" text-anchor="middle">6.7</text>
+
+          <!-- Today glow -->
+          <circle cx="285" cy="83" r="9" fill="url(#gtd)"/>
+          <circle cx="285" cy="83" r="3" fill="#e8c47a"/>
+          <circle cx="285" cy="83" r="1.5" fill="#f0ece4"/>
+          <text x="285" y="77" font-family="JetBrains Mono, monospace" font-size="8" fill="#e8c47a" font-weight="600" text-anchor="middle">6.4</text>
+
+          <!-- Day labels -->
+          <text x="20" y="194" font-family="Inter, sans-serif" font-size="8" fill="#7a7060" text-anchor="middle">Sat</text>
+          <text x="65" y="194" font-family="Inter, sans-serif" font-size="8" fill="#7a7060" text-anchor="middle">Sun</text>
+          <text x="110" y="194" font-family="Inter, sans-serif" font-size="8" fill="#7a7060" text-anchor="middle">Mon</text>
+          <text x="155" y="194" font-family="Inter, sans-serif" font-size="8" fill="#7a7060" text-anchor="middle">Tue</text>
+          <text x="200" y="194" font-family="Inter, sans-serif" font-size="8" fill="#7a7060" text-anchor="middle">Wed</text>
+          <text x="245" y="194" font-family="Inter, sans-serif" font-size="8" fill="#7a7060" text-anchor="middle">Thu</text>
+          <text x="285" y="194" font-family="Inter, sans-serif" font-size="8" fill="#e8c47a" font-weight="600" text-anchor="middle">Today</text>
+        </svg>
+      </div>
+
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-swatch" style="background: var(--ochre); opacity:0.6;"></div>Target zone</div>
+        <div class="legend-item"><div class="legend-swatch" style="background: var(--text-muted); height:0; border-top: 1px dashed var(--text-muted);"></div>Baseline</div>
+        <div class="legend-item"><div class="legend-swatch" style="background: var(--dawn); opacity:0.5;"></div>Below</div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-cell">
+          <div class="label">TARGET</div>
+          <div class="value" style="color: var(--ochre);">7.0<span style="font-size:11px; opacity:0.5">&ndash;</span>8.5</div>
+          <div class="subtext">hours</div>
+        </div>
+        <div class="stat-cell">
+          <div class="label">BASELINE</div>
+          <div class="value" style="color: var(--text-secondary);">6.0</div>
+          <div class="subtext">28-day avg</div>
+        </div>
+        <div class="stat-cell">
+          <div class="label">GAP</div>
+          <div class="value" style="color: var(--dawn);">&minus;1.0</div>
+          <div class="subtext">below target</div>
+        </div>
+      </div>
+
+      <div class="gap-indicator below" style="margin: 0 var(--lg) var(--lg);">
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 2v7M4 6l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Baseline 1.0hr below target floor — improving this week
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab-item active"><div class="tab-icon"></div><span class="tab-label">Home</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Calendar</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Log</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Trends</span></div>
+  </div>
+</div>
+
+<div class="screen-divider"></div>
+
+<!-- ========== SCREEN 4: GOALS PAGE ========== -->
+<div class="screen-label">GOALS PAGE</div>
+<div class="phone">
+  <div class="status-bar"><span>9:41</span><span style="opacity:0.5">GOE</span></div>
+  <div class="phone-content">
+
+    <div class="goals-header">
+      <div class="back-btn">&lsaquo;</div>
+      <div class="goals-title">Goals</div>
+    </div>
+
+    <!-- Sleep -->
+    <div class="goal-section uw">
+      <div class="goal-top">
+        <div>
+          <div class="goal-signal-name">Sleep</div>
+          <span class="label" style="color: var(--dawn);">BELOW TARGET</span>
+        </div>
+        <div class="goal-target-range">7.0 &ndash; 8.5 hr</div>
+      </div>
+      <div class="goal-row"><span class="goal-row-label">28-day baseline</span><span class="goal-row-value" style="color:var(--dawn);">6.0 hr</span></div>
+      <div class="goal-row"><span class="goal-row-label">7-day average</span><span class="goal-row-value" style="color:var(--ochre);">6.2 hr</span></div>
+      <div class="goal-row"><span class="goal-row-label">Today</span><span class="goal-row-value">6.4 hr</span></div>
+      <div class="goal-gap below">1.0hr below target floor &middot; improving</div>
+      <button class="goal-edit-btn">Set New Target</button>
+    </div>
+
+    <!-- RHR -->
+    <div class="goal-section uw">
+      <div class="goal-top">
+        <div>
+          <div class="goal-signal-name">Resting HR</div>
+          <span class="label" style="color: var(--clay);">ABOVE TARGET</span>
+        </div>
+        <div class="goal-target-range">48 &ndash; 55 bpm</div>
+      </div>
+      <div class="goal-row"><span class="goal-row-label">28-day baseline</span><span class="goal-row-value" style="color:var(--clay);">66 bpm</span></div>
+      <div class="goal-row"><span class="goal-row-label">7-day average</span><span class="goal-row-value" style="color:var(--clay);">68 bpm</span></div>
+      <div class="goal-gap above">11bpm above target ceiling &middot; volatile</div>
+      <button class="goal-edit-btn">Set New Target</button>
+    </div>
+
+    <!-- Weight -->
+    <div class="goal-section">
+      <div class="goal-top">
+        <div>
+          <div class="goal-signal-name">Weight</div>
+          <span class="label" style="color: var(--ochre);">NEAR TARGET</span>
+        </div>
+        <div class="goal-target-range">65 &ndash; 68 kg</div>
+      </div>
+      <div class="goal-row"><span class="goal-row-label">28-day baseline</span><span class="goal-row-value">68.3 kg</span></div>
+      <div class="goal-row"><span class="goal-row-label">Latest</span><span class="goal-row-value" style="color:var(--ochre-light);">68.3 kg</span></div>
+      <div class="goal-gap near">0.3kg above target ceiling &middot; nearly there</div>
+      <button class="goal-edit-btn">Set New Target</button>
+    </div>
+
+    <!-- Protein -->
+    <div class="goal-section uw">
+      <div class="goal-top">
+        <div>
+          <div class="goal-signal-name">Protein</div>
+          <span class="label" style="color: var(--dawn);">BELOW TARGET</span>
+        </div>
+        <div class="goal-target-range">160 &ndash; 200 g</div>
+      </div>
+      <div class="goal-row"><span class="goal-row-label">28-day baseline</span><span class="goal-row-value" style="color:var(--dawn);">142 g</span></div>
+      <div class="goal-row"><span class="goal-row-label">Yesterday</span><span class="goal-row-value" style="color:var(--ochre);">178 g</span></div>
+      <div class="goal-gap below">18g below target floor &middot; improving</div>
+      <button class="goal-edit-btn">Set New Target</button>
+    </div>
+
+    <!-- Water -->
+    <div class="goal-section uw">
+      <div class="goal-top">
+        <div>
+          <div class="goal-signal-name">Water</div>
+          <span class="label" style="color: var(--dawn);">WELL BELOW TARGET</span>
+        </div>
+        <div class="goal-target-range">2500 &ndash; 3500 ml</div>
+      </div>
+      <div class="goal-row"><span class="goal-row-label">7-day average</span><span class="goal-row-value" style="color:var(--dawn);">1035 ml</span></div>
+      <div class="goal-gap below">1465ml below target floor</div>
+      <button class="goal-edit-btn">Set New Target</button>
+    </div>
+
+    <!-- Training Load -->
+    <div class="goal-section">
+      <div class="goal-top">
+        <div>
+          <div class="goal-signal-name">Training Load</div>
+          <span class="label" style="color: var(--clay);">HEAVY</span>
+        </div>
+        <div class="goal-target-range">60 &ndash; 150 min/day</div>
+      </div>
+      <div class="goal-row"><span class="goal-row-label">7-day avg</span><span class="goal-row-value" style="color:var(--clay);">133 min</span></div>
+      <div class="goal-row"><span class="goal-row-label">Yesterday</span><span class="goal-row-value" style="color:var(--clay);">218 min</span></div>
+      <div class="goal-gap above">Peak strain days Mon/Tue/Thu</div>
+      <button class="goal-edit-btn">Set New Target</button>
+    </div>
+
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Home</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Calendar</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Log</span></div>
+    <div class="tab-item"><div class="tab-icon"></div><span class="tab-label">Trends</span></div>
+  </div>
+</div>
+
+</body>
+</html>

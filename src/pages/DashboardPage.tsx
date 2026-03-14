@@ -10,7 +10,8 @@ import GoalRingsRow from "@/components/dashboard/GoalRingsRow";
 import SleepCard from "@/components/dashboard/SleepCard";
 import SleepHistorySheet from "@/components/dashboard/SleepHistorySheet";
 import IntradayHRChart from "@/components/dashboard/IntradayHRChart";
-import ReadinessCard from "@/components/dashboard/ReadinessCard";
+import MomentumCard from "@/components/dashboard/MomentumCard";
+import useMomentum from "@/hooks/useMomentum";
 import VitalsCard from "@/components/dashboard/VitalsCard";
 import StreaksCard from "@/components/dashboard/StreaksCard";
 import CardSkeleton from "@/components/dashboard/CardSkeleton";
@@ -51,6 +52,7 @@ export default function DashboardPage() {
   const isToday = selectedDate === todayLocal();
 
   const { readiness, vitals, streaks } = useDashboard();
+  const momentum = useMomentum();
   const v2 = useDashboardV2(selectedDate);
   const goalRings = useGoalRings(selectedDate);
   const sleepStages = useSleepStages(selectedDate);
@@ -65,6 +67,7 @@ export default function DashboardPage() {
   const refetchAll = useCallback(() => {
     setSelectedDate(todayLocal());
     readiness.refetch();
+    momentum.refetch();
     vitals.refetch();
     streaks.refetch();
     v2.refetch();
@@ -234,15 +237,15 @@ export default function DashboardPage() {
       {/* Intraday HR */}
       <IntradayHRChart data={intradayHR.data} loading={intradayHR.loading} />
 
-      {/* Readiness */}
-      {readiness.loading ? (
+      {/* Momentum */}
+      {momentum.loading ? (
         <CardSkeleton variant="readiness" />
-      ) : readiness.error ? (
-        <CardError section="readiness" onRetry={readiness.refetch} />
-      ) : readiness.data ? (
-        <ReadinessCard data={readiness.data} />
+      ) : momentum.error ? (
+        <CardError section="momentum" onRetry={momentum.refetch} />
+      ) : momentum.data ? (
+        <MomentumCard data={momentum.data} />
       ) : (
-        <CardEmpty section="readiness" />
+        <CardEmpty section="momentum" />
       )}
 
       {/* Activity chart */}

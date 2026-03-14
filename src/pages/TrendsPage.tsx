@@ -12,6 +12,7 @@ import WorkoutVolumeChart from "@/components/trends/WorkoutVolumeChart";
 import ExerciseProgressSection from "@/components/trends/ExerciseProgressSection";
 import NutritionTrendsChart from "@/components/trends/NutritionTrendsChart";
 import WaterTrendsChart from "@/components/trends/WaterTrendsChart";
+import useGoals from "@/hooks/useGoals";
 import { AlertTriangle } from "lucide-react";
 
 /* ── Inline skeleton (avoids modifying dashboard CardSkeleton) ── */
@@ -109,6 +110,9 @@ export default function TrendsPage() {
   const [days] = useState<TimeRange>(30);
   const { data, loading, error, refetch } = useTrendsData(days);
   const strengthTrends = useStrengthTrends(days);
+  const { targets: goalTargets } = useGoals();
+  const proteinTarget = goalTargets["protein_g"]?.target_min ?? 180;
+  const waterTarget = goalTargets["water_ml"]?.target_min ?? 3000;
 
   return (
     <div
@@ -172,14 +176,14 @@ export default function TrendsPage() {
               </span>
             </div>
           )}
-          <EnergyBalanceChart />
-          <ProteinWeightChart />
+          <EnergyBalanceChart proteinTarget={proteinTarget} />
+          <ProteinWeightChart proteinTarget={proteinTarget} />
           <StrengthQualityChart />
           <RunHRZonesChart />
           <RecoverySparklines data={data} />
           <PerformanceOverlay data={data} />
-          <NutritionTrendsChart nutrition={data.nutrition} />
-          <WaterTrendsChart water={data.water} />
+          <NutritionTrendsChart nutrition={data.nutrition} proteinTarget={proteinTarget} />
+          <WaterTrendsChart water={data.water} waterTarget={waterTarget} />
           <WorkoutVolumeChart
             sessions={strengthTrends.sessions}
             loading={strengthTrends.loading}
