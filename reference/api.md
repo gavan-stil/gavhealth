@@ -35,7 +35,7 @@ All require `X-API-Key` header. All support `?days=N` unless noted.
 | `/api/sleep` | Sleep entries (date, duration_hrs, deep_pct, sleep_hr) | ~822 |
 | `/api/activity` | Activities (runs, rides, strength). Also `?type=` filter | ~1378 |
 | `/api/rhr` | Resting heart rate (date, rhr_bpm) | ~1845 |
-| `/api/activities/feed` | Activity feed for log page. Returns `[{ id, type, date, duration_minutes, avg_bpm, effort, effort_manually_set }]`. **`start_time` NOT returned** — `activity_logs` table has no start_time from Withings sync. Frontend accepts it optionally and will display when available. Backend migration + sync update required to add it. | — |
+| `/api/activities/feed` | Activity feed for log page. Returns `[{ id, type, date, start_time (ISO+TZ or null), duration_minutes, avg_bpm, min_hr, max_hr, distance_km, avg_pace_secs, effort, effort_manually_set }]`. Supports `?days=N`. **Curl-verified 2026-03-14** — all fields confirmed present. `start_time` IS returned when available. | — |
 | `/api/food` | Food logs for date. Use `?date=YYYY-MM-DD` | 0 (empty until logged) |
 | `/api/food/weekly` | Weekly macro aggregates | varies |
 | `/api/strength/:exercise_id` | History for one exercise | 0 |

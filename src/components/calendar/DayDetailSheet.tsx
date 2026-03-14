@@ -8,6 +8,22 @@ import ActivityEditSheet from "@/components/ActivityEditSheet";
 import type { EditableType, EditInit } from "@/components/ActivityEditSheet";
 
 /* ─── Domain types ───────────────────────────────────────────────────── */
+type EffortLevel = "basic" | "mid" | "lets_go";
+
+type FeedItemDetail = {
+  id: number;
+  start_time: string | null;
+  duration_minutes: number;
+  avg_bpm: number | null;
+  min_hr: number | null;
+  max_hr: number | null;
+  effort: EffortLevel;
+  effort_manually_set: boolean;
+};
+
+const EFFORT_ENERGY: Record<EffortLevel, number> = { basic: 2, mid: 4, lets_go: 5 };
+const EFFORT_LABEL: Record<EffortLevel, string> = { basic: "Basic", mid: "Mid", lets_go: "Let's Go" };
+
 type RawSession = {
   id: number;
   session_date: string;
@@ -652,6 +668,21 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
             );
           })}
 
+          {/* ── Workout activities with no linked session ── */}
+          {!loadingStrength && dots
+            .filter(d => d.category === "strength" && !sessions.some(s => s.activityLogId === d.recordId))
+            .map(dot => (
+              <UnmatchedWorkoutCard
+                key={`u-${dot.recordId}`}
+                dot={dot}
+                date={date!}
+                onEdit={(id, init) => setEditTarget({ type: "activity", id, label: "Workout", init })}
+                onDeleteActivity={handleDeleteActivity}
+                deletingActivityId={deletingActivityId}
+              />
+            ))
+          }
+
           {/* ── Non-strength dot cards ── */}
           {nonStrengthDots.map((dot) => {
             const key = `d-${dot.category}`;
@@ -929,5 +960,219 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
         }
       `}</style>
     </>
+  );
+}
+
+/* ─── UnmatchedWorkoutCard ───────────────────────────────────────────── */
+function UnmatchedWorkoutCard({
+  dot,
+  date,
+  onEdit,
+  onDeleteActivity,
+  deletingActivityId,
+}: {
+  dot: CategoryDot;
+  date: string;
+  onEdit: (id: number, init: EditInit) => void;
+  onDeleteActivity: (id: number) => void;
+  deletingActivityId: number | null;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [detail, setDetail] = useState<FeedItemDetail | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [effort, setEffort] = useState<EffortLevel>("mid");
+
+  const activityId = dot.recordId!;
+  const WCOL = CATEGORY_COLORS.strength;
+
+  useEffect(() => {
+    if (!expanded || detail !== null) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const today = new Date();
+        const target = new Date(date + "T00:00:00");
+        const days = Math.max(2, Math.ceil((today.getTime() - target.getTime()) / 86400000) + 2);
+        const feed = await apiFetch<FeedItemDetail[]>(`/api/activities/feed?days=${days}`);
+        if (cancelled) return;
+        const item = feed.find(f => f.id === activityId);
+        if (!item) return;
+        setDetail(item);
+        setEffort(item.effort);
+      } catch (err) {
+        console.error("[UnmatchedWorkoutCard] fetch error:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [expanded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleEffort = async (level: EffortLevel) => {
+    const prev = effort;
+    setEffort(level);
+    try {
+      await apiFetch(`/api/activities/${activityId}/effort`, {
+        method: "PATCH",
+        body: JSON.stringify({ effort: level }),
+      });
+    } catch {
+      setEffort(prev);
+    }
+  };
+
+  // Build HR stat cells — only include populated values
+  const hrStats: Array<{ val: string; lbl: string }> = detail ? [
+    ...(dot.duration ? [{ val: dot.duration, lbl: "Duration" }] : []),
+    ...(detail.avg_bpm != null ? [{ val: String(detail.avg_bpm), lbl: "Avg BPM" }] : []),
+    ...(detail.min_hr  != null ? [{ val: String(detail.min_hr),  lbl: "Low" }] : []),
+    ...(detail.max_hr  != null ? [{ val: String(detail.max_hr),  lbl: "High" }] : []),
+  ] : [];
+
+  return (
+    <div style={CARD}>
+      {/* Header */}
+      <div
+        onClick={() => setExpanded(prev => !prev)}
+        style={{
+          display: "flex", alignItems: "center", gap: 12,
+          padding: expanded ? "12px 14px 10px" : "11px 14px",
+          cursor: "pointer",
+        }}
+      >
+        <div style={{ width: 3, alignSelf: "stretch", minHeight: 20, borderRadius: 2, background: WCOL, flexShrink: 0 }} />
+        <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+          <span style={{ font: "700 10px/1 'Inter',sans-serif", letterSpacing: "1.2px", textTransform: "uppercase", color: WCOL, flexShrink: 0 }}>
+            Workout
+          </span>
+          {dot.isLetsGo && <EnergyIcon value={5} size={13} />}
+          {detail?.start_time && (
+            <span style={{ font: "500 10px/1 'JetBrains Mono',monospace", color: "var(--text-muted)", flexShrink: 0 }}>
+              {formatTime(detail.start_time)}
+            </span>
+          )}
+        </div>
+        {!expanded && dot.duration && (
+          <span style={{ font: "500 10px/1 'JetBrains Mono',monospace", color: "var(--text-muted)", flexShrink: 0 }}>
+            {dot.duration}
+          </span>
+        )}
+        <span style={{
+          fontSize: 11, color: "var(--text-muted)",
+          display: "inline-block",
+          transform: expanded ? "rotate(180deg)" : "none",
+          transition: "transform 0.2s",
+          flexShrink: 0, marginLeft: 4,
+        }}>▾</span>
+      </div>
+
+      {/* Expanded body */}
+      {expanded && (
+        <div style={{ padding: "0 14px 14px" }}>
+          <div style={SEP} />
+
+          {loading && !detail && (
+            <p style={{ font: "400 11px/1 'Inter',sans-serif", color: "var(--text-muted)", margin: "12px 0 0" }}>
+              Loading…
+            </p>
+          )}
+
+          {detail && (
+            <>
+              {/* Duration + HR stats block */}
+              {hrStats.length > 0 && (
+                <div style={{
+                  display: "flex",
+                  border: "1px solid var(--border-default)",
+                  borderRadius: 8,
+                  overflow: "hidden",
+                  marginTop: 12,
+                }}>
+                  {hrStats.map(({ val, lbl }, i) => (
+                    <div key={lbl} style={{
+                      flex: 1, padding: "9px 10px",
+                      display: "flex", flexDirection: "column", gap: 3,
+                      borderLeft: i > 0 ? "1px solid var(--border-default)" : undefined,
+                    }}>
+                      <span style={{ font: "700 15px/1 'JetBrains Mono',monospace", letterSpacing: "-0.5px", color: "var(--text-primary)" }}>{val}</span>
+                      <span style={{ font: "500 9px/1 'Inter',sans-serif", letterSpacing: "0.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>{lbl}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Effort picker */}
+              <div style={{ marginTop: 12 }}>
+                <div style={{ font: "600 9px/1 'Inter',sans-serif", letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 6 }}>
+                  Effort
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {(["basic", "mid", "lets_go"] as const).map(level => (
+                    <button
+                      key={level}
+                      onClick={(e) => { e.stopPropagation(); handleEffort(level); }}
+                      style={{
+                        flex: 1, padding: "6px 0",
+                        borderRadius: "var(--radius-pill)",
+                        border: `1px solid ${effort === level ? "var(--ochre)" : "var(--border-default)"}`,
+                        background: effort === level ? "var(--ochre)" : "transparent",
+                        color: effort === level ? "var(--bg-base)" : "var(--text-muted)",
+                        font: "600 11px/1 'Inter',sans-serif",
+                        cursor: "pointer",
+                        display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4,
+                      }}
+                    >
+                      <EnergyIcon value={EFFORT_ENERGY[level]} size={12} />
+                      {EFFORT_LABEL[level]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Edit + Delete */}
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(activityId, {
+                      duration_mins: detail.duration_minutes,
+                      avg_hr: detail.avg_bpm ?? undefined,
+                      min_hr: detail.min_hr ?? undefined,
+                      max_hr: detail.max_hr ?? undefined,
+                    });
+                  }}
+                  style={{
+                    flex: 1,
+                    font: "500 10px/1 'Inter',sans-serif", letterSpacing: "0.3px",
+                    padding: "7px 10px", borderRadius: 6,
+                    border: "1px solid var(--border-default)",
+                    background: "transparent", color: "var(--text-muted)",
+                    cursor: "pointer",
+                  }}
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDeleteActivity(activityId); }}
+                  disabled={deletingActivityId === activityId}
+                  style={{
+                    flex: 1,
+                    font: "500 10px/1 'Inter',sans-serif", letterSpacing: "0.3px",
+                    padding: "7px 10px", borderRadius: 6,
+                    border: "1px solid var(--signal-bad)",
+                    background: "transparent", color: "var(--signal-bad)",
+                    cursor: deletingActivityId === activityId ? "wait" : "pointer",
+                    opacity: deletingActivityId === activityId ? 0.5 : 1,
+                  }}
+                >
+                  {deletingActivityId === activityId ? "Deleting…" : "Delete workout"}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
