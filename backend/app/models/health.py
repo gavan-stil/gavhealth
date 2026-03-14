@@ -14,6 +14,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Index,
+    BigInteger,
     Integer,
     String,
     Text,
@@ -172,7 +173,7 @@ class SaunaLog(Base):
     did_breathing: Mapped[bool] = mapped_column(Boolean, default=False)
     did_devotions: Mapped[bool] = mapped_column(Boolean, default=False)
     notes: Mapped[str | None] = mapped_column(Text)
-    withings_activity_id: Mapped[int | None] = mapped_column(Integer)
+    withings_activity_id: Mapped[int | None] = mapped_column(BigInteger)
     source: Mapped[str] = mapped_column(String(50), nullable=False, default="manual")
 
 
