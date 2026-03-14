@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { MomentumSignalsData, MomentumDay } from "@/hooks/useMomentumSignals";
+import type { MomentumSignal } from "@/hooks/useMomentum";
+import GoalDetailSheet from "./GoalDetailSheet";
 
 interface Props {
   data: MomentumSignalsData;
@@ -10,11 +12,11 @@ interface Props {
 const PROGRESS_SIGNALS = ["weight_kg", "rhr_bpm", "calories_in", "calories_out"] as const;
 type ProgressSignalKey = typeof PROGRESS_SIGNALS[number];
 
-const SIGNAL_META: Record<ProgressSignalKey, { label: string; unit: string }> = {
-  weight_kg:    { label: "Weight",     unit: "kg" },
-  rhr_bpm:      { label: "Resting HR", unit: "bpm" },
-  calories_in:  { label: "Cal in",     unit: "kcal" },
-  calories_out: { label: "Cal burned", unit: "kcal" },
+const SIGNAL_META: Record<ProgressSignalKey, { label: string; unit: string; direction: "higher" | "lower" | "range" }> = {
+  weight_kg:    { label: "Weight",     unit: "kg",   direction: "higher" }, // gaining toward goal
+  rhr_bpm:      { label: "Resting HR", unit: "bpm",  direction: "lower"  },
+  calories_in:  { label: "Cal in",     unit: "kcal", direction: "range"  },
+  calories_out: { label: "Cal burned", unit: "kcal", direction: "range"  },
 };
 
 function fmtValue(key: ProgressSignalKey, v: number | null): string {
@@ -31,17 +33,12 @@ function fmtDelta(key: ProgressSignalKey, today: number | null, baseline: number
   return `${prefix}${Math.round(dev)} vs avg`;
 }
 
-// For each signal: is the trend direction good (toward goal)?
-// weight: higher = good (gaining toward 71-72)
-// rhr: lower = good
-// calories_in: neutral tracking
-// calories_out: neutral tracking
 function trendColor(key: ProgressSignalKey, today: number | null, baseline: number | null): string {
   if (today === null || baseline === null) return "#7a7060";
   const up = today > baseline;
   if (key === "weight_kg") return up ? "#e8c47a" : "#7FAABC";
   if (key === "rhr_bpm")   return up ? "#7FAABC" : "#e8c47a";
-  return "#b0a890"; // neutral for calories
+  return "#b0a890";
 }
 
 function trendArrow(_key: ProgressSignalKey, today: number | null, baseline: number | null): string {
@@ -49,6 +46,54 @@ function trendArrow(_key: ProgressSignalKey, today: number | null, baseline: num
   const diff = today - baseline;
   if (Math.abs(diff) < 0.5) return "→";
   return diff > 0 ? "↑" : "↓";
+}
+
+/** Construct a synthetic MomentumSignal for GoalDetailSheet. */
+function toMomentumSignal(
+  key: ProgressSignalKey,
+  days: MomentumDay[],
+  baselines: Record<string, number | null>,
+  targets: Record<string, { min: number | null; max: number | null }>,
+): MomentumSignal {
+  const meta = SIGNAL_META[key];
+  const last7 = days.slice(-7);
+  const todayVal = (last7[last7.length - 1]?.[key as keyof MomentumDay] as number | null) ?? null;
+  const baseline = baselines[key] ?? null;
+  const target = targets[key];
+  const tMin = target?.min ?? null;
+  const tMax = target?.max ?? null;
+
+  const vals7 = last7
+    .map(d => d[key as keyof MomentumDay] as number | null)
+    .filter((v): v is number => v !== null);
+  const avg7 = vals7.length > 0 ? vals7.reduce((a, b) => a + b, 0) / vals7.length : null;
+
+  let trend_7d: "improving" | "declining" | "stable" = "stable";
+  if (avg7 !== null && baseline !== null) {
+    if (meta.direction === "higher") trend_7d = avg7 > baseline ? "improving" : "declining";
+    else if (meta.direction === "lower") trend_7d = avg7 < baseline ? "improving" : "declining";
+  }
+
+  let status: "on_track" | "improving" | "off_track" = "off_track";
+  if (todayVal !== null && tMin !== null && tMax !== null) {
+    if (todayVal >= tMin && todayVal <= tMax) status = "on_track";
+    else if (trend_7d === "improving") status = "improving";
+  }
+
+  return {
+    signal: key,
+    label: meta.label,
+    unit: meta.unit,
+    group: "progress",
+    today: todayVal,
+    baseline_28d: baseline,
+    avg_7d: avg7,
+    trend_7d,
+    target_min: tMin,
+    target_max: tMax,
+    status,
+    gap_pct: null,
+  };
 }
 
 function smoothPath(pts: Array<{ x: number; y: number }>): string {
@@ -133,23 +178,19 @@ function WeightChart({ days, targetMin, targetMax }: {
         </>
       )}
 
-      {/* Area + line */}
       {areaPath && <path d={areaPath} fill="url(#pc-wg)" />}
       {linePath && <path d={linePath} fill="none" stroke="url(#pc-wl)" strokeWidth="1.8" strokeLinecap="round" />}
 
-      {/* Dots (not today) */}
       {pts.slice(0, -1).map((p, i) => (
         <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#7FAABC" opacity="0.5" />
       ))}
 
-      {/* Today glow */}
       {todayPt && <>
         <circle cx={todayPt.x} cy={todayPt.y} r="8" fill="url(#pc-tg)" />
         <circle cx={todayPt.x} cy={todayPt.y} r="3" fill="#7FAABC" />
         <circle cx={todayPt.x} cy={todayPt.y} r="1.5" fill="#f0ece4" />
       </>}
 
-      {/* Day labels */}
       {labels.map((l) => (
         <text key={l.x} x={l.x} y={H - 3}
           fontFamily="Inter, sans-serif" fontSize="8"
@@ -160,7 +201,6 @@ function WeightChart({ days, targetMin, targetMax }: {
         >{l.label}</text>
       ))}
 
-      {/* Goal label */}
       {tZoneTop !== null && (
         <text x={W - 2} y={tZoneTop + 4} fontFamily="JetBrains Mono, monospace" fontSize="7" fill="#7FAABC" opacity="0.35" textAnchor="end">goal</text>
       )}
@@ -198,6 +238,7 @@ function MiniSparkline({ data, color }: { data: (number | null)[]; color: string
 
 export default function ProgressCard({ data }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const [detailSignal, setDetailSignal] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const last7 = data.days.slice(-7);
@@ -209,7 +250,6 @@ export default function ProgressCard({ data }: Props) {
   const weightBaseline = data.baselines?.["weight_kg"] ?? null;
   const weightToday = today?.weight_kg ?? null;
 
-  // Dynamic headline based on weight trend
   let headline = "Tracking body composition";
   let headlineArrow = "→";
   let arrowColor = "#7a7060";
@@ -230,123 +270,139 @@ export default function ProgressCard({ data }: Props) {
     }
   }
 
-  // Net calorie balance for footer
   const calIn = today?.calories_in ?? null;
   const calOut = today?.calories_out ?? null;
   const netBalance = calIn !== null && calOut !== null ? Math.round(calIn - calOut) : null;
 
+  // Build synthetic MomentumSignal list for GoalDetailSheet
+  const progressSignals: MomentumSignal[] = PROGRESS_SIGNALS.map(key =>
+    toMomentumSignal(key, data.days, data.baselines ?? {}, data.targets ?? {})
+  );
+
   return (
-    <div
-      style={{
-        background: "linear-gradient(180deg, rgba(127,170,188,0.05) 0%, var(--bg-card) 40%)",
-        border: "1px solid rgba(127,170,188,0.10)",
-        borderRadius: "var(--radius-lg)",
-        overflow: "hidden",
-        cursor: "pointer",
-      }}
-      onClick={() => setExpanded(e => !e)}
-    >
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 20px 0" }}>
-        <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "1.2px", textTransform: "uppercase", color: "#5a8a9a" }}>
-          PROGRESS
-        </span>
-        <button
-          onClick={e => { e.stopPropagation(); navigate("/goals"); }}
-          style={{ background: "none", border: "none", color: "#5a8a9a", fontSize: 11, fontWeight: 600, cursor: "pointer", padding: 0, letterSpacing: "0.3px" }}
-        >
-          Edit Goals ›
-        </button>
-      </div>
-
-      {/* Headline */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 20px 0" }}>
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: 16, fontWeight: 800, color: arrowColor, lineHeight: 1 }}>
-          {headlineArrow}
-        </span>
-        <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", letterSpacing: "-0.3px" }}>
-          {headline}
-        </span>
-      </div>
-
-      {/* Weight chart */}
-      <div style={{ marginTop: 8 }}>
-        <WeightChart days={data.days} targetMin={targetMin} targetMax={targetMax} />
-      </div>
-
-      {/* Footer */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 20px 20px" }}>
-        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-          {netBalance !== null
-            ? netBalance >= 0
-              ? `+${netBalance} kcal surplus`
-              : `${netBalance} kcal deficit`
-            : ""}
-        </span>
-        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-          Goal: {targetMin ?? "—"}–{targetMax ?? "—"} kg
-        </span>
-      </div>
-
-      {/* Expanded rows */}
-      {expanded && (
-        <div
-          style={{ borderTop: "1px solid rgba(255,255,255,0.03)", margin: "0 20px", paddingBottom: 20 }}
-          onClick={e => e.stopPropagation()}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 0 4px" }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#7FAABC" }} />
-            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", color: "#5a8a9a" }}>
-              Tracking
-            </span>
-          </div>
-
-          {PROGRESS_SIGNALS.map(key => {
-            const meta = SIGNAL_META[key];
-            const todayVal = (today?.[key as keyof MomentumDay] as number | null) ?? null;
-            const baseline = data.baselines?.[key] ?? null;
-            const col = trendColor(key, todayVal, baseline);
-            const arrow = trendArrow(key, todayVal, baseline);
-            const sparkData = data.days.slice(-7).map(d => (d[key as keyof MomentumDay] as number | null) ?? null);
-
-            return (
-              <div
-                key={key}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "80px 1fr auto 52px",
-                  alignItems: "center",
-                  padding: "8px 0",
-                  gap: 6,
-                  borderBottom: "1px solid rgba(255,255,255,0.02)",
-                }}
-              >
-                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)" }}>
-                  {meta.label}
-                </span>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700, letterSpacing: "-0.5px", color: col, minWidth: 36 }}>
-                    {fmtValue(key, todayVal)}
-                  </span>
-                  <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{meta.unit}</span>
-                  {fmtDelta(key, todayVal, baseline) && (
-                    <span style={{ fontSize: 10, color: "var(--text-muted)", marginLeft: 4 }}>
-                      {fmtDelta(key, todayVal, baseline)}
-                    </span>
-                  )}
-                </div>
-                <span style={{
-                  fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 100,
-                  background: "rgba(127,170,188,0.07)", color: col, whiteSpace: "nowrap",
-                }}>
-                  {arrow}
-                </span>
-                <MiniSparkline data={sparkData} color={col} />
-              </div>
-            );
-          })}
+    <>
+      <div
+        style={{
+          background: "linear-gradient(180deg, rgba(127,170,188,0.05) 0%, var(--bg-card) 40%)",
+          border: "1px solid rgba(127,170,188,0.10)",
+          borderRadius: "var(--radius-lg)",
+          overflow: "hidden",
+          cursor: "pointer",
+        }}
+        onClick={() => setExpanded(e => !e)}
+      >
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 20px 0" }}>
+          <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "1.2px", textTransform: "uppercase", color: "#5a8a9a" }}>
+            PROGRESS
+          </span>
+          <button
+            onClick={e => { e.stopPropagation(); navigate("/goals"); }}
+            style={{ background: "none", border: "none", color: "#5a8a9a", fontSize: 11, fontWeight: 600, cursor: "pointer", padding: 0, letterSpacing: "0.3px" }}
+          >
+            Edit Goals ›
+          </button>
         </div>
+
+        {/* Headline */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 20px 0" }}>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 16, fontWeight: 800, color: arrowColor, lineHeight: 1 }}>
+            {headlineArrow}
+          </span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", letterSpacing: "-0.3px" }}>
+            {headline}
+          </span>
+        </div>
+
+        {/* Weight chart */}
+        <div style={{ marginTop: 8 }}>
+          <WeightChart days={data.days} targetMin={targetMin} targetMax={targetMax} />
+        </div>
+
+        {/* Footer */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 20px 20px" }}>
+          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+            {netBalance !== null
+              ? netBalance >= 0
+                ? `+${netBalance} kcal surplus`
+                : `${netBalance} kcal deficit`
+              : ""}
+          </span>
+          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+            Goal: {targetMin ?? "—"}–{targetMax ?? "—"} kg
+          </span>
+        </div>
+
+        {/* Expanded rows */}
+        {expanded && (
+          <div
+            style={{ borderTop: "1px solid rgba(255,255,255,0.03)", margin: "0 20px", paddingBottom: 20 }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 0 4px" }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#7FAABC" }} />
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", color: "#5a8a9a" }}>
+                Tracking
+              </span>
+            </div>
+
+            {PROGRESS_SIGNALS.map(key => {
+              const meta = SIGNAL_META[key];
+              const todayVal = (today?.[key as keyof MomentumDay] as number | null) ?? null;
+              const baseline = data.baselines?.[key] ?? null;
+              const col = trendColor(key, todayVal, baseline);
+              const arrow = trendArrow(key, todayVal, baseline);
+              const sparkData = data.days.slice(-7).map(d => (d[key as keyof MomentumDay] as number | null) ?? null);
+
+              return (
+                <div
+                  key={key}
+                  onClick={() => setDetailSignal(key)}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "80px 1fr auto 52px",
+                    alignItems: "center",
+                    padding: "8px 0",
+                    gap: 6,
+                    borderBottom: "1px solid rgba(255,255,255,0.02)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)" }}>
+                    {meta.label}
+                  </span>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700, letterSpacing: "-0.5px", color: col, minWidth: 36 }}>
+                      {fmtValue(key, todayVal)}
+                    </span>
+                    <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{meta.unit}</span>
+                    {fmtDelta(key, todayVal, baseline) && (
+                      <span style={{ fontSize: 10, color: "var(--text-muted)", marginLeft: 4 }}>
+                        {fmtDelta(key, todayVal, baseline)}
+                      </span>
+                    )}
+                  </div>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 100,
+                    background: "rgba(127,170,188,0.07)", color: col, whiteSpace: "nowrap",
+                  }}>
+                    {arrow}
+                  </span>
+                  <MiniSparkline data={sparkData} color={col} />
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {detailSignal && (
+        <GoalDetailSheet
+          signal={detailSignal}
+          signals={progressSignals}
+          onClose={() => setDetailSignal(null)}
+        />
       )}
-    </div>
+    </>
   );
 }

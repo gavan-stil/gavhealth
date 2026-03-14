@@ -18,7 +18,25 @@ None — all tasks complete. See backlog.
 
 ---
 
-## Recent Session (2026-03-14)
+## Recent Session (2026-03-14) — Momentum signal rearrangement + Progress card drilldown
+
+**Momentum signal model rearranged:**
+- **Recovery signals (4):** `sleep_hrs`, `protein_g`, `water_ml`, `calorie_balance` (calories_in − calories_out)
+- **Strain signals (3):** `sleep_deficit` (max(0, 6−sleep_hrs)), `calorie_deficit` (max(0, cal_out−cal_in)), `non_exercise_hr` (avg daytime HR 7–22h excluding workout windows from `hr_intraday`)
+- Removed from Momentum: `rhr_bpm`, `weight_kg`, `calories_in`, `calories_out` — these now live in **Progress card only**
+- Backend: new `_fetch_non_exercise_hr` SQL (excludes workout hours via `activity_logs` cross-join), derived signal computation in `_build_day_values`, `LEGACY_DEFAULTS` dict, `ALL_SIGNAL_DEFAULTS` for `_fetch_targets`, all legacy fields still returned in `get_signal_history` days for ProgressCard compatibility
+- Frontend: `MomentumDay` extended with 4 new fields; `computeChartPoints` updated to new recovery/strain field arrays
+
+**Progress card drilldown fixed:**
+- Rows now tap to `GoalDetailSheet` via `detailSignal` state
+- `toMomentumSignal()` helper constructs synthetic `MomentumSignal` from `MomentumSignalsData` (computes today, baseline, avg_7d, trend_7d, status, targets) — no extra API calls needed
+- GoalDetailSheet internally calls `useMomentumSignals(7)` which returns all legacy fields (weight_kg, rhr_bpm, calories_in, calories_out) in the days array — chart data works automatically
+
+**RHR/weight targets still need manual update via /goals** — DB rows override SIGNAL_DEFAULTS (RHR DB row: 60–70, should be 52–60; weight: update to 71–72)
+
+---
+
+## Previous Session (2026-03-14)
 
 **T23 — Withings Sync Completeness** — ✅ complete (commit: `a410424`)
 - `sync_weight`: fetches all body comp measttypes (1,5,6,8,76,77,88) grouped by grpid → fills `fat_mass_kg`, `muscle_mass_kg`, `bone_mass_kg`, `hydration_kg`, `fat_ratio_pct`, `fat_free_mass_kg` from same scale session

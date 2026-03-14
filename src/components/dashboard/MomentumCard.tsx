@@ -47,8 +47,8 @@ function computeChartPoints(
   baselines: Record<string, number | null>
 ) {
   return days.map((d) => {
-    const recoveryFields = ["sleep_hrs", "protein_g", "water_ml", "calories_in"] as const;
-    const strainFields = ["rhr_bpm", "weight_kg", "calories_out"] as const;
+    const recoveryFields = ["sleep_hrs", "protein_g", "water_ml", "calorie_balance"] as const;
+    const strainFields = ["sleep_deficit", "calorie_deficit", "non_exercise_hr"] as const;
 
     let recSum = 0, recCount = 0;
     for (const key of recoveryFields) {

@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Momentum + Progress Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #0d0d0a;
+    --bg-card: #14130f;
+    --bg-elevated: #1e1d18;
+    --border-default: #222018;
+    --text-primary: #f0ece4;
+    --text-secondary: #b0a890;
+    --text-tertiary: #9a9080;
+    --text-muted: #7a7060;
+    --ochre: #d4a04a;
+    --ochre-light: #e8c47a;
+    --ochre-dim: #a07830;
+    --clay: #c4856a;
+    --dawn: #7FAABC;
+    --space-xs: 4px; --space-sm: 8px; --space-md: 14px; --space-lg: 20px;
+    --radius-lg: 20px; --radius-md: 14px; --radius-pill: 100px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #1a1917; display: flex; justify-content: center; padding: 24px 16px 40px; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+  .phone { width: 375px; background: var(--bg-base); border-radius: 40px; overflow: hidden; border: 1px solid #333; box-shadow: 0 24px 80px rgba(0,0,0,0.6); }
+  .scroll { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+
+  /* Header */
+  .header { display: flex; align-items: center; justify-content: space-between; }
+  .date-stepper { display: flex; align-items: center; gap: 8px; }
+  .step-btn { background: none; border: none; color: var(--text-muted); font-size: 16px; padding: 4px; cursor: pointer; }
+  .date-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.3px; min-width: 60px; text-align: center; }
+  .sync-btn { background: rgba(212,160,74,0.1); border: 1px solid rgba(212,160,74,0.2); color: var(--ochre); font-size: 11px; font-weight: 600; padding: 6px 12px; border-radius: 100px; letter-spacing: 0.3px; }
+
+  /* QuickStats */
+  .quick-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .qs-pill { background: var(--bg-card); border: 1px solid var(--border-default); border-radius: 12px; padding: 10px 12px; }
+  .qs-label { font-size: 9px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px; }
+  .qs-value { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px; }
+  .qs-unit { font-size: 9px; color: var(--text-muted); margin-left: 2px; }
+
+  /* Goal rings stub */
+  .rings-stub { background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 16px 20px; display: flex; justify-content: space-around; align-items: center; }
+  .ring-item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .ring-circle { width: 56px; height: 56px; border-radius: 50%; border: 3px solid; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; }
+  .ring-label { font-size: 9px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-muted); }
+
+  /* Card base */
+  .card { background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; }
+  .card-label { font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-muted); }
+
+  /* ─── MOMENTUM CARD ─── */
+  .mc-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 20px 0; }
+  .mc-edit-btn { background: none; border: none; color: var(--ochre-dim); font-size: 11px; font-weight: 600; padding: 0; letter-spacing: 0.3px; }
+  .mc-headline { display: flex; align-items: center; gap: 8px; padding: 6px 20px 0; }
+  .mc-arrow { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 800; color: var(--ochre-light); }
+  .mc-trend { font-size: 14px; font-weight: 600; color: var(--text-secondary); letter-spacing: -0.3px; }
+  .mc-footer { display: flex; align-items: center; justify-content: space-between; padding: 8px 20px 20px; }
+  .mc-legend { display: flex; gap: 14px; }
+  .mc-leg-item { display: flex; align-items: center; gap: 4px; }
+  .mc-dot { width: 5px; height: 5px; border-radius: 50%; }
+  .mc-leg-label { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+  .mc-ontrack { font-size: 11px; color: var(--text-muted); }
+
+  /* Expanded signal rows */
+  .mc-expanded { border-top: 1px solid rgba(255,255,255,0.03); margin: 0 20px; padding-bottom: 20px; }
+  .mc-group-header { display: flex; align-items: center; gap: 6px; padding: 10px 0 4px; }
+  .mc-group-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .mc-group-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .signal-row { display: grid; grid-template-columns: 80px 1fr auto 52px; align-items: center; padding: 8px 0; gap: 6px; border-bottom: 1px solid rgba(255,255,255,0.02); }
+  .sig-name { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+  .sig-val-wrap { display: flex; align-items: baseline; gap: 3px; }
+  .sig-val { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; letter-spacing: -0.5px; }
+  .sig-unit { font-size: 10px; color: var(--text-muted); }
+  .sig-delta { font-size: 10px; color: var(--text-muted); margin-left: 4px; }
+  .status-pill { font-size: 9px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; padding: 3px 7px; border-radius: 100px; white-space: nowrap; }
+  .status-on { background: rgba(232,196,122,0.1); color: #e8c47a; }
+  .status-imp { background: rgba(212,160,74,0.08); color: #d4a04a; }
+  .status-off { background: rgba(127,170,188,0.1); color: #7FAABC; }
+
+  /* ─── PROGRESS CARD ─── */
+  .pc { background: linear-gradient(180deg, rgba(127,170,188,0.04) 0%, var(--bg-card) 50%); border: 1px solid rgba(127,170,188,0.08); border-radius: var(--radius-lg); overflow: hidden; }
+  .pc-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 20px 0; }
+  .pc-edit-btn { background: none; border: none; color: #5a8a9a; font-size: 11px; font-weight: 600; padding: 0; letter-spacing: 0.3px; }
+  .pc-headline { display: flex; align-items: center; gap: 8px; padding: 6px 20px 0; }
+  .pc-arrow { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 800; color: var(--dawn); }
+  .pc-trend { font-size: 14px; font-weight: 600; color: var(--text-secondary); letter-spacing: -0.3px; }
+  .pc-rows { margin: 0 20px; padding-bottom: 4px; }
+  .pc-group-header { display: flex; align-items: center; gap: 6px; padding: 12px 0 4px; }
+  .pc-footer { display: flex; align-items: center; justify-content: space-between; padding: 8px 20px 20px; }
+  .pc-net { font-size: 11px; }
+  .pc-net-label { color: var(--text-muted); }
+  .pc-net-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--ochre); margin-left: 4px; }
+
+  /* Progress signal rows (no status pills — just tracking) */
+  .prog-row { display: grid; grid-template-columns: 76px 1fr auto 52px; align-items: center; padding: 8px 0; gap: 6px; border-bottom: 1px solid rgba(255,255,255,0.02); }
+  .prog-name { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+  .prog-trend-arrow { font-size: 12px; font-weight: 700; padding: 3px 7px; border-radius: 100px; white-space: nowrap; text-align: center; min-width: 28px; }
+
+  /* Stub SVG sparklines */
+  .spark { width: 52px; height: 24px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="scroll">
+
+    <!-- HEADER -->
+    <div class="header">
+      <div class="date-stepper">
+        <button class="step-btn">‹</button>
+        <span class="date-label">Today</span>
+        <button class="step-btn" style="opacity:0.3">›</button>
+      </div>
+      <button class="sync-btn">↻ Sync</button>
+    </div>
+
+    <!-- QUICK STATS -->
+    <div class="quick-stats">
+      <div class="qs-pill">
+        <div class="qs-label">Protein</div>
+        <div><span class="qs-value">192</span><span class="qs-unit">g</span></div>
+      </div>
+      <div class="qs-pill">
+        <div class="qs-label">Water</div>
+        <div><span class="qs-value">1.8</span><span class="qs-unit">L</span></div>
+      </div>
+      <div class="qs-pill">
+        <div class="qs-label">Sleep</div>
+        <div><span class="qs-value">6.4</span><span class="qs-unit">hr</span></div>
+      </div>
+    </div>
+
+    <!-- GOAL RINGS (stub) -->
+    <div class="rings-stub">
+      <div class="ring-item">
+        <div class="ring-circle" style="border-color:#e8c47a; color:#e8c47a;">76%</div>
+        <div class="ring-label">Sleep</div>
+      </div>
+      <div class="ring-item">
+        <div class="ring-circle" style="border-color:#7FAABC; color:#7FAABC;">42%</div>
+        <div class="ring-label">Steps</div>
+      </div>
+      <div class="ring-item">
+        <div class="ring-circle" style="border-color:#e8c47a; color:#e8c47a;">96%</div>
+        <div class="ring-label">Protein</div>
+      </div>
+      <div class="ring-item">
+        <div class="ring-circle" style="border-color:#c4856a; color:#c4856a;">58%</div>
+        <div class="ring-label">Readiness</div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- MOMENTUM CARD — recovery signals           -->
+    <!-- ══════════════════════════════════════════ -->
+    <div style="background: linear-gradient(180deg, rgba(90,130,160,0.05) 0%, var(--bg-card) 40%); border: 1px solid rgba(127,170,188,0.10); border-radius: var(--radius-lg); overflow: hidden;">
+
+      <div class="mc-header">
+        <span class="card-label">MOMENTUM</span>
+        <button class="mc-edit-btn">Edit Goals ›</button>
+      </div>
+
+      <div class="mc-headline">
+        <span class="mc-arrow">↑</span>
+        <span class="mc-trend">Recovery leading strain this week</span>
+      </div>
+
+      <!-- Chart -->
+      <div style="margin-top: 8px; padding: 0 0;">
+        <svg viewBox="0 0 335 150" width="100%" style="display:block;">
+          <defs>
+            <linearGradient id="rg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#d4a04a" stop-opacity="0.45"/>
+              <stop offset="100%" stop-color="#d4a04a" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="rl" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#d4a04a" stop-opacity="0.5"/>
+              <stop offset="100%" stop-color="#e8c47a" stop-opacity="1"/>
+            </linearGradient>
+            <linearGradient id="sl" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#c4856a" stop-opacity="0.5"/>
+              <stop offset="100%" stop-color="#c4856a" stop-opacity="1"/>
+            </linearGradient>
+            <radialGradient id="tg" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#e8c47a" stop-opacity="0.9"/>
+              <stop offset="100%" stop-color="#e8c47a" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <!-- Target zone -->
+          <rect x="10" y="22" width="297" height="22" fill="rgba(212,160,74,0.06)"/>
+          <line x1="10" y1="22" x2="307" y2="22" stroke="#d4a04a" stroke-opacity="0.10" stroke-width="0.5"/>
+          <line x1="10" y1="44" x2="307" y2="44" stroke="#d4a04a" stroke-opacity="0.12" stroke-width="0.5"/>
+          <!-- Baseline -->
+          <line x1="10" y1="90" x2="307" y2="90" stroke="#7a7060" stroke-dasharray="3 3" stroke-width="0.6" opacity="0.4"/>
+          <!-- Cool tint below baseline -->
+          <rect x="10" y="90" width="297" height="30" fill="rgba(74,122,138,0.04)"/>
+          <!-- Recovery area -->
+          <path d="M10,88 C59,85 99,70 148,62 C198,54 248,48 307,42 L307,90 L10,90 Z" fill="url(#rg)"/>
+          <!-- Recovery line -->
+          <path d="M10,88 C59,85 99,70 148,62 C198,54 248,48 307,42" fill="none" stroke="url(#rl)" stroke-width="1.8" stroke-linecap="round"/>
+          <!-- Strain line (dashed) -->
+          <path d="M10,95 C59,93 99,90 148,88 C198,86 248,84 307,82" fill="none" stroke="url(#sl)" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="4 2"/>
+          <!-- Recovery dots -->
+          <circle cx="10" cy="88" r="2.5" fill="#d4a04a" opacity="0.5"/>
+          <circle cx="59" cy="82" r="2.5" fill="#d4a04a" opacity="0.5"/>
+          <circle cx="109" cy="70" r="2.5" fill="#d4a04a" opacity="0.5"/>
+          <circle cx="158" cy="62" r="2.5" fill="#d4a04a" opacity="0.5"/>
+          <circle cx="208" cy="53" r="2.5" fill="#d4a04a" opacity="0.5"/>
+          <circle cx="258" cy="47" r="2.5" fill="#d4a04a" opacity="0.5"/>
+          <!-- Today glow -->
+          <circle cx="307" cy="42" r="8" fill="url(#tg)"/>
+          <circle cx="307" cy="42" r="3" fill="#e8c47a"/>
+          <circle cx="307" cy="42" r="1.5" fill="#f0ece4"/>
+          <!-- Day labels -->
+          <text x="10" y="147" font-family="JetBrains Mono" font-size="8" fill="#7a7060" opacity="0.6" text-anchor="middle">Sat</text>
+          <text x="59" y="147" font-family="JetBrains Mono" font-size="8" fill="#7a7060" opacity="0.6" text-anchor="middle">Sun</text>
+          <text x="109" y="147" font-family="JetBrains Mono" font-size="8" fill="#7a7060" opacity="0.6" text-anchor="middle">Mon</text>
+          <text x="158" y="147" font-family="JetBrains Mono" font-size="8" fill="#7a7060" opacity="0.6" text-anchor="middle">Tue</text>
+          <text x="208" y="147" font-family="JetBrains Mono" font-size="8" fill="#7a7060" opacity="0.6" text-anchor="middle">Wed</text>
+          <text x="258" y="147" font-family="JetBrains Mono" font-size="8" fill="#7a7060" opacity="0.6" text-anchor="middle">Thu</text>
+          <text x="307" y="147" font-family="JetBrains Mono" font-size="8" fill="#e8c47a" font-weight="600" text-anchor="middle">Today</text>
+          <!-- Axis labels -->
+          <text x="333" y="26" font-family="JetBrains Mono" font-size="7" fill="#d4a04a" opacity="0.35" text-anchor="end">goal</text>
+          <text x="333" y="93" font-family="JetBrains Mono" font-size="7" fill="#7a7060" opacity="0.35" text-anchor="end">avg</text>
+        </svg>
+      </div>
+
+      <!-- Footer -->
+      <div class="mc-footer">
+        <div class="mc-legend">
+          <div class="mc-leg-item">
+            <div class="mc-dot" style="background:#d4a04a"></div>
+            <span class="mc-leg-label" style="color:#a07830">Recovery</span>
+          </div>
+          <div class="mc-leg-item">
+            <div class="mc-dot" style="background:#c4856a"></div>
+            <span class="mc-leg-label" style="color:#a05840">Strain</span>
+          </div>
+        </div>
+        <span class="mc-ontrack">3 of 6 on track</span>
+      </div>
+
+      <!-- Expanded: Recovery group -->
+      <div class="mc-expanded">
+        <div class="mc-group-header">
+          <div class="mc-group-dot" style="background:#d4a04a"></div>
+          <span class="mc-group-label" style="color:#a07830">Recovery</span>
+        </div>
+
+        <!-- Sleep -->
+        <div class="signal-row">
+          <span class="sig-name">Sleep</span>
+          <div class="sig-val-wrap">
+            <span class="sig-val" style="color:#d4a04a">6.4</span>
+            <span class="sig-unit">hr</span>
+            <span class="sig-delta">+1.2 vs avg</span>
+          </div>
+          <span class="status-pill status-imp">Improving</span>
+          <svg class="spark" viewBox="0 0 52 24">
+            <path d="M2,18 C10,16 18,14 26,10 C34,6 42,8 50,6" fill="none" stroke="#d4a04a" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+        <!-- Protein -->
+        <div class="signal-row">
+          <span class="sig-name">Protein</span>
+          <div class="sig-val-wrap">
+            <span class="sig-val" style="color:#e8c47a">192</span>
+            <span class="sig-unit">g</span>
+            <span class="sig-delta">+17 vs avg</span>
+          </div>
+          <span class="status-pill status-on">On track</span>
+          <svg class="spark" viewBox="0 0 52 24">
+            <path d="M2,14 C10,13 18,12 26,10 C34,8 42,7 50,5" fill="none" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+        <!-- Water -->
+        <div class="signal-row">
+          <span class="sig-name">Water</span>
+          <div class="sig-val-wrap">
+            <span class="sig-val" style="color:#7FAABC">1250</span>
+            <span class="sig-unit">ml</span>
+            <span class="sig-delta">-319 vs avg</span>
+          </div>
+          <span class="status-pill status-off">Off track</span>
+          <svg class="spark" viewBox="0 0 52 24">
+            <path d="M2,8 C10,9 18,12 26,14 C34,16 42,18 50,19" fill="none" stroke="#7FAABC" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+        <!-- Cal balance -->
+        <div class="signal-row">
+          <span class="sig-name">Cal balance</span>
+          <div class="sig-val-wrap">
+            <span class="sig-val" style="color:#e8c47a">+119</span>
+            <span class="sig-unit">kcal</span>
+            <span class="sig-delta">slight surplus</span>
+          </div>
+          <span class="status-pill status-on">On track</span>
+          <svg class="spark" viewBox="0 0 52 24">
+            <path d="M2,16 C10,14 18,13 26,12 C34,11 42,10 50,9" fill="none" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+        <!-- Strain group -->
+        <div class="mc-group-header" style="margin-top: 4px;">
+          <div class="mc-group-dot" style="background:#c4856a"></div>
+          <span class="mc-group-label" style="color:#a05840">Strain</span>
+        </div>
+
+        <!-- Sleep deficit -->
+        <div class="signal-row">
+          <span class="sig-name">Sleep debt</span>
+          <div class="sig-val-wrap">
+            <span class="sig-val" style="color:#e8c47a">0</span>
+            <span class="sig-unit">hr</span>
+            <span class="sig-delta">no debt</span>
+          </div>
+          <span class="status-pill status-on">On track</span>
+          <svg class="spark" viewBox="0 0 52 24">
+            <path d="M2,12 C10,12 18,12 26,12 C34,12 42,12 50,12" fill="none" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+        <!-- Non-exercise HR -->
+        <div class="signal-row">
+          <span class="sig-name">Daily HR</span>
+          <div class="sig-val-wrap">
+            <span class="sig-val" style="color:#d4a04a">72</span>
+            <span class="sig-unit">bpm</span>
+            <span class="sig-delta">+4 vs avg</span>
+          </div>
+          <span class="status-pill status-imp">Improving</span>
+          <svg class="spark" viewBox="0 0 52 24">
+            <path d="M2,8 C10,9 18,11 26,13 C34,12 42,10 50,9" fill="none" stroke="#d4a04a" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- PROGRESS CARD — weight, cals, RHR          -->
+    <!-- ══════════════════════════════════════════ -->
+    <div class="pc">
+
+      <div class="pc-header">
+        <span class="card-label" style="color: #5a8a9a;">PROGRESS</span>
+        <button class="pc-edit-btn">Edit Goals ›</button>
+      </div>
+
+      <div class="pc-headline">
+        <span class="pc-arrow">↘</span>
+        <span class="pc-trend">Weight trending toward goal</span>
+      </div>
+
+      <!-- Weight chart — primary metric -->
+      <div style="margin-top: 8px;">
+        <svg viewBox="0 0 335 130" width="100%" style="display:block;">
+          <defs>
+            <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#7FAABC" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="#7FAABC" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="wl" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#7FAABC" stop-opacity="0.5"/>
+              <stop offset="100%" stop-color="#7FAABC" stop-opacity="1"/>
+            </linearGradient>
+            <radialGradient id="wtg" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#7FAABC" stop-opacity="0.9"/>
+              <stop offset="100%" stop-color="#7FAABC" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <!-- Goal zone (71-72 kg) — shown at bottom since weight is dropping toward it -->
+          <rect x="10" y="85" width="297" height="18" fill="rgba(127,170,188,0.06)"/>
+          <line x1="10" y1="85" x2="307" y2="85" stroke="#7FAABC" stroke-opacity="0.12" stroke-width="0.5"/>
+          <line x1="10" y1="103" x2="307" y2="103" stroke="#7FAABC" stroke-opacity="0.10" stroke-width="0.5"/>
+          <!-- Weight trend line (dropping from 74→68.3) -->
+          <path d="M10,30 C59,32 109,36 158,42 C208,50 258,58 307,68" fill="none" stroke="url(#wl)" stroke-width="1.8" stroke-linecap="round"/>
+          <!-- Area fill -->
+          <path d="M10,30 C59,32 109,36 158,42 C208,50 258,58 307,68 L307,110 L10,110 Z" fill="url(#wg)"/>
+          <!-- Dots -->
+          <circle cx="10" cy="30" r="2.5" fill="#7FAABC" opacity="0.5"/>
+          <circle cx="59" cy="32" r="2.5" fill="#7FAABC" opacity="0.5"/>
+          <circle cx="109" cy="36" r="2.5" fill="#7FAABC" opacity="0.5"/>
+          <circle cx="158" cy="42" r="2.5" fill="#7FAABC" opacity="0.5"/>
+          <circle cx="208" cy="50" r="2.5" fill="#7FAABC" opacity="0.5"/>
+          <circle cx="258" cy="58" r="2.5" fill="#7FAABC" opacity="0.5"/>
+          <!-- Today glow -->
+          <circle cx="307" cy="68" r="8" fill="url(#wtg)"/>
+          <circle cx="307" cy="68" r="3" fill="#7FAABC"/>
+          <circle cx="307" cy="68" r="1.5" fill="#f0ece4"/>
+          <!-- Value labels at ends -->
+          <text x="14" y="26" font-family="JetBrains Mono" font-size="9" fill="#7FAABC" opacity="0.5">74.2</text>
+          <text x="278" y="64" font-family="JetBrains Mono" font-size="9" fill="#7FAABC" font-weight="700">68.3</text>
+          <!-- Goal zone label -->
+          <text x="333" y="96" font-family="JetBrains Mono" font-size="7" fill="#7FAABC" opacity="0.35" text-anchor="end">goal</text>
+          <!-- Day labels -->
+          <text x="10" y="127" font-family="JetBrains Mono" font-size="8" fill="#7a7060" opacity="0.6" text-anchor="middle">Sat</text>
+          <text x="59" y="127" font-family="JetBrains Mono" font-size="8" fill="#7a7060" opacity="0.6" text-anchor="middle">Sun</text>
+          <text x="109" y="127" font-family="JetBrains Mono" font-size="8" fill="#7a7060" opacity="0.6" text-anchor="middle">Mon</text>
+          <text x="158" y="127" font-family="JetBrains Mono" font-size="8" fill="#7a7060" opacity="0.6" text-anchor="middle">Tue</text>
+          <text x="208" y="127" font-family="JetBrains Mono" font-size="8" fill="#7a7060" opacity="0.6" text-anchor="middle">Wed</text>
+          <text x="258" y="127" font-family="JetBrains Mono" font-size="8" fill="#7a7060" opacity="0.6" text-anchor="middle">Thu</text>
+          <text x="307" y="127" font-family="JetBrains Mono" font-size="8" fill="#7FAABC" font-weight="600" text-anchor="middle">Today</text>
+        </svg>
+      </div>
+
+      <!-- Supporting metrics — no status, just tracking -->
+      <div class="pc-rows">
+        <div class="pc-group-header">
+          <div class="mc-group-dot" style="background:#7FAABC"></div>
+          <span class="mc-group-label" style="color:#5a8a9a">Tracking</span>
+        </div>
+
+        <!-- Weight -->
+        <div class="prog-row">
+          <span class="prog-name">Weight</span>
+          <div class="sig-val-wrap">
+            <span class="sig-val" style="color:#7FAABC">68.3</span>
+            <span class="sig-unit">kg</span>
+            <span class="sig-delta">-0.2 vs avg</span>
+          </div>
+          <span class="prog-trend-arrow" style="background:rgba(127,170,188,0.1); color:#7FAABC">↓</span>
+          <svg class="spark" viewBox="0 0 52 24">
+            <path d="M2,4 C10,6 18,10 26,13 C34,16 42,18 50,20" fill="none" stroke="#7FAABC" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+        <!-- Resting HR -->
+        <div class="prog-row">
+          <span class="prog-name">Resting HR</span>
+          <div class="sig-val-wrap">
+            <span class="sig-val" style="color:#c4856a">73</span>
+            <span class="sig-unit">bpm</span>
+            <span class="sig-delta">+6 vs avg</span>
+          </div>
+          <span class="prog-trend-arrow" style="background:rgba(196,133,106,0.1); color:#c4856a">↑</span>
+          <svg class="spark" viewBox="0 0 52 24">
+            <path d="M2,18 C10,16 18,14 26,12 C34,10 42,8 50,6" fill="none" stroke="#c4856a" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+        <!-- Cal In -->
+        <div class="prog-row">
+          <span class="prog-name">Cal in</span>
+          <div class="sig-val-wrap">
+            <span class="sig-val" style="color:#e8c47a">2219</span>
+            <span class="sig-unit">kcal</span>
+            <span class="sig-delta">+375 vs avg</span>
+          </div>
+          <span class="prog-trend-arrow" style="background:rgba(232,196,122,0.1); color:#e8c47a">↑</span>
+          <svg class="spark" viewBox="0 0 52 24">
+            <path d="M2,16 C10,15 18,13 26,11 C34,10 42,8 50,6" fill="none" stroke="#e8c47a" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+        <!-- Cal Burned -->
+        <div class="prog-row" style="border-bottom: none;">
+          <span class="prog-name">Cal burned</span>
+          <div class="sig-val-wrap">
+            <span class="sig-val" style="color:#b0a890">2100</span>
+            <span class="sig-unit">kcal</span>
+            <span class="sig-delta">avg</span>
+          </div>
+          <span class="prog-trend-arrow" style="background:rgba(160,150,130,0.08); color:#7a7060">→</span>
+          <svg class="spark" viewBox="0 0 52 24">
+            <path d="M2,13 C10,13 18,12 26,12 C34,12 42,13 50,12" fill="none" stroke="#7a7060" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="pc-footer">
+        <span class="pc-net"><span class="pc-net-label">Net cal balance</span><span class="pc-net-val">+119 kcal</span></span>
+        <span style="font-size: 10px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: #5a8a9a;">Goal: 71–72 kg</span>
+      </div>
+    </div>
+
+    <!-- Sleep card stub -->
+    <div class="card" style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between;">
+      <span class="card-label">SLEEP</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 800; color: var(--text-primary); letter-spacing: -1px;">6.4 <span style="font-size: 12px; font-weight: 600; color: var(--text-muted);">hr</span></span>
+      <span style="font-size: 11px; color: var(--text-muted);">View history ›</span>
+    </div>
+
+    <!-- HR chart stub -->
+    <div class="card" style="padding: 16px 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <span class="card-label">HR THROUGH THE DAY</span>
+        <span style="font-size: 11px; color: var(--text-muted);">avg 78 bpm</span>
+      </div>
+      <div style="height: 60px; background: rgba(127,170,188,0.03); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+        <span style="font-size: 11px; color: var(--text-muted);">— chart —</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

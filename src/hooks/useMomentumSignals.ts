@@ -3,12 +3,18 @@ import { apiFetch } from "@/lib/api";
 
 export interface MomentumDay {
   date: string;
+  // Momentum signals
   sleep_hrs: number | null;
+  protein_g: number | null;
+  water_ml: number | null;
+  calorie_balance: number | null;
+  sleep_deficit: number | null;
+  calorie_deficit: number | null;
+  non_exercise_hr: number | null;
+  // Legacy fields for ProgressCard
   rhr_bpm: number | null;
   weight_kg: number | null;
   calories_in: number | null;
-  protein_g: number | null;
-  water_ml: number | null;
   calories_out: number | null;
 }
 

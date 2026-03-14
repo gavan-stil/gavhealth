@@ -68,9 +68,9 @@ All require `X-API-Key` header.
 
 | Endpoint | Method | Returns |
 |----------|--------|---------|
-| `/api/momentum` | GET | `{ overall_trend, signals_on_track, signals_total, signals: [{ signal, label, unit, group, target_min, target_max, baseline_28d, today, avg_7d, trend_7d, gap_pct, status }] }`. Signals: sleep_hrs, rhr_bpm, weight_kg, calories_in, protein_g, water_ml. Status: "on_track" \| "improving" \| "off_track". Optional `?target_date=YYYY-MM-DD`. |
-| `/api/momentum/signals` | GET | `{ baselines: {signal→float}, targets: {signal→{min,max}}, days: [{date, sleep_hrs, rhr_bpm, weight_kg, calories_in, protein_g, water_ml}] }`. Optional `?days=N` (default 7). |
-| `/api/goals` | GET | Latest active goal per signal (all 6 signals always returned, using defaults if no DB row). `[{ id, signal, label, unit, group, target_min, target_max, set_at, notes }]` |
+| `/api/momentum` | GET | `{ overall_trend, signals_on_track, signals_total, signals: [{ signal, label, unit, group, target_min, target_max, baseline_28d, today, avg_7d, trend_7d, gap_pct, status }] }`. **Recovery signals:** sleep_hrs, protein_g, water_ml, calorie_balance. **Strain signals:** sleep_deficit, calorie_deficit, non_exercise_hr. Status: "on_track" \| "improving" \| "off_track". Optional `?target_date=YYYY-MM-DD`. |
+| `/api/momentum/signals` | GET | `{ baselines: {signal→float}, targets: {signal→{min,max}}, days: [{date, …all7MomentumFields…, rhr_bpm, weight_kg, calories_in, calories_out}] }`. Legacy fields (rhr_bpm, weight_kg, calories_in, calories_out) included in days for ProgressCard compatibility. Optional `?days=N` (default 7). |
+| `/api/goals` | GET | Latest active goal per signal (all signals always returned, using defaults if no DB row). `[{ id, signal, label, unit, group, target_min, target_max, set_at, notes }]` |
 | `/api/goals` | POST | Body: `{ signal, target_min?, target_max?, notes? }`. Inserts new row (old targets preserved). Returns new `GoalResponse`. |
 | `/api/goals/{signal}/history` | GET | All goal rows for signal, newest-first. `[{ id, target_min, target_max, set_at, notes }]` |
 
