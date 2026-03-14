@@ -547,13 +547,19 @@ class MomentumResponse(BaseModel):
 
 class MomentumDayResponse(BaseModel):
     date: date
+    # Momentum signals
     sleep_hrs: float | None = None
+    protein_g: float | None = None
+    water_ml: float | None = None
+    calorie_balance: float | None = None
+    sleep_deficit: float | None = None
+    calorie_deficit: float | None = None
+    non_exercise_hr: float | None = None
+    # Legacy fields for ProgressCard
     rhr_bpm: float | None = None
     weight_kg: float | None = None
     calories_in: float | None = None
-    protein_g: float | None = None
-    water_ml: float | None = None
-    training_load_mins: float | None = None
+    calories_out: float | None = None
 
 
 class MomentumSignalsResponse(BaseModel):
