@@ -62,6 +62,20 @@ All require `X-API-Key` header. All support `?days=N` unless noted.
 
 ---
 
+## Momentum & Goals (T22)
+
+All require `X-API-Key` header.
+
+| Endpoint | Method | Returns |
+|----------|--------|---------|
+| `/api/momentum` | GET | `{ overall_trend, signals_on_track, signals_total, signals: [{ signal, label, unit, group, target_min, target_max, baseline_28d, today, avg_7d, trend_7d, gap_pct, status }] }`. Signals: sleep_hrs, rhr_bpm, weight_kg, calories_in, protein_g, water_ml. Status: "on_track" \| "improving" \| "off_track". Optional `?target_date=YYYY-MM-DD`. |
+| `/api/momentum/signals` | GET | `{ baselines: {signal→float}, targets: {signal→{min,max}}, days: [{date, sleep_hrs, rhr_bpm, weight_kg, calories_in, protein_g, water_ml}] }`. Optional `?days=N` (default 7). |
+| `/api/goals` | GET | Latest active goal per signal (all 6 signals always returned, using defaults if no DB row). `[{ id, signal, label, unit, group, target_min, target_max, set_at, notes }]` |
+| `/api/goals` | POST | Body: `{ signal, target_min?, target_max?, notes? }`. Inserts new row (old targets preserved). Returns new `GoalResponse`. |
+| `/api/goals/{signal}/history` | GET | All goal rows for signal, newest-first. `[{ id, target_min, target_max, set_at, notes }]` |
+
+---
+
 ## Logging (POST)
 
 All require `X-API-Key` header.
@@ -130,6 +144,6 @@ All require `X-API-Key` header.
 
 ## Database Tables (12)
 
-`weight_logs`, `sleep_logs`, `activity_logs`, `rhr_logs`, `food_logs`, `sauna_logs`, `dexa_scans`, `daily_habits`, `strength_sessions`, `strength_sets`, `exercises`, `sync_log`
+`weight_logs`, `sleep_logs`, `activity_logs`, `rhr_logs`, `food_logs`, `sauna_logs`, `dexa_scans`, `daily_habits`, `strength_sessions`, `strength_sets`, `exercises`, `sync_log`, `hr_intraday`, `water_logs`, `mood_logs`, `saved_meals`, `health_goals`
 
-Total seeded: ~4,189 rows.
+Total seeded: ~4,189 rows + health_goals seed (6 rows on first deploy).
