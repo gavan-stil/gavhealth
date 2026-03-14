@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { AreaChart, Area, ResponsiveContainer, ReferenceLine, Tooltip } from "recharts";
 import type { MomentumData, MomentumSignal } from "@/hooks/useMomentum";
+import useMomentumSignals from "@/hooks/useMomentumSignals";
 import GoalDetailSheet from "./GoalDetailSheet";
 
 interface Props {
@@ -45,10 +47,51 @@ function fmtDeviation(signal: MomentumSignal) {
   return `${prefix}${dev.toFixed(1)}`;
 }
 
+// Compute a normalized score (0–100) for a signal vs its baseline
+// recoverySignals: higher is better; strainSignals: lower is better (inverted)
+function computeChartPoints(
+  days: import("@/hooks/useMomentumSignals").MomentumDay[],
+  baselines: Record<string, number | null>
+) {
+  return days.map((d) => {
+    const recoveryFields = ["sleep_hrs", "protein_g", "water_ml", "calories_in"] as const;
+    const strainFields = ["rhr_bpm", "weight_kg"] as const;
+
+    let recSum = 0, recCount = 0;
+    for (const key of recoveryFields) {
+      const v = d[key];
+      const b = baselines[key];
+      if (v !== null && b !== null && b !== 0) {
+        recSum += (v - b) / b; // positive = above baseline = good
+        recCount++;
+      }
+    }
+
+    let strainSum = 0, strainCount = 0;
+    for (const key of strainFields) {
+      const v = d[key];
+      const b = baselines[key];
+      if (v !== null && b !== null && b !== 0) {
+        strainSum += (v - b) / b; // positive = above baseline = bad (inverted below)
+        strainCount++;
+      }
+    }
+
+    const recovery = recCount > 0 ? Math.round(50 + (recSum / recCount) * 200) : null;
+    const strain = strainCount > 0 ? Math.round(50 - (strainSum / strainCount) * 200) : null;
+
+    return { date: d.date, recovery, strain };
+  });
+}
+
 export default function MomentumCard({ data }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [detailSignal, setDetailSignal] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { data: signals7d } = useMomentumSignals(14);
+
+  const chartPoints =
+    signals7d ? computeChartPoints(signals7d.days, signals7d.baselines) : [];
 
   const isUnderwater = data.signals_on_track < Math.ceil(data.signals_total / 2);
 
@@ -109,6 +152,62 @@ export default function MomentumCard({ data }: Props) {
             {expanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
           </div>
         </div>
+
+        {/* Dual-area chart (collapsed state only) */}
+        {!expanded && chartPoints.length > 1 && (
+          <div style={{ height: 56, marginBottom: 10, marginLeft: -4, marginRight: -4 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartPoints} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="recovGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#e8c47a" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#e8c47a" stopOpacity={0.05} />
+                  </linearGradient>
+                </defs>
+                <ReferenceLine y={50} stroke="var(--border-default)" strokeDasharray="2 2" strokeWidth={1} />
+                <Tooltip
+                  content={({ active, payload }) => {
+                    if (!active || !payload?.length) return null;
+                    const rec = payload.find((p) => p.dataKey === "recovery")?.value;
+                    const str = payload.find((p) => p.dataKey === "strain")?.value;
+                    return (
+                      <div style={{
+                        background: "var(--bg-elevated)",
+                        border: "1px solid var(--border-default)",
+                        borderRadius: 6,
+                        padding: "4px 8px",
+                        fontSize: 11,
+                      }}>
+                        {rec != null && <div style={{ color: "#e8c47a" }}>Recovery {rec}</div>}
+                        {str != null && <div style={{ color: "#c47a6a" }}>Strain {str}</div>}
+                      </div>
+                    );
+                  }}
+                  cursor={false}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="recovery"
+                  stroke="#e8c47a"
+                  strokeWidth={1.5}
+                  fill="url(#recovGrad)"
+                  dot={false}
+                  connectNulls
+                />
+                <Area
+                  type="monotone"
+                  dataKey="strain"
+                  stroke="#c47a6a"
+                  strokeWidth={1.5}
+                  strokeDasharray="4 3"
+                  fill="none"
+                  dot={false}
+                  connectNulls
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
 
         {/* Signal dots + count */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 import type { MomentumSignal } from "@/hooks/useMomentum";
@@ -31,7 +32,7 @@ export default function GoalDetailSheet({ signal, signals, onClose }: Props) {
   const baseline = data?.baselines?.[signal] ?? null;
   const target = data?.targets?.[signal];
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop */}
       <div
@@ -173,6 +174,7 @@ export default function GoalDetailSheet({ signal, signals, onClose }: Props) {
           Edit Target →
         </button>
       </div>
-    </>
+    </>,
+    document.body
   );
 }

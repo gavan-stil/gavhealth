@@ -207,6 +207,17 @@ export default function DashboardPage() {
         );
       })()}
 
+      {/* Momentum */}
+      {momentum.loading ? (
+        <CardSkeleton variant="readiness" />
+      ) : momentum.error ? (
+        <CardError section="momentum" onRetry={momentum.refetch} />
+      ) : momentum.data ? (
+        <MomentumCard data={momentum.data} />
+      ) : (
+        <CardEmpty section="momentum" />
+      )}
+
       {/* Sleep stages */}
       {sleepStages.loading ? null : sleepStages.data ? (
         <SleepCard data={sleepStages.data} onClick={() => setSleepSheetOpen(true)} />
@@ -236,17 +247,6 @@ export default function DashboardPage() {
 
       {/* Intraday HR */}
       <IntradayHRChart data={intradayHR.data} loading={intradayHR.loading} />
-
-      {/* Momentum */}
-      {momentum.loading ? (
-        <CardSkeleton variant="readiness" />
-      ) : momentum.error ? (
-        <CardError section="momentum" onRetry={momentum.refetch} />
-      ) : momentum.data ? (
-        <MomentumCard data={momentum.data} />
-      ) : (
-        <CardEmpty section="momentum" />
-      )}
 
       {/* Activity chart */}
       <ActivityChart data={v2.activities.data} loading={v2.activities.loading} />
