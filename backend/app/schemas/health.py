@@ -28,6 +28,8 @@ class WeightResponse(BaseModel):
     bone_mass_kg: float | None = None
     hydration_kg: float | None = None
     bmi: float | None = None
+    fat_ratio_pct: float | None = None
+    fat_free_mass_kg: float | None = None
     source: str
 
     model_config = {"from_attributes": True}
@@ -63,8 +65,11 @@ class SleepResponse(BaseModel):
     awake_hrs: float | None = None
     sleep_hr_avg: float | None = None
     sleep_hr_min: float | None = None
+    sleep_hr_max: float | None = None
     sleep_score: float | None = None
     sleep_efficiency_pct: float | None = None
+    spo2_avg: float | None = None
+    respiratory_rate: float | None = None
     source: str
 
     model_config = {"from_attributes": True}
@@ -109,10 +114,18 @@ class ActivityResponse(BaseModel):
     distance_km: float | None = None
     avg_pace_secs: float | None = None
     avg_hr: int | None = None
+    min_hr: int | None = None
     max_hr: int | None = None
     calories_burned: int | None = None
     elevation_m: float | None = None
     steps: int | None = None
+    spo2_avg: float | None = None
+    pause_duration_mins: float | None = None
+    pool_laps: int | None = None
+    strokes: int | None = None
+    soft_mins: float | None = None
+    moderate_mins: float | None = None
+    intense_mins: float | None = None
     source: str
     external_id: str | None = None
     notes: str | None = None

@@ -94,7 +94,12 @@ async def list_sleep(
     db: AsyncSession = Depends(get_db),
     _key: str = Depends(verify_api_key),
 ):
-    q = select(SleepLog).order_by(SleepLog.sleep_date.desc())
+    # DISTINCT ON (sleep_date) — prefer "withings" source over "withings_csv" for the same date
+    q = (
+        select(SleepLog)
+        .distinct(SleepLog.sleep_date)
+        .order_by(SleepLog.sleep_date.desc(), SleepLog.source.desc())
+    )
     count_q = select(func.count()).select_from(SleepLog)
 
     if start_date:

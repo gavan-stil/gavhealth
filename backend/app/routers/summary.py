@@ -66,6 +66,7 @@ async def daily_summary(
         await db.execute(
             select(RhrLog.rhr_bpm)
             .where(RhrLog.log_date == target_date)
+            .order_by(RhrLog.source.desc())  # "withings" > "withings_csv" alphabetically
             .limit(1)
         )
     ).scalar_one_or_none()

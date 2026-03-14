@@ -130,6 +130,20 @@ async def lifespan(app: FastAPI):
             ) AS seeds(signal, target_min, target_max, notes)
             WHERE NOT EXISTS (SELECT 1 FROM health_goals LIMIT 1)
             """,
+            # T23: body comp fields from Withings scale
+            "ALTER TABLE weight_logs ADD COLUMN IF NOT EXISTS fat_ratio_pct FLOAT",
+            "ALTER TABLE weight_logs ADD COLUMN IF NOT EXISTS fat_free_mass_kg FLOAT",
+            # T23: sleep hr_max from Withings sleep summary
+            "ALTER TABLE sleep_logs ADD COLUMN IF NOT EXISTS sleep_hr_max FLOAT",
+            # T23: workout detail fields (spo2, pause, pool, strokes)
+            "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS spo2_avg FLOAT",
+            "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS pause_duration_mins FLOAT",
+            "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS pool_laps INTEGER",
+            "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS strokes INTEGER",
+            # T23: daily summary intensity breakdown
+            "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS soft_mins FLOAT",
+            "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS moderate_mins FLOAT",
+            "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS intense_mins FLOAT",
             # manual_strength_logs: strength workouts logged via app
             """
             CREATE TABLE IF NOT EXISTS manual_strength_logs (

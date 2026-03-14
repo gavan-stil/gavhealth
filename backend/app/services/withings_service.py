@@ -215,11 +215,26 @@ async def _withings_get(access_token: str, url: str, params: dict) -> dict:
     return data.get("body", {})
 
 
+MEASTYPE_FIELD = {
+    1: "weight_kg",
+    5: "fat_free_mass_kg",
+    6: "fat_ratio_pct",
+    8: "fat_mass_kg",
+    76: "muscle_mass_kg",
+    77: "hydration_kg",
+    88: "bone_mass_kg",
+}
+
+
 async def sync_weight(db: AsyncSession, access_token: str, since_ts: int) -> int:
-    """Pull weight measurements from Withings and upsert into weight_logs."""
+    """Pull weight + full body composition from Withings and upsert into weight_logs.
+
+    Fetches all body comp measttypes (1,5,6,8,76,77,88) in one call and groups
+    by grpid so a single scale session fills all columns in one row.
+    """
     body = await _withings_get(access_token, WITHINGS_MEASURE_URL, {
         "action": "getmeas",
-        "meastype": 1,  # Weight
+        "meastype": "1,5,6,8,76,77,88",
         "category": 1,  # Real measurements only
         "startdate": since_ts,
         "enddate": int(datetime.now(timezone.utc).timestamp()),
@@ -228,18 +243,29 @@ async def sync_weight(db: AsyncSession, access_token: str, since_ts: int) -> int
     count = 0
     for grp in body.get("measuregrps", []):
         recorded_at = datetime.fromtimestamp(grp["date"], tz=timezone.utc)
+
+        # Extract all available measures from this group
+        fields: dict = {}
         for measure in grp["measures"]:
-            if measure["type"] == 1:  # Weight in kg
-                weight_kg = measure["value"] * (10 ** measure["unit"])
-                stmt = pg_insert(WeightLog).values(
-                    recorded_at=recorded_at,
-                    weight_kg=round(weight_kg, 2),
-                    source=SOURCE,
-                ).on_conflict_do_nothing(
-                    index_elements=["recorded_at", "source"],
-                )
-                await db.execute(stmt)
-                count += 1
+            mtype = measure["type"]
+            if mtype in MEASTYPE_FIELD:
+                value = measure["value"] * (10 ** measure["unit"])
+                fields[MEASTYPE_FIELD[mtype]] = round(value, 3)
+
+        if "weight_kg" not in fields:
+            continue  # Skip groups without weight (e.g. standalone fat-only readings)
+
+        values = {
+            "recorded_at": recorded_at,
+            "source": SOURCE,
+            **fields,
+        }
+        stmt = pg_insert(WeightLog).values(**values).on_conflict_do_update(
+            index_elements=["recorded_at", "source"],
+            set_={k: v for k, v in values.items() if k not in ("recorded_at", "source")},
+        )
+        await db.execute(stmt)
+        count += 1
 
     return count
 
@@ -265,7 +291,7 @@ async def sync_sleep(db: AsyncSession, access_token: str, since_ts: int) -> int:
         "action": "getsummary",
         "startdateymd": start_date,
         "enddateymd": end_date,
-        "data_fields": "nb_rem_episodes,sleep_efficiency,sleep_latency,total_sleep_time,total_timeinbed,wakeup_latency,waso,deepsleepduration,lightsleepduration,remsleepduration,hr_average,hr_min,hr_max,rr_average,rr_min,rr_max,sleep_score,snoring,snoringepisodecount,night_events,out_of_bed_count,apnea_hypopnea_index,breathing_disturbances_intensity",
+        "data_fields": "nb_rem_episodes,sleep_efficiency,sleep_latency,total_sleep_time,total_timeinbed,wakeup_latency,waso,deepsleepduration,lightsleepduration,remsleepduration,hr_average,hr_min,hr_max,rr_average,rr_min,rr_max,sleep_score,snoring,snoringepisodecount,night_events,out_of_bed_count,apnea_hypopnea_index,breathing_disturbances_intensity,spo2_average",
     })
 
     count = 0
@@ -297,9 +323,11 @@ async def sync_sleep(db: AsyncSession, access_token: str, since_ts: int) -> int:
             "rem_source": "withings_api" if rem_sec else None,
             "sleep_hr_avg": data.get("hr_average"),
             "sleep_hr_min": data.get("hr_min"),
+            "sleep_hr_max": data.get("hr_max"),
             "respiratory_rate": data.get("rr_average"),
             "sleep_score": data.get("sleep_score"),
             "sleep_efficiency_pct": round(data["sleep_efficiency"] * 100, 1) if data.get("sleep_efficiency") else None,
+            "spo2_avg": data.get("spo2_average"),
             "source": SOURCE,
         }
 
@@ -482,6 +510,33 @@ async def sync_intraday_hr(db: AsyncSession, access_token: str, date_str: str) -
     return count
 
 
+async def derive_rhr_from_sleep(db: AsyncSession, since_ts: int) -> int:
+    """Derive RHR from sleep_hr_min for dates that have no existing rhr_logs entry.
+
+    Runs after sync_rhr. Meastype 11 spot-checks win (on_conflict_do_nothing),
+    sleep fills gaps where no spot check exists.
+    Always covers at least the last 7 days regardless of since_ts.
+    """
+    since_date = datetime.fromtimestamp(since_ts, tz=timezone.utc).date()
+    seven_days_ago = (datetime.now(timezone.utc) - timedelta(days=7)).date()
+    effective_since = min(since_date, seven_days_ago)
+
+    result = await db.execute(
+        select(SleepLog.sleep_date, SleepLog.sleep_hr_min)
+        .where(SleepLog.sleep_date >= effective_since, SleepLog.sleep_hr_min.isnot(None))
+    )
+    count = 0
+    for row in result.all():
+        stmt = pg_insert(RhrLog).values(
+            log_date=row.sleep_date,
+            rhr_bpm=int(row.sleep_hr_min),
+            source=SOURCE,
+        ).on_conflict_do_nothing(index_elements=["log_date", "source"])
+        await db.execute(stmt)
+        count += 1
+    return count
+
+
 RHR_SAUNA_THRESHOLD = 115  # BPM — readings at or above this are sauna artefacts (D44)
 
 
@@ -627,6 +682,9 @@ async def sync_activities(db: AsyncSession, access_token: str, since_ts: int) ->
             "elevation_m": activity.get("elevation"),
             "zone_seconds": zone_data,
             "steps": activity.get("steps"),
+            "soft_mins": round(activity["soft"] / 60, 1) if activity.get("soft") else None,
+            "moderate_mins": round(activity["moderate"] / 60, 1) if activity.get("moderate") else None,
+            "intense_mins": round(activity["intense"] / 60, 1) if activity.get("intense") else None,
             "source": SOURCE,
         }
 
@@ -740,6 +798,10 @@ async def sync_workouts(db: AsyncSession, access_token: str, since_ts: int) -> i
                 "hr_zone_2": data.get("hr_zone_2"),
                 "hr_zone_3": data.get("hr_zone_3"),
                 "steps": data.get("steps"),
+                "spo2_avg": data.get("spo2_average"),
+                "pause_duration_mins": round(data["pause_duration"] / 60, 1) if data.get("pause_duration") else None,
+                "pool_laps": data.get("pool_laps"),
+                "strokes": data.get("strokes"),
                 "source": SOURCE,
             }
 
@@ -753,20 +815,24 @@ async def sync_workouts(db: AsyncSession, access_token: str, since_ts: int) -> i
                     "activity_type": text("EXCLUDED.activity_type"),
                     "activity_date": text("EXCLUDED.activity_date"),
                     "started_at":    text("EXCLUDED.started_at"),
-                    "duration_mins":  text("COALESCE(EXCLUDED.duration_mins,  activity_logs.duration_mins)"),
-                    "distance_km":    text("COALESCE(EXCLUDED.distance_km,    activity_logs.distance_km)"),
-                    "avg_pace_secs":  text("COALESCE(EXCLUDED.avg_pace_secs,  activity_logs.avg_pace_secs)"),
-                    "avg_hr":         text("COALESCE(EXCLUDED.avg_hr,         activity_logs.avg_hr)"),
-                    "min_hr":         text("COALESCE(EXCLUDED.min_hr,         activity_logs.min_hr)"),
-                    "max_hr":         text("COALESCE(EXCLUDED.max_hr,         activity_logs.max_hr)"),
-                    "calories_burned":text("COALESCE(EXCLUDED.calories_burned,activity_logs.calories_burned)"),
-                    "elevation_m":    text("COALESCE(EXCLUDED.elevation_m,    activity_logs.elevation_m)"),
-                    "zone_seconds":   text("COALESCE(EXCLUDED.zone_seconds,   activity_logs.zone_seconds)"),
-                    "hr_zone_0":      text("COALESCE(EXCLUDED.hr_zone_0,      activity_logs.hr_zone_0)"),
-                    "hr_zone_1":      text("COALESCE(EXCLUDED.hr_zone_1,      activity_logs.hr_zone_1)"),
-                    "hr_zone_2":      text("COALESCE(EXCLUDED.hr_zone_2,      activity_logs.hr_zone_2)"),
-                    "hr_zone_3":      text("COALESCE(EXCLUDED.hr_zone_3,      activity_logs.hr_zone_3)"),
-                    "steps":          text("COALESCE(EXCLUDED.steps,          activity_logs.steps)"),
+                    "duration_mins":       text("COALESCE(EXCLUDED.duration_mins,       activity_logs.duration_mins)"),
+                    "distance_km":         text("COALESCE(EXCLUDED.distance_km,         activity_logs.distance_km)"),
+                    "avg_pace_secs":       text("COALESCE(EXCLUDED.avg_pace_secs,       activity_logs.avg_pace_secs)"),
+                    "avg_hr":              text("COALESCE(EXCLUDED.avg_hr,              activity_logs.avg_hr)"),
+                    "min_hr":              text("COALESCE(EXCLUDED.min_hr,              activity_logs.min_hr)"),
+                    "max_hr":              text("COALESCE(EXCLUDED.max_hr,              activity_logs.max_hr)"),
+                    "calories_burned":     text("COALESCE(EXCLUDED.calories_burned,     activity_logs.calories_burned)"),
+                    "elevation_m":         text("COALESCE(EXCLUDED.elevation_m,         activity_logs.elevation_m)"),
+                    "zone_seconds":        text("COALESCE(EXCLUDED.zone_seconds,        activity_logs.zone_seconds)"),
+                    "hr_zone_0":           text("COALESCE(EXCLUDED.hr_zone_0,           activity_logs.hr_zone_0)"),
+                    "hr_zone_1":           text("COALESCE(EXCLUDED.hr_zone_1,           activity_logs.hr_zone_1)"),
+                    "hr_zone_2":           text("COALESCE(EXCLUDED.hr_zone_2,           activity_logs.hr_zone_2)"),
+                    "hr_zone_3":           text("COALESCE(EXCLUDED.hr_zone_3,           activity_logs.hr_zone_3)"),
+                    "steps":               text("COALESCE(EXCLUDED.steps,               activity_logs.steps)"),
+                    "spo2_avg":            text("COALESCE(EXCLUDED.spo2_avg,            activity_logs.spo2_avg)"),
+                    "pause_duration_mins": text("COALESCE(EXCLUDED.pause_duration_mins, activity_logs.pause_duration_mins)"),
+                    "pool_laps":           text("COALESCE(EXCLUDED.pool_laps,           activity_logs.pool_laps)"),
+                    "strokes":             text("COALESCE(EXCLUDED.strokes,             activity_logs.strokes)"),
                 },
             )
             result = await db.execute(stmt)
@@ -910,6 +976,14 @@ async def run_full_sync(db: AsyncSession) -> dict:
                     error_message=str(e),
                     batch_id=batch_id,
                 ))
+
+        # Derive RHR from sleep_hr_min for dates with no meastype-11 spot check
+        try:
+            derived = await derive_rhr_from_sleep(db, since_ts)
+            results["rhr_derived"] = derived
+        except Exception as e:
+            logger.warning("derive_rhr_from_sleep error: %s", e)
+            results["rhr_derived"] = f"error: {str(e)}"
 
         # Backfill: re-fetch workouts with any critical field NULL (HR/distance/steps arrive late)
         try:

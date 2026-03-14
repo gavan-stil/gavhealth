@@ -41,6 +41,8 @@ class WeightLog(Base):
     bone_mass_kg: Mapped[float | None] = mapped_column(Float)
     hydration_kg: Mapped[float | None] = mapped_column(Float)
     bmi: Mapped[float | None] = mapped_column(Float)
+    fat_ratio_pct: Mapped[float | None] = mapped_column(Float)
+    fat_free_mass_kg: Mapped[float | None] = mapped_column(Float)
     source: Mapped[str] = mapped_column(String(50), nullable=False, default="manual")
 
 
@@ -61,6 +63,7 @@ class SleepLog(Base):
     awake_hrs: Mapped[float | None] = mapped_column(Float)
     sleep_hr_avg: Mapped[float | None] = mapped_column(Float)
     sleep_hr_min: Mapped[float | None] = mapped_column(Float)
+    sleep_hr_max: Mapped[float | None] = mapped_column(Float)
     source: Mapped[str] = mapped_column(String(50), nullable=False, default="manual")
     # data-pipeline extensions
     hrv_ms: Mapped[float | None] = mapped_column(Float)
@@ -126,6 +129,15 @@ class ActivityLog(Base):
     hr_zone_3: Mapped[int | None] = mapped_column(Integer)
     # Steps from Withings daily summary (getactivity)
     steps: Mapped[int | None] = mapped_column(Integer)
+    # T23: workout detail fields
+    spo2_avg: Mapped[float | None] = mapped_column(Float)
+    pause_duration_mins: Mapped[float | None] = mapped_column(Float)
+    pool_laps: Mapped[int | None] = mapped_column(Integer)
+    strokes: Mapped[int | None] = mapped_column(Integer)
+    # T23: daily summary intensity breakdown (seconds → mins)
+    soft_mins: Mapped[float | None] = mapped_column(Float)
+    moderate_mins: Mapped[float | None] = mapped_column(Float)
+    intense_mins: Mapped[float | None] = mapped_column(Float)
 
 
 # ---------------------------------------------------------------------------
