@@ -9,7 +9,7 @@ import { apiFetch } from "@/lib/api";
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
 
-export type EditableType = "activity" | "sleep" | "sauna";
+export type EditableType = "activity" | "workout" | "sleep" | "sauna";
 
 interface ActivityInit {
   duration_mins?: number | null;
@@ -19,6 +19,18 @@ interface ActivityInit {
   distance_km?: number | null;
   avg_pace_secs?: number | null;
   calories_burned?: number | null;
+}
+
+interface WorkoutInit {
+  workout_split?: "push" | "pull" | "legs" | null;
+  duration_mins?: number | null;
+  avg_hr?: number | null;
+  min_hr?: number | null;
+  max_hr?: number | null;
+  calories_burned?: number | null;
+  /** ISO datetime string with timezone — used to populate date + time fields */
+  started_at?: string | null;
+  activity_date?: string | null;
 }
 
 interface SleepInit {
@@ -36,7 +48,7 @@ interface SaunaInit {
   did_devotions?: boolean;
 }
 
-export type EditInit = ActivityInit | SleepInit | SaunaInit;
+export type EditInit = ActivityInit | WorkoutInit | SleepInit | SaunaInit;
 
 interface Props {
   type: EditableType;
@@ -208,11 +220,11 @@ function paceField(
 /* ── Component ───────────────────────────────────────────────────────── */
 
 export default function ActivityEditSheet({ type, id, label, init, onSave, onClose }: Props) {
-  // Flatten init to string-valued form state (exclude pace & duration — handled separately)
+  // Flatten init to string-valued form state (exclude pace, duration, split, started_at — handled separately)
   const [fields, setFields] = useState<Record<string, string>>(() => {
     const out: Record<string, string> = {};
     for (const [k, v] of Object.entries(init)) {
-      if (k === "avg_pace_secs" || k === "duration_mins") continue;
+      if (k === "avg_pace_secs" || k === "duration_mins" || k === "workout_split" || k === "started_at" || k === "activity_date") continue;
       if (v != null && v !== undefined) out[k] = String(v);
     }
     return out;
@@ -228,6 +240,35 @@ export default function ActivityEditSheet({ type, id, label, init, onSave, onClo
   const [paceStr, setPaceStr] = useState(() => {
     const ai = init as ActivityInit;
     return ai.avg_pace_secs ? secsToMSS(ai.avg_pace_secs) : "";
+  });
+
+  // Workout split picker
+  const [workoutSplit, setWorkoutSplit] = useState<"push" | "pull" | "legs" | null>(() => {
+    if (type !== "workout") return null;
+    return (init as WorkoutInit).workout_split ?? null;
+  });
+
+  // Workout date + time fields (Brisbane local)
+  const [workoutDate, setWorkoutDate] = useState(() => {
+    if (type !== "workout") return "";
+    const wi = init as WorkoutInit;
+    if (wi.activity_date) return wi.activity_date;
+    if (wi.started_at) return new Date(wi.started_at).toLocaleDateString("en-CA");
+    return "";
+  });
+  const [workoutTime, setWorkoutTime] = useState(() => {
+    if (type !== "workout") return "";
+    const wi = init as WorkoutInit;
+    if (!wi.started_at) return "";
+    const d = new Date(wi.started_at);
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  });
+
+  // Workout duration as MM:SS
+  const [workoutDurStr, setWorkoutDurStr] = useState(() => {
+    if (type !== "workout") return "";
+    const wi = init as WorkoutInit;
+    return wi.duration_mins ? minsToMMSS(wi.duration_mins) : "";
   });
 
   // Boolean toggles for sauna
@@ -292,8 +333,22 @@ export default function ActivityEditSheet({ type, id, label, init, onSave, onClo
         body.did_devotions = devotions;
       }
 
+      if (type === "workout") {
+        // Duration
+        const parsedDur = mmssToMins(workoutDurStr);
+        if (parsedDur !== null) body.duration_mins = Math.round(parsedDur * 100) / 100;
+        // Split
+        if (workoutSplit) body.workout_split = workoutSplit;
+        // Date + time → started_at with Brisbane offset, activity_date
+        if (workoutDate) {
+          body.activity_date = workoutDate;
+          const timeStr = workoutTime || "06:00";
+          body.started_at = `${workoutDate}T${timeStr}:00+10:00`;
+        }
+      }
+
       const endpoint =
-        type === "activity"
+        type === "activity" || type === "workout"
           ? `/api/activity-logs/${id}`
           : type === "sleep"
           ? `/api/sleep/${id}`
@@ -371,6 +426,62 @@ export default function ActivityEditSheet({ type, id, label, init, onSave, onClo
                 ? `estimated: ${calculatedCals} kcal`
                 : undefined
             )}
+          </>)}
+
+          {type === "workout" && (<>
+            {/* Split picker */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <label style={labelStyle}>Split</label>
+              <div style={{ display: "flex", gap: 8 }}>
+                {(["push", "pull", "legs"] as const).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setWorkoutSplit(workoutSplit === s ? null : s)}
+                    style={{
+                      flex: 1,
+                      padding: "10px",
+                      borderRadius: "var(--radius-sm)",
+                      border: `1px solid ${workoutSplit === s ? "var(--ochre)" : "var(--border-default)"}`,
+                      background: workoutSplit === s ? "rgba(212,160,74,0.15)" : "transparent",
+                      color: workoutSplit === s ? "var(--ochre)" : "var(--text-muted)",
+                      font: "600 12px/1 'Inter',sans-serif",
+                      textTransform: "capitalize",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Date + time */}
+            <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ flex: 2, display: "flex", flexDirection: "column", gap: 4 }}>
+                <label style={labelStyle}>Date</label>
+                <input
+                  type="date"
+                  value={workoutDate}
+                  onChange={(e) => setWorkoutDate(e.target.value)}
+                  style={fieldStyle}
+                />
+              </div>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+                <label style={labelStyle}>Time (Brisbane)</label>
+                <input
+                  type="time"
+                  value={workoutTime}
+                  onChange={(e) => setWorkoutTime(e.target.value)}
+                  style={fieldStyle}
+                />
+              </div>
+            </div>
+
+            {durationField(workoutDurStr, setWorkoutDurStr)}
+            {numField("Avg HR", "avg_hr", fields.avg_hr ?? "", set, "e.g. 145", "1", "bpm")}
+            {numField("Min HR", "min_hr", fields.min_hr ?? "", set, "e.g. 110", "1", "bpm")}
+            {numField("Max HR", "max_hr", fields.max_hr ?? "", set, "e.g. 175", "1", "bpm")}
+            {numField("Calories burned", "calories_burned", fields.calories_burned ?? "", set, "e.g. 420", "1", "kcal")}
           </>)}
 
           {type === "sleep" && (<>

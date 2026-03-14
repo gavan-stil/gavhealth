@@ -14,7 +14,13 @@ All 9 tasks shipped. App is live, logging flows work end-to-end.
 
 ## Active Task
 
-None — backlog next.
+**T21** — Calendar multi-session + workout edit + timezone fixes (2026-03-14)
+- Calendar: all activity types show multiple sessions per day as stacked bars (no more first-wins dedup)
+- Calendar: push/pull icon always wins; leg ● appears alongside as secondary indicator
+- Calendar: weight date uses Brisbane local date (fix UTC split bug)
+- Workout edit: new "workout" EditableType; split picker (Push/Pull/Legs), date+time, duration, HR, calories; Edit button added to strength session cards
+- Backend: `PATCH /api/activity-logs/{id}` now accepts `workout_split` + `activity_date`
+- Backend: sauna + strength session date filtering uses `AT TIME ZONE 'Australia/Brisbane'`
 
 ---
 

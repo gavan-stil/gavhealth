@@ -104,6 +104,7 @@ class ActivityResponse(BaseModel):
     id: int
     activity_date: date
     activity_type: str
+    started_at: datetime | None = None
     duration_mins: float | None = None
     distance_km: float | None = None
     avg_pace_secs: float | None = None

@@ -47,6 +47,7 @@ type SessionDetail = {
   totalSets: number;
   totalReps: number;
   totalLoadKg: number;
+  durationMins: number | null;
   rows: ExRow[];
 };
 
@@ -250,6 +251,7 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
             totalSets: s.total_sets,
             totalReps: s.total_reps,
             totalLoadKg: s.total_load_kg,
+            durationMins: s.duration_mins ?? null,
             rows,
           };
         });
@@ -465,6 +467,41 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
 
                     {/* Action buttons */}
                     <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                      {s.activityLogId !== null && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const splitKey = s.split === "Push" ? "push"
+                              : s.split === "Pull" ? "pull"
+                              : s.split === "Legs" ? "legs"
+                              : null;
+                            setEditTarget({
+                              type: "workout",
+                              id: s.activityLogId!,
+                              label: "Workout",
+                              init: {
+                                workout_split: splitKey as "push" | "pull" | "legs" | null,
+                                duration_mins: s.durationMins,
+                                started_at: s.sessionDatetime,
+                                activity_date: date,
+                              },
+                            });
+                          }}
+                          style={{
+                            flex: 1,
+                            font: "500 10px/1 'Inter',sans-serif",
+                            letterSpacing: "0.3px",
+                            padding: "7px 10px",
+                            borderRadius: 6,
+                            border: "1px solid var(--border-default)",
+                            background: "transparent",
+                            color: "var(--text-muted)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Edit
+                        </button>
+                      )}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

@@ -349,7 +349,7 @@ async def get_streaks(
     async def _has_sauna(d: date) -> bool:
         count = (await db.execute(
             select(func.count()).select_from(SaunaLog)
-            .where(func.date(SaunaLog.session_datetime) == d)
+            .where(func.date(func.timezone('Australia/Brisbane', SaunaLog.session_datetime)) == d)
         )).scalar_one()
         return count > 0
 
@@ -457,11 +457,11 @@ async def list_sauna(
     count_q = select(func.count()).select_from(SaunaLog)
 
     if start_date:
-        q = q.where(func.date(SaunaLog.session_datetime) >= start_date)
-        count_q = count_q.where(func.date(SaunaLog.session_datetime) >= start_date)
+        q = q.where(func.date(func.timezone('Australia/Brisbane', SaunaLog.session_datetime)) >= start_date)
+        count_q = count_q.where(func.date(func.timezone('Australia/Brisbane', SaunaLog.session_datetime)) >= start_date)
     if end_date:
-        q = q.where(func.date(SaunaLog.session_datetime) <= end_date)
-        count_q = count_q.where(func.date(SaunaLog.session_datetime) <= end_date)
+        q = q.where(func.date(func.timezone('Australia/Brisbane', SaunaLog.session_datetime)) <= end_date)
+        count_q = count_q.where(func.date(func.timezone('Australia/Brisbane', SaunaLog.session_datetime)) <= end_date)
 
     total = (await db.execute(count_q)).scalar_one()
     rows = (await db.execute(q.limit(limit).offset(offset))).scalars().all()
@@ -511,9 +511,9 @@ async def strength_history(
         .order_by(StrengthSession.session_datetime.desc(), StrengthSet.set_number)
     )
     if start_date:
-        q = q.where(func.date(StrengthSession.session_datetime) >= start_date)
+        q = q.where(func.date(func.timezone('Australia/Brisbane', StrengthSession.session_datetime)) >= start_date)
     if end_date:
-        q = q.where(func.date(StrengthSession.session_datetime) <= end_date)
+        q = q.where(func.date(func.timezone('Australia/Brisbane', StrengthSession.session_datetime)) <= end_date)
 
     rows = (await db.execute(q.limit(limit))).mappings().all()
     return [StrengthSetHistoryRow(**dict(r)) for r in rows]

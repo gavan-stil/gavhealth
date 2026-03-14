@@ -95,6 +95,14 @@ All require `X-API-Key` header.
 | `POST /api/log/habits` | `{ date, breathing: bool, devotions: bool }` | |
 | `POST /api/log/strength/save` | Builder format — will accept optional `activity_id` after Task 7 to skip auto-match and link directly | Currently: creates `strength_sessions` row; does NOT create `activity_log` when unmatched (bug — Task 7 fixes) |
 
+### Edit Endpoints (PATCH)
+
+| Endpoint | Body fields | Notes |
+|----------|-------------|-------|
+| `PATCH /api/activity-logs/{id}` | `started_at` (ISO+TZ), `activity_date` (YYYY-MM-DD), `duration_mins`, `avg_hr`, `min_hr`, `max_hr`, `distance_km`, `avg_pace_secs`, `calories_burned`, `workout_split` | Dynamic SET — only provided fields updated. `workout_split` accepts "push"/"pull"/"legs". `started_at` requires ISO string with timezone offset (e.g. `2026-03-14T07:30:00+10:00`). |
+| `PATCH /api/sleep/{id}` | `total_sleep_hrs`, `deep_sleep_hrs`, `light_sleep_hrs`, `sleep_hr_avg`, `sleep_score` | Dynamic SET. |
+| `PATCH /api/sauna/{id}` | `duration_mins`, `temperature_c`, `did_breathing`, `did_devotions` | Dynamic SET. |
+
 ### Habits History (planned — Task 8)
 
 | Endpoint | Method | Body | Notes |

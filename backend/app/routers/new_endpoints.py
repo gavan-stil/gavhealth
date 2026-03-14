@@ -846,7 +846,7 @@ async def strength_sessions(days: int = Query(default=90), db: AsyncSession = De
         text("""
             SELECT
                 ss.id,
-                ss.session_datetime::date              AS session_date,
+                (ss.session_datetime AT TIME ZONE 'Australia/Brisbane')::date AS session_date,
                 ss.session_datetime                    AS session_datetime,
                 ss.activity_log_id,
                 al.duration_mins,
@@ -988,7 +988,7 @@ async def exercise_history(
     result = await db.execute(
         text("""
             SELECT
-                ss.session_datetime::date              AS session_date,
+                (ss.session_datetime AT TIME ZONE 'Australia/Brisbane')::date AS session_date,
                 COUNT(st.id)                           AS sets,
                 SUM(st.reps)                           AS total_reps,
                 MAX(COALESCE(st.weight_kg, 0))         AS top_weight_kg,
@@ -1031,7 +1031,7 @@ async def last_session_by_split(split: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         text("""
             SELECT
-                ss.session_datetime::date                                         AS session_date,
+                (ss.session_datetime AT TIME ZONE 'Australia/Brisbane')::date AS session_date,
                 COALESCE(SUM(st.reps), 0)                                        AS total_reps,
                 COALESCE(SUM(
                     st.reps * (COALESCE(st.bodyweight_at_session, 0) + COALESCE(st.weight_kg, 0))
@@ -1353,7 +1353,8 @@ async def hr_zones(days: int = Query(default=30, ge=1, le=365), db: AsyncSession
 # Edit editable fields on an activity_logs row (runs, rides, workouts).
 # ---------------------------------------------------------------------------
 class ActivityLogUpdate(BaseModel):
-    started_at: str | None = None       # ISO datetime string
+    started_at: str | None = None       # ISO datetime string with timezone (e.g. 2026-03-14T07:30:00+10:00)
+    activity_date: str | None = None    # YYYY-MM-DD — override calendar date
     duration_mins: float | None = None
     avg_hr: int | None = None
     min_hr: int | None = None
@@ -1361,6 +1362,7 @@ class ActivityLogUpdate(BaseModel):
     distance_km: float | None = None
     avg_pace_secs: float | None = None
     calories_burned: int | None = None
+    workout_split: str | None = None    # "push" | "pull" | "legs"
 
 
 @router.patch("/activity-logs/{id}")
@@ -1372,6 +1374,11 @@ async def update_activity_log(id: int, body: ActivityLogUpdate, db: AsyncSession
     # Resolve started_at string → typed datetime to avoid asyncpg NULL-cast bug
     if "started_at" in updates and isinstance(updates["started_at"], str):
         updates["started_at"] = datetime.fromisoformat(updates["started_at"])
+
+    # Resolve activity_date string → Python date
+    if "activity_date" in updates and isinstance(updates["activity_date"], str):
+        from datetime import date as date_type
+        updates["activity_date"] = date_type.fromisoformat(updates["activity_date"])
 
     set_clause = ", ".join(f"{col} = :{col}" for col in updates)
     params = {**updates, "id": id}

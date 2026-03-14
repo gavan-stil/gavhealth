@@ -84,6 +84,26 @@ This always prefers an incoming non-null value (so GPS-corrected data overwrites
 
 ---
 
+## D008 — Momentum replaces ReadinessCard (2026-03-14)
+
+**Decision:** Replace `ReadinessCard` with a new `MomentumCard` component backed by a `health_goals` table and new `/api/momentum` endpoints. Readiness (acute, daily) is subsumed into the broader Momentum model.
+
+**Rationale:** The existing ReadinessCard used hardcoded population-average targets (7.6hr sleep, 43% deep sleep) rather than personal baselines, making the score feel arbitrary and untrustworthy. The new model uses three layers per signal: user-set target range → 28-day personal baseline → 7-day trend. This answers the user's actual question: *"Am I trending toward or away from my goals?"*
+
+**Key design choices:**
+- **Append-only `health_goals`** — targets are never overwritten; history is always preserved with timestamps and optional notes
+- **Target as range, not point** — reduces anxiety about hitting an exact number; matches the Garmin/Oura "optimal zone" pattern
+- **Separate `/goals` route** — target editing lives outside the Dashboard to keep the card focused; reachable via `Edit Goals →` link
+- **Protein/water targets move here** — hardcoded 180g and 3L values in Trends components are replaced by `health_goals` rows
+- **6 signals** — sleep, RHR, weight, calories in, protein, water; all have editable targets and historical entries
+
+**Alternatives considered:** Keep ReadinessCard and add a separate Progress card. Rejected — two cards answering overlapping questions creates confusion. Momentum is the primary health-state signal; one card, one question.
+
+**Full spec:** `specs/momentum.md`
+**Task file:** `tasks/T22-momentum.md`
+
+---
+
 ## D006 — Calendar is Phase 1 core (2026-03-04)
 
 **Decision:** Calendar overview is a core Phase 1 feature, not deferred to Phase 2.

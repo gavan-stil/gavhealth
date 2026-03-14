@@ -52,11 +52,13 @@ DOES NOT: [explicit exclusions]
 3. Stop — do NOT keep looping
 4. Report the blocker to Gav with specifics
 
-## After Completion
+## After Completion ("save it all")
 1. Move this file from tasks/active/ to tasks/done/
-2. Update README.md route status table
+2. Update STATUS.md — move task to Recently Completed, clear Active Task
 3. Add entry to CHANGELOG.md
-4. Start next task (see README.md for order)
+4. Update features.md — update affected route's feature list
+5. Update reference/api.md — add/update any new or changed endpoints
+6. Delete SESSION.md if it exists
 ```
 
 **Why duplication?** Cowork sessions lose context during compaction. If a task file contains everything inline, re-reading it after compaction restores full context. Cross-file references break under compaction.
@@ -124,15 +126,28 @@ tasks/active/NN-name.md  →  [execute]  →  tasks/done/NN-name.md
 
 ---
 
+## "Save it all" — What This Means
+
+When Gav says **"save it all"**, execute this checklist in full:
+
+- [ ] `CHANGELOG.md` — add entry for what was built
+- [ ] `STATUS.md` — move task to Recently Completed, clear Active Task
+- [ ] `features.md` — update affected route's feature list
+- [ ] `reference/api.md` — add/update any new or changed endpoints
+- [ ] `tasks/active/` → `tasks/done/` — move the completed task file
+- [ ] `SESSION.md` — delete when done
+
+---
+
 ## File Ownership
 
 | File | Who updates it |
 |------|---------------|
-| `README.md` | AI (after each task completion) |
+| `STATUS.md` | AI (after each task completion) |
 | `CHANGELOG.md` | AI (after every change) |
+| `features.md` | AI (after every task — "save it all") |
 | `DECISIONS.md` | AI (when architectural decisions made) |
-| `specs/*.md` | AI (when features change) |
-| `reference/*.md` | AI (rarely — only if infra/API changes) |
+| `reference/*.md` | AI (when infra/API changes) |
 | `tasks/active/*.md` | AI (created upfront, updated if spec changes) |
 | `tasks/done/*.md` | AI (moved from active on completion) |
 | `archive/*.md` | AI (created once, rarely updated) |

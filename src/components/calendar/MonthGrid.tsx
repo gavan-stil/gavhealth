@@ -63,11 +63,10 @@ function todayKey(): string {
 function barIcon(dot: CategoryDot): string {
   if (dot.category !== "strength") return "";
   const splitIcon =
-    dot.workoutSplit === "legs" ? "●"
-    : dot.workoutSplit === "push" ? "▶"
+    dot.workoutSplit === "push" ? "▶"
     : dot.workoutSplit === "pull" ? "▼"
     : "";
-  const legDot = dot.hasLegExercise && dot.workoutSplit !== "legs" ? "●" : "";
+  const legDot = dot.hasLegExercise ? "●" : "";
   return splitIcon + legDot;
 }
 
@@ -247,29 +246,21 @@ export default function MonthGrid({
                     borderTop: "1px solid var(--border-subtle)",
                   }}
                 >
-                  {/* Seven day cells for this category */}
+                  {/* Seven day cells for this category — may show multiple stacked bars */}
                   {week.map(({ date, inMonth }, di) => {
                     const key = toKey(date);
-                    const dot = inMonth
-                      ? (data[key] ?? []).find(
+                    const sessionDots = inMonth
+                      ? (data[key] ?? []).filter(
                           (d) => d.category === s.category && activeCategories.has(d.category)
                         )
-                      : undefined;
-
-                    const icon = dot ? barIcon(dot) : "";
-                    const label = dot ? barLabel(dot) : "";
-                    // Strength uses split icons only — no effort marker
-                    const hasMarker = dot && dot.category !== "strength"
-                      ? !!(dot.isLetsGo || dot.isInterval || dot.saunaHasDevotion)
-                      : false;
-                    const subLines = dot ? buildSubLines(dot, subToggles) : [];
+                      : [];
 
                     return (
                       <div
                         key={di}
                         style={{
                           padding: "3px 1px",
-                          minHeight: subLines.length > 0 ? 22 + subLines.length * 11 : 22,
+                          minHeight: 22,
                           display: "flex",
                           flexDirection: "column",
                           alignItems: "center",
@@ -277,51 +268,59 @@ export default function MonthGrid({
                           paddingTop: 3,
                         }}
                       >
-                        {dot && (
-                          <>
-                            {/* Coloured activity bar */}
-                            <div
-                              style={{
-                                width: "calc(100% - 2px)",
-                                height: 14,
-                                borderRadius: 3,
-                                background: dot.color,
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: 2,
-                                paddingInline: 3,
-                                overflow: "hidden",
-                              }}
-                            >
-                              {label && (
-                                <span style={{ font: "500 8px/1 'Inter', sans-serif", color: "rgba(255,255,255,0.88)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, textAlign: "center" }}>
-                                  {label}
-                                </span>
-                              )}
-                              {(icon || hasMarker) && (
-                                <span style={{ font: "700 8px/1 monospace", color: "rgba(255,255,255,0.95)", flexShrink: 0 }}>
-                                  {icon || "▲"}
-                                </span>
-                              )}
-                            </div>
-                            {/* Sub-metrics — one line per active metric */}
-                            {subLines.map((line, li) => (
+                        {sessionDots.map((dot, si) => {
+                          const icon = barIcon(dot);
+                          const label = barLabel(dot);
+                          const hasMarker = dot.category !== "strength"
+                            ? !!(dot.isLetsGo || dot.isInterval || dot.saunaHasDevotion)
+                            : false;
+                          const subLines = buildSubLines(dot, subToggles);
+                          return (
+                            <div key={si} style={{ width: "100%", marginTop: si > 0 ? 2 : 0 }}>
+                              {/* Coloured activity bar */}
                               <div
-                                key={li}
                                 style={{
-                                  font: "400 7px/1.3 'JetBrains Mono', monospace",
-                                  color: "var(--text-muted)",
-                                  marginTop: li === 0 ? 2 : 0,
                                   width: "calc(100% - 2px)",
-                                  textAlign: "center",
+                                  height: 14,
+                                  borderRadius: 3,
+                                  background: dot.color,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: 2,
+                                  paddingInline: 3,
+                                  overflow: "hidden",
                                 }}
                               >
-                                {line}
+                                {label && (
+                                  <span style={{ font: "500 8px/1 'Inter', sans-serif", color: "rgba(255,255,255,0.88)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, textAlign: "center" }}>
+                                    {label}
+                                  </span>
+                                )}
+                                {(icon || hasMarker) && (
+                                  <span style={{ font: "700 8px/1 monospace", color: "rgba(255,255,255,0.95)", flexShrink: 0 }}>
+                                    {icon || "▲"}
+                                  </span>
+                                )}
                               </div>
-                            ))}
-                          </>
-                        )}
+                              {/* Sub-metrics — one line per active metric */}
+                              {subLines.map((line, li) => (
+                                <div
+                                  key={li}
+                                  style={{
+                                    font: "400 7px/1.3 'JetBrains Mono', monospace",
+                                    color: "var(--text-muted)",
+                                    marginTop: li === 0 ? 2 : 0,
+                                    width: "calc(100% - 2px)",
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  {line}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })}
                       </div>
                     );
                   })}

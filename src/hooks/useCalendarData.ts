@@ -9,6 +9,7 @@ type RawActivity = {
   id: number;
   activity_date: string;
   activity_type: string;
+  started_at: string | null;
   duration_mins: number;
   distance_km: number | null;
   avg_pace_secs: number | null;
@@ -61,10 +62,18 @@ type DayEntry = {
   isLetsGo?: boolean;
   isInterval?: boolean;
   saunaHasDevotion?: boolean;
-  workoutSplit?: "push" | "pull" | "legs";
+  workoutSplit?: "push" | "pull";
   hasLegExercise?: boolean;
   recordId?: number;
 };
+
+/** Derive Brisbane local date (YYYY-MM-DD) from an activity.
+ *  Prefers started_at (TIMESTAMPTZ → Brisbane local) over activity_date which
+ *  may be stored as UTC date for early-morning sessions imported from Withings. */
+function activityDate(a: RawActivity): string {
+  if (a.started_at) return new Date(a.started_at).toLocaleDateString("en-CA");
+  return a.activity_date;
+}
 
 function fmt(n: number | undefined | null, unit: string, decimals = 1): string {
   if (n === undefined || n === null) return "—";
@@ -138,15 +147,11 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
   const weightRecords = weightRes.data || [];
   const rhrRecords = rhrRes.data || [];
 
-  // Map session_date → summed totals + all exercises (multiple sessions can share a date)
-  const strengthSessionsByDate = new Map<string, { total_sets: number; exercises: string[] }>();
+  // Map activity_log_id → session totals (one strength session per workout activity)
+  const strengthSessionsById = new Map<number, { total_sets: number; exercises: string[] }>();
   for (const s of (strengthSessionsRes || [])) {
-    const existing = strengthSessionsByDate.get(s.session_date);
-    if (existing) {
-      existing.total_sets += s.total_sets;
-      existing.exercises.push(...(s.exercises ?? []));
-    } else {
-      strengthSessionsByDate.set(s.session_date, { total_sets: s.total_sets, exercises: s.exercises ?? [] });
+    if (s.activity_log_id !== null) {
+      strengthSessionsById.set(s.activity_log_id, { total_sets: s.total_sets, exercises: s.exercises ?? [] });
     }
   }
 
@@ -164,7 +169,7 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
 
   // Weight
   const sortedWeight = [...weightRecords]
-    .map((w) => ({ date: w.recorded_at.split("T")[0], weight_kg: w.weight_kg }))
+    .map((w) => ({ date: new Date(w.recorded_at).toLocaleDateString("en-CA"), weight_kg: w.weight_kg }))
     .sort((a, b) => a.date.localeCompare(b.date));
   for (let i = 0; i < sortedWeight.length; i++) {
     const w = sortedWeight[i];
@@ -214,7 +219,7 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
     const isInterval = intervalKeywords.some((kw) =>
       (a.notes ?? "").toLowerCase().includes(kw)
     );
-    addEntry(a.activity_date, {
+    addEntry(activityDate(a), {
       category: "running",
       duration: durStr,
       subMetrics: {
@@ -232,15 +237,18 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
   // Strength (workout)
   for (const a of workouts) {
     const durStr = a.duration_mins ? fmtInt(a.duration_mins, "m") : "—";
-    let workoutSplit: "push" | "pull" | "legs" | undefined;
+    // push/pull always win; "legs" explicit split contributes to hasLegExercise but not workoutSplit
+    let workoutSplit: "push" | "pull" | undefined;
     if (a.workout_split === "push") workoutSplit = "push";
     else if (a.workout_split === "pull") workoutSplit = "pull";
-    else if (a.workout_split === "legs") workoutSplit = "legs";
-    const session = strengthSessionsByDate.get(a.activity_date);
+    // look up by this activity's ID so multiple sessions per day each get their own data
+    const session = strengthSessionsById.get(a.id);
     const inferred = inferSplit(session?.exercises ?? []);
-    // Fall back to auto-detected split if no explicit split is set
+    // Fall back to auto-detected push/pull if no explicit split is set
     if (!workoutSplit && inferred.split) workoutSplit = inferred.split;
-    addEntry(a.activity_date, {
+    // hasLegExercise: true if any exercises are legs, OR if activity was explicitly tagged "legs"
+    const hasLegExercise = inferred.hasLegExercise || a.workout_split === "legs";
+    addEntry(activityDate(a), {
       category: "strength",
       duration: durStr,
       subMetrics: {
@@ -249,7 +257,7 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
       },
       isLetsGo: a.effort === "lets_go",
       workoutSplit,
-      hasLegExercise: inferred.hasLegExercise,
+      hasLegExercise,
       recordId: a.id,
     });
   }
@@ -261,7 +269,7 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
       : r.distance_km
       ? fmt(r.distance_km, "km")
       : "—";
-    addEntry(r.activity_date, {
+    addEntry(activityDate(r), {
       category: "ride",
       duration: durStr,
       subMetrics: {
@@ -288,16 +296,11 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
     });
   }
 
-  // Build CalendarData with canonical ordering
+  // Build CalendarData — all sessions kept, ordered by CATEGORY_ORDER (multiple per category allowed)
   const result: CalendarData = {};
   for (const [date, entries] of dayMap) {
-    const seen = new Map<CategoryName, DayEntry>();
-    for (const e of entries) {
-      if (!seen.has(e.category)) seen.set(e.category, e);
-    }
-    result[date] = CATEGORY_ORDER.filter((c) => seen.has(c)).map((c) => {
-      const e = seen.get(c)!;
-      return {
+    result[date] = CATEGORY_ORDER.flatMap((c) =>
+      entries.filter((e) => e.category === c).map((e) => ({
         category: c,
         color: CATEGORY_COLORS[c],
         duration: e.duration,
@@ -308,8 +311,8 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
         workoutSplit: e.workoutSplit,
         hasLegExercise: e.hasLegExercise,
         recordId: e.recordId,
-      } as CategoryDot;
-    });
+      } as CategoryDot))
+    );
   }
 
   return result;

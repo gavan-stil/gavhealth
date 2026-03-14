@@ -24,11 +24,12 @@
 
 ## Calendar (`/calendar`)
 
-- **Month dot matrix** — 7 columns Mon–Sun, 4–5 rows; colored dots per category per day
-- **Category dots** — Weight (#e8c47a), Sleep (#7FAABC), Heart (#c4856a), Running (#b8a878), Strength (#b47050), Sauna (#c45a4a), Nutrition (#e8c47a)
+- **Month dot matrix** — 7 columns Mon–Sun, 4–5 rows; colored bars per category per day; **multiple sessions per day stack as separate bars** (no collapsing); all activity types supported (runs, rides, sauna, strength, etc.)
+- **Category dots** — Weight (#e8c47a), Sleep (#7FAABC), Heart (#c4856a), Running (#7a6848), Strength (#b47050), Ride (#c4789a), Sauna (#c45a4a)
+- **Strength split icons** — `▶` push, `▼` pull, `●` legs; push/pull always takes priority; `●` appears alongside push/pull when any leg exercises were logged in the same session
 - **Category filter toggle bar** — show/hide individual categories
 - **Month navigation** — prev/next buttons; `useCalendarData(year, month)` re-fetches on navigation using `start_date`/`end_date` params
-- **DayDetailSheet** — tap day → bottom sheet; strength session cards (expand/collapse, exercise grid: split, body areas, sets×reps, top weight, totals); sauna always-open; run/ride/walk/other dot cards; run/ride use horizontal bordered stat blocks (dist + pace row, time + bpm row); other activity types use 2-col grid; **swipe left/right or ‹ › arrows** to navigate between days without closing sheet; **Edit details** button on run/ride/strength/sleep/sauna cards → opens ActivityEditSheet
+- **DayDetailSheet** — tap day → bottom sheet; strength session cards (expand/collapse, exercise grid: split, body areas, sets×reps, top weight, totals, **Edit button**); sauna always-open; run/ride/walk/other dot cards; run/ride use horizontal bordered stat blocks (dist + pace row, time + bpm row); other activity types use 2-col grid; **swipe left/right or ‹ › arrows** to navigate between days without closing sheet; **Edit details** button on run/ride/sleep/sauna cards; **Edit button on strength session cards** → opens workout ActivityEditSheet
 - **SessionPickerSheet** — link manual strength log to Withings workout; triggered from StrengthCard in DayDetailSheet
 - **Manual Withings sync button** — present on Calendar (and Dashboard)
 - **Calendar styling** — visual polish pass on dot matrix and day cells (latest session)
@@ -70,13 +71,13 @@
 - **Streaks** — `GET /api/streaks`; running, strength, sauna, habits
 - **Strength normalised schema** — `strength_sessions` + `strength_sets` tables; `bridged_session_id` linking manual logs to Withings workouts; `bodyweight_at_session` column in `strength_sessions`
 - **Last-by-split endpoint** — `GET /api/strength/sessions/last-by-split/{split}`
-- **Brisbane timezone throughout** — `new Date(iso).toLocaleDateString('en-CA')` for local YYYY-MM-DD; never `.toISOString().split('T')[0]`
+- **Brisbane timezone throughout** — `new Date(iso).toLocaleDateString('en-CA')` for local YYYY-MM-DD; never `.toISOString().split('T')[0]`; backend sauna + strength session date filtering uses `AT TIME ZONE 'Australia/Brisbane'` (fixes pre-10am sessions filing under wrong UTC date)
 - **Bulk CSV import** — `backend/import_withings_csv.py`; idempotent; 6yr Withings history imported 2026-03-07
 - **asyncpg NULL-cast fix** — Python `None` params resolved to typed `datetime` before SQL; avoids PostgreSQL `unknown` type error on `COALESCE(:param::timestamptz, NOW())`
-- **Session edit endpoints** — `PATCH /api/activity-logs/{id}`, `PATCH /api/sleep/{id}`, `PATCH /api/sauna/{id}`; dynamic SET clause, only updates provided fields
-- **ActivityEditSheet** — generic bottom sheet (zIndex 120) for editing activity/sleep/sauna records; run duration as MM:SS input (e.g. 26:12); pace as M:SS input (e.g. 5:16/km); **calculated pace** auto-derived from duration ÷ distance (used when pace field left blank); **calculated calories** estimated from duration × avg HR or distance fallback (used when calories field left blank); sleep fields: total/deep/light hours, avg HR, score; sauna fields: duration, temperature, breathing/devotions toggles
+- **Session edit endpoints** — `PATCH /api/activity-logs/{id}` (fields: `started_at`, `activity_date`, `duration_mins`, `avg_hr`, `min_hr`, `max_hr`, `distance_km`, `avg_pace_secs`, `calories_burned`, **`workout_split`**, **`activity_date`**), `PATCH /api/sleep/{id}`, `PATCH /api/sauna/{id}`; dynamic SET clause, only updates provided fields
+- **ActivityEditSheet** — generic bottom sheet (zIndex 120) for editing activity/sleep/sauna/workout records; **workout type**: split picker (Push/Pull/Legs buttons), date input, time input, duration (MM:SS), avg/min/max HR, calories; run type: duration MM:SS, distance, pace M:SS, HR, calories (calculated pace + calories hints); sleep fields: total/deep/light hours, avg HR, score; sauna fields: duration, temperature, breathing/devotions toggles
 - **recordId propagation** — `CategoryDot.recordId` carries DB record IDs through `useCalendarData` → `CalendarData` → `DayDetailSheet` for direct edit without extra API calls
 
 ---
 
-*Last updated: 2026-03-14 (T19 + T20)*
+*Last updated: 2026-03-14 (T21)*
