@@ -1,6 +1,6 @@
 # Withings Data Reference
 
-> Verified 2026-03-06. Describes what the Withings API actually sends, what we store, and what gaps exist.
+> Originally verified 2026-03-06. Updated 2026-03-14 (T23 — all major gaps closed).
 
 ---
 
@@ -32,24 +32,79 @@ Per session, Withings provides:
 | Withings field | Description | Stored in DB? |
 |---|---|---|
 | `category` | Workout type code (e.g. 46 = LiftWeights) | ⚠️ Mapped to type string, code lost |
-| `startdate` / `enddate` | Unix timestamps | ✅ Derived as `duration_mins` |
+| `startdate` / `enddate` | Unix timestamps | ✅ `started_at` + derived `duration_mins` |
 | `data.calories` | Calories burned | ✅ `calories_burned` |
 | `data.hr_average` | Average HR | ✅ `avg_hr` |
 | `data.hr_max` | Max HR | ✅ `max_hr` |
-| `data.hr_min` | Min HR | ❌ Not stored |
-| `data.hr_zone_0` | Time in zone 0 (rest/low) secs | ❌ Not stored |
-| `data.hr_zone_1` | Time in zone 1 (fat burn) secs | ❌ Not stored |
-| `data.hr_zone_2` | Time in zone 2 (cardio) secs | ❌ Not stored |
-| `data.hr_zone_3` | Time in zone 3 (peak) secs | ❌ Not stored |
-| `data.intensity` | Session intensity score | ❌ Not stored |
-| `data.effduration` | Effective duration (excl. pauses) secs | ❌ Not stored |
-| `data.pause_duration` | Total paused time secs | ❌ Not stored |
-| `data.spo2_average` | SpO2 % average | ❌ Not stored |
+| `data.hr_min` | Min HR | ✅ `min_hr` |
+| `data.hr_zone_0` | Time in zone 0 (rest/low) secs | ✅ `hr_zone_0` (integer seconds) |
+| `data.hr_zone_1` | Time in zone 1 (fat burn) secs | ✅ `hr_zone_1` |
+| `data.hr_zone_2` | Time in zone 2 (cardio) secs | ✅ `hr_zone_2` |
+| `data.hr_zone_3` | Time in zone 3 (peak) secs | ✅ `hr_zone_3` |
+| `data.intensity` | Session intensity score | ❌ Not stored (not a blocking gap) |
+| `data.effduration` | Effective duration (excl. pauses) secs | ✅ Used to derive `duration_mins` (preferred over start/end delta) |
+| `data.pause_duration` | Total paused time secs | ✅ `pause_duration_mins` (÷60, T23) |
+| `data.spo2_average` | SpO2 % average | ✅ `spo2_avg` (T23) |
+| `data.pool_laps` | Swim lap count | ✅ `pool_laps` (T23) |
+| `data.strokes` | Swim stroke count | ✅ `strokes` (T23) |
 | `data.distance` | Distance (runs/rides) | ✅ `distance_km` |
 | `data.elevation` | Elevation gain (runs) | ✅ `elevation_m` |
-| `data.steps` | Steps (daily summary) | ⚠️ Stored in `notes` as string |
+| `data.steps` | Steps per workout | ✅ `steps` |
 
-> DB has a `zone_seconds` column that exists but is always NULL — this may have been intended for HR zone data but was never populated.
+> `zone_seconds` JSONB column also exists as a legacy fallback (stores raw zone dict); the dedicated integer columns `hr_zone_0/1/2/3` are the primary store.
+
+---
+
+## What Withings Sends (getmeas — weight/body comp)
+
+Meastype groupings per scale session (`grpid`):
+
+| Meastype | Description | DB column |
+|---|---|---|
+| 1 | Weight (kg) | `weight_kg` |
+| 5 | Fat-free mass (kg) | `fat_free_mass_kg` ✅ T23 |
+| 6 | Fat ratio (%) | `fat_ratio_pct` ✅ T23 |
+| 8 | Fat mass (kg) | `fat_mass_kg` |
+| 76 | Muscle mass (kg) | `muscle_mass_kg` |
+| 77 | Hydration (kg) | `hydration_kg` |
+| 88 | Bone mass (kg) | `bone_mass_kg` |
+
+All 7 measttypes are now fetched in a single `getmeas` call (`meastype: "1,5,6,8,76,77,88"`), grouped by `grpid`, and upserted into a single `weight_logs` row per scale session. Previously only meastype 1 was fetched — all body comp columns were empty for API-sourced rows (only CSV-imported rows had comp data).
+
+---
+
+## What Withings Sends (getsummary — sleep)
+
+| Withings field | Description | DB column |
+|---|---|---|
+| `hr_average` | Average HR during sleep | `sleep_hr_avg` |
+| `hr_min` | Minimum HR (≈ RHR proxy) | `sleep_hr_min` |
+| `hr_max` | Maximum HR during sleep | `sleep_hr_max` ✅ T23 |
+| `rr_average` | Respiratory rate (breaths/min) | `respiratory_rate` |
+| `spo2_average` | Average SpO2 % | `spo2_avg` ✅ T23 |
+| `sleep_score` | Withings sleep score | `sleep_score` |
+| `sleep_efficiency` | Sleep efficiency ratio | `sleep_efficiency_pct` |
+| `total_sleep_time` | Total sleep seconds | `total_sleep_hrs` |
+| `deepsleepduration` | Deep sleep seconds | `deep_sleep_hrs` |
+| `lightsleepduration` | Light sleep seconds | `light_sleep_hrs` |
+| `remsleepduration` | REM sleep seconds | `rem_sleep_hrs` |
+
+---
+
+## What Withings Sends (getactivity — daily summary)
+
+| Withings field | Description | DB column |
+|---|---|---|
+| `steps` | Total steps | `steps` |
+| `active` | Active time (seconds) | `duration_mins` (÷60) |
+| `totalcalories` | Total calories burned (TDEE) | `calories_burned` |
+| `hr_average` | Average HR for day | `avg_hr` |
+| `hr_max` | Max HR for day | `max_hr` |
+| `soft` | Soft activity seconds | `soft_mins` ✅ T23 (÷60) |
+| `moderate` | Moderate activity seconds | `moderate_mins` ✅ T23 (÷60) |
+| `intense` | Intense activity seconds | `intense_mins` ✅ T23 (÷60) |
+| `distance` | Distance metres | `distance_km` |
+| `elevation` | Elevation gain metres | `elevation_m` |
 
 ---
 
@@ -108,6 +163,17 @@ All 4 blocking strength trends backend tasks are live. Verified via curl.
 
 ---
 
+## RHR Data Source
+
+Withings provides RHR via two mechanisms:
+
+1. **Meastype 11** — manual spot-check HR readings taken via the Breathe app. These ran until ~2026-03-05 then stopped (user stopped using Breathe app for daily checks).
+2. **`sleep_hr_min`** — minimum HR recorded during sleep (sleep summary API). This is the best available proxy for overnight resting HR and has been populated daily throughout.
+
+**T23 fix:** `derive_rhr_from_sleep()` runs after every `sync_rhr`. It reads `sleep_logs.sleep_hr_min` for the last 7 days and inserts into `rhr_logs` using `on_conflict_do_nothing(log_date, source)`. If a meastype-11 reading exists for a date, it wins (both use source=`"withings"`). If no spot check exists, sleep_hr_min fills the gap. This restores continuous RHR data from 2026-03-05 onwards.
+
+---
+
 ## Sync Reliability Protocol (implemented 2026-03-13)
 
 Withings delivers data lazily — GPS distance, HR data, and daily summary step counts can arrive hours after the workout completes. The sync strategy is designed so that **every sync can correct previously incomplete data**.
@@ -144,18 +210,19 @@ No per-call billing — Withings API is free for OAuth personal use. Rate limit 
 
 ---
 
-### 5. Store HR zones from Withings (MEDIUM — intensity tracking)
-- Alter `activity_log` to add `hr_zone_0/1/2/3` integer columns (seconds in each zone)
-- Update Withings sync to populate them
-- The existing `zone_seconds` column is always NULL — repurpose or add proper zone columns
+### ✅ 5. Store HR zones from Withings — DONE
+- `hr_zone_0/1/2/3` integer columns added; populated via COALESCE upsert in `sync_workouts`
 
-### 6. Store `intensity` and `effduration` from Withings (LOW)
-- Useful for workout quality scoring but not blocking
+### ✅ 6. Store `effduration` from Withings — DONE
+- `effduration` used preferentially to derive `duration_mins`; `pause_duration_mins` column added (T23)
 
-### 7. Store steps properly from daily_summary (LOW)
-- Currently stuffed into `notes` as a string — should be its own column
+### ✅ 7. Store steps from daily_summary — DONE
+- `steps` INTEGER column in `activity_logs`; populated from `getactivity`
 
-### 8. ⚠️ kJ unit inconsistency in daily_summary rows (DATA QUALITY)
+### ✅ 8 (T23). Body comp, SpO2, intensity fields — DONE
+- See T23 section above.
+
+### ⚠️ kJ unit inconsistency in daily_summary rows (DATA QUALITY)
 - Some bulk-imported `daily_summary` rows have `calories_burned` stored in **kJ not kcal**.
 - Affected rows identified: 2026-03-06 (12926 kJ) and 2026-03-07 (12634 kJ). These also have anomalously large `duration_mins` (~1100).
 - Root cause: likely CSV export format difference (Withings CSV uses kJ in some locales/exports).

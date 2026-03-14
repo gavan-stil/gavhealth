@@ -31,10 +31,10 @@ All require `X-API-Key` header. All support `?days=N` unless noted.
 
 | Endpoint | Returns | Seeded Rows |
 |----------|---------|-------------|
-| `/api/weight` | Weight entries (date, weight_kg) | ~404 |
-| `/api/sleep` | Sleep entries (date, duration_hrs, deep_pct, sleep_hr) | ~822 |
-| `/api/activity` | Activities (runs, rides, strength). Also `?type=` filter | ~1378 |
-| `/api/rhr` | Resting heart rate (date, rhr_bpm) | ~1845 |
+| `/api/weight` | Weight entries. Fields: `id, recorded_at, weight_kg, fat_mass_kg, muscle_mass_kg, bone_mass_kg, hydration_kg, bmi, fat_ratio_pct, fat_free_mass_kg, source`. Body comp fields populated from API-sourced rows after T23. | ~404 |
+| `/api/sleep` | Sleep entries. Fields: `id, sleep_date, bed_time, wake_time, total_sleep_hrs, deep_sleep_hrs, light_sleep_hrs, rem_sleep_hrs, awake_hrs, sleep_hr_avg, sleep_hr_min, sleep_hr_max, sleep_score, sleep_efficiency_pct, spo2_avg, respiratory_rate, source`. Returns `DISTINCT ON (sleep_date)` preferring `withings` source. | ~822 |
+| `/api/activity` | Activities (runs, rides, strength). Fields include: `id, activity_date, activity_type, started_at, duration_mins, distance_km, avg_pace_secs, avg_hr, min_hr, max_hr, calories_burned, elevation_m, steps, spo2_avg, pause_duration_mins, pool_laps, strokes, soft_mins, moderate_mins, intense_mins, source, external_id, notes, workout_split`. Also `?type=` filter | ~1378 |
+| `/api/rhr` | Resting heart rate (date, rhr_bpm). Populated from meastype-11 spot checks AND derived from `sleep_hr_min` after T23 (gaps filled). Source preference: `withings` > `withings_csv`. | ~1845 |
 | `/api/activities/feed` | Activity feed for log page. Returns `[{ id, type, date, start_time (ISO+TZ or null), duration_minutes, avg_bpm, min_hr, max_hr, distance_km, avg_pace_secs, effort, effort_manually_set }]`. Supports `?days=N`. **Curl-verified 2026-03-14** — all fields confirmed present. `start_time` IS returned when available. | — |
 | `/api/food` | Food logs for date. Use `?date=YYYY-MM-DD` | 0 (empty until logged) |
 | `/api/food/weekly` | Weekly macro aggregates | varies |
