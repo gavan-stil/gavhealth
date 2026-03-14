@@ -440,11 +440,15 @@ export default function StrengthCard({
   onToggle,
   activityId,
   onConfirmed,
+  initialDate,
+  initialTime,
 }: {
   open: boolean;
   onToggle: () => void;
   activityId?: number;
   onConfirmed?: () => void;
+  initialDate?: string;
+  initialTime?: string;
 }) {
   const [mode, setMode] = useState<CardMode>('builder');
   const [state, setState] = useState<StrengthState>('empty');
@@ -452,8 +456,9 @@ export default function StrengthCard({
   const [exercises, setExercises] = useState<WorkoutExercise[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [matchMessage, setMatchMessage] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState(today);
+  const [startDate, setStartDate] = useState(initialDate ?? today);
   const [startTime, setStartTime] = useState(() => {
+    if (initialTime) return initialTime;
     const now = new Date();
     return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   });

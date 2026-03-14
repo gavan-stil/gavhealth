@@ -133,6 +133,7 @@ export default function ActivityFeed() {
   const [error, setError] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<FeedItem | null>(null);
   const [strengthSheetActivityId, setStrengthSheetActivityId] = useState<number | null>(null);
+  const [strengthSheetActivity, setStrengthSheetActivity] = useState<{ date: string; startTime: string | null } | null>(null);
   const [filter, setFilter] = useState<FeedFilter>('weights');
 
   // Strength session state
@@ -438,7 +439,12 @@ export default function ActivityFeed() {
                       font: '600 11px/1 Inter, sans-serif', color: 'var(--rust)',
                       textTransform: 'capitalize',
                     }}>
-                      {linkedByActivityId[item.id].category} · {linkedByActivityId[item.id].exercises.length} exercises
+                      {(() => {
+                        const lbl = linkedByActivityId[item.id].session_label;
+                        const validLabels = ['push', 'pull', 'legs', 'abs'];
+                        const prefix = lbl && validLabels.includes(lbl) ? `${lbl} · ` : '';
+                        return `${prefix}${linkedByActivityId[item.id].exercises.length} Exercises`;
+                      })()}
                     </span>
                   </div>
                 )}
@@ -478,6 +484,7 @@ export default function ActivityFeed() {
           onUnlink={handleUnlink}
           onLogStrength={() => {
             const actId = selectedItem.id;
+            setStrengthSheetActivity({ date: selectedItem.date, startTime: selectedItem.start_time });
             setSelectedItem(null);
             setStrengthSheetActivityId(actId);
           }}
@@ -529,8 +536,14 @@ export default function ActivityFeed() {
               open={true}
               onToggle={() => setStrengthSheetActivityId(null)}
               activityId={strengthSheetActivityId}
+              initialDate={strengthSheetActivity?.date}
+              initialTime={strengthSheetActivity?.startTime ? (() => {
+                const d = new Date(strengthSheetActivity.startTime!);
+                return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+              })() : undefined}
               onConfirmed={() => {
                 setStrengthSheetActivityId(null);
+                setStrengthSheetActivity(null);
                 fetchStrengthSessions();
               }}
             />
@@ -655,9 +668,11 @@ function OrphanCard({
         </div>
         <div style={{ paddingLeft: 'calc(10px + var(--space-sm))', display: 'flex', alignItems: 'center', gap: 4 }}>
           <Dumbbell size={11} color="var(--rust)" />
-          <span style={{ font: '600 11px/1 Inter, sans-serif', color: 'var(--rust)', textTransform: 'capitalize' }}>
-            {session.category !== 'mixed' ? session.category : (session.session_label ?? 'Mixed')}
-          </span>
+          {(['push', 'pull', 'legs', 'abs'].includes(session.session_label ?? '')) && (
+            <span style={{ font: '600 11px/1 Inter, sans-serif', color: 'var(--rust)', textTransform: 'capitalize' }}>
+              {session.session_label}
+            </span>
+          )}
         </div>
       </div>
 
@@ -798,17 +813,10 @@ const EFFORT_ENERGY_VALUE: Record<EffortLevel, number> = {
   lets_go: 5,
 };
 
-function EffortBadge({ effort, isUnreviewed }: { effort: EffortLevel; isUnreviewed: boolean }) {
+function EffortBadge({ effort }: { effort: EffortLevel; isUnreviewed: boolean }) {
   return (
-    <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
       <EnergyIcon value={EFFORT_ENERGY_VALUE[effort]} size={15} />
-      {isUnreviewed && (
-        <span style={{
-          position: 'absolute', top: -2, right: -2,
-          width: 7, height: 7, borderRadius: '50%',
-          background: 'var(--ochre)',
-        }} />
-      )}
     </span>
   );
 }
