@@ -48,7 +48,7 @@ function computeChartPoints(
 ) {
   return days.map((d) => {
     const recoveryFields = ["sleep_hrs", "protein_g", "water_ml", "calories_in"] as const;
-    const strainFields = ["rhr_bpm", "weight_kg"] as const;
+    const strainFields = ["rhr_bpm", "weight_kg", "calories_out"] as const;
 
     let recSum = 0, recCount = 0;
     for (const key of recoveryFields) {
@@ -199,6 +199,38 @@ function MomentumChart({ points }: { points: Array<{ date: string; recovery: num
   );
 }
 
+function MiniSparkline({ data, color }: { data: (number | null)[]; color: string }) {
+  const valid = data.map((v, i) => v !== null ? { i, v } : null).filter(Boolean) as Array<{ i: number; v: number }>;
+  if (valid.length < 2) return <div style={{ width: 52, height: 24 }} />;
+
+  const vMin = Math.min(...valid.map(p => p.v));
+  const vMax = Math.max(...valid.map(p => p.v));
+  const range = vMax - vMin || 1;
+  const W = 52, H = 24, pad = 2;
+
+  const pts = valid.map(p => ({
+    x: pad + ((p.i / (data.length - 1)) * (W - pad * 2)),
+    y: pad + (H - pad * 2) - ((p.v - vMin) / range) * (H - pad * 2),
+  }));
+
+  const path = smoothPath(pts);
+  const areaPath = `${path} L${pts[pts.length - 1].x},${H - pad} L${pts[0].x},${H - pad} Z`;
+  const id = `sp-${color.replace(/[^a-z0-9]/gi, "")}`;
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} style={{ display: "block", flexShrink: 0 }}>
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="5%" stopColor={color} stopOpacity="0.4" />
+          <stop offset="95%" stopColor={color} stopOpacity="0.05" />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill={`url(#${id})`} />
+      <path d={path} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export default function MomentumCard({ data }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [detailSignal, setDetailSignal] = useState<string | null>(null);
@@ -319,16 +351,21 @@ export default function MomentumCard({ data }: Props) {
                       {g.charAt(0).toUpperCase() + g.slice(1)}
                     </span>
                   </div>
-                  {groups[g].map(s => (
+                  {groups[g].map(s => {
+                    const col = statusColor(s.status);
+                    const sparkData = signals7d?.days.map(d =>
+                      (d as unknown as Record<string, number | null>)[s.signal] ?? null
+                    ) ?? [];
+                    return (
                     <div
                       key={s.signal}
                       onClick={() => setDetailSignal(s.signal)}
                       style={{
                         display: "grid",
-                        gridTemplateColumns: "72px 1fr auto",
+                        gridTemplateColumns: "68px 1fr auto 52px",
                         alignItems: "center",
                         padding: "8px 0",
-                        gap: 8,
+                        gap: 6,
                         borderBottom: "1px solid rgba(255,255,255,0.02)",
                         cursor: "pointer",
                       }}
@@ -337,7 +374,7 @@ export default function MomentumCard({ data }: Props) {
                         {s.label}
                       </span>
                       <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
-                        <span style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700, letterSpacing: "-0.5px", color: statusColor(s.status), minWidth: 36 }}>
+                        <span style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700, letterSpacing: "-0.5px", color: col, minWidth: 36 }}>
                           {fmtValue(s)}
                         </span>
                         <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{unitLabel(s.unit)}</span>
@@ -353,8 +390,10 @@ export default function MomentumCard({ data }: Props) {
                       }}>
                         {s.status === "on_track" ? "On track" : s.status === "improving" ? "Improving" : "Off track"}
                       </span>
+                      <MiniSparkline data={sparkData} color={col} />
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               );
             })}

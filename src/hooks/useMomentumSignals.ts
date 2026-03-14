@@ -9,6 +9,7 @@ export interface MomentumDay {
   calories_in: number | null;
   protein_g: number | null;
   water_ml: number | null;
+  calories_out: number | null;
 }
 
 export interface MomentumSignalsData {

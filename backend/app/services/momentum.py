@@ -48,6 +48,12 @@ SIGNAL_META: dict[str, dict[str, Any]] = {
         "group": "recovery",
         "direction": "higher",
     },
+    "calories_out": {
+        "label": "Cal burned",
+        "unit": "kcal",
+        "group": "strain",
+        "direction": "range",
+    },
 }
 
 SIGNALS = list(SIGNAL_META.keys())
@@ -60,6 +66,7 @@ SIGNAL_DEFAULTS: dict[str, dict[str, float]] = {
     "calories_in": {"min": 2000.0, "max": 2400.0},
     "protein_g":   {"min": 160.0,  "max": 200.0},
     "water_ml":    {"min": 2500.0, "max": 3500.0},
+    "calories_out": {"min": 1800.0, "max": 2800.0},
 }
 
 
@@ -138,6 +145,23 @@ async def _fetch_water(db: AsyncSession, since: date, until: date) -> dict[str, 
     return {r.d: float(r.total_ml) for r in rows}
 
 
+async def _fetch_calories_out(db: AsyncSession, since: date, until: date) -> dict[str, float | None]:
+    """Return {date_str: calories_burned_kcal} from daily_summary activity logs."""
+    rows = await db.execute(text("""
+        SELECT activity_date::text AS d,
+               CASE
+                   WHEN calories_burned > 8000
+                        THEN ROUND(calories_burned / 4.184)::int
+                   ELSE calories_burned
+               END AS cal
+        FROM activity_logs
+        WHERE activity_type = 'daily_summary'
+          AND activity_date >= :since AND activity_date <= :until
+          AND calories_burned IS NOT NULL
+    """), {"since": since, "until": until})
+    return {r.d: float(r.cal) for r in rows}
+
+
 async def _fetch_targets(db: AsyncSession) -> dict[str, dict[str, float | None]]:
     """Return latest target per signal from health_goals (newest row wins)."""
     rows = await db.execute(text("""
@@ -165,7 +189,7 @@ async def _fetch_targets(db: AsyncSession) -> dict[str, dict[str, float | None]]
 
 def _build_day_values(
     sleep: dict, rhr: dict, weight: dict,
-    nutrition: dict, water: dict,
+    nutrition: dict, water: dict, calories_out: dict,
     date_range: list[date],
 ) -> list[dict]:
     days = []
@@ -180,6 +204,7 @@ def _build_day_values(
             "calories_in": nut.get("calories_in"),
             "protein_g": nut.get("protein_g"),
             "water_ml": water.get(ds),
+            "calories_out": calories_out.get(ds),
         })
     return days
 
@@ -252,10 +277,11 @@ async def compute_momentum(db: AsyncSession, target_date: date | None = None) ->
     weight = await _fetch_weight(db, since_28, today)
     nutrition = await _fetch_nutrition(db, since_28, today)
     water = await _fetch_water(db, since_28, today)
+    cal_out = await _fetch_calories_out(db, since_28, today)
     targets = await _fetch_targets(db)
 
     all_dates = [since_28 + timedelta(days=i) for i in range(28)]
-    days = _build_day_values(sleep, rhr, weight, nutrition, water, all_dates)
+    days = _build_day_values(sleep, rhr, weight, nutrition, water, cal_out, all_dates)
 
     # Split into 28d and 7d windows
     last_7_dates = {str(d["date"]) for d in days[-7:]}
@@ -340,10 +366,11 @@ async def get_signal_history(db: AsyncSession, days: int = 7) -> dict:
     weight = await _fetch_weight(db, since, today)
     nutrition = await _fetch_nutrition(db, since, today)
     water = await _fetch_water(db, since, today)
+    cal_out = await _fetch_calories_out(db, since, today)
     targets = await _fetch_targets(db)
 
     date_range = [since + timedelta(days=i) for i in range(days)]
-    day_values = _build_day_values(sleep, rhr, weight, nutrition, water, date_range)
+    day_values = _build_day_values(sleep, rhr, weight, nutrition, water, cal_out, date_range)
 
     # 28d baselines
     since_28 = today - timedelta(days=27)
@@ -352,7 +379,8 @@ async def get_signal_history(db: AsyncSession, days: int = 7) -> dict:
     weight_28 = await _fetch_weight(db, since_28, today)
     nutrition_28 = await _fetch_nutrition(db, since_28, today)
     water_28 = await _fetch_water(db, since_28, today)
-    all_28 = _build_day_values(sleep_28, rhr_28, weight_28, nutrition_28, water_28,
+    cal_out_28 = await _fetch_calories_out(db, since_28, today)
+    all_28 = _build_day_values(sleep_28, rhr_28, weight_28, nutrition_28, water_28, cal_out_28,
                                 [since_28 + timedelta(days=i) for i in range(28)])
 
     baselines: dict[str, float | None] = {}
@@ -372,6 +400,7 @@ async def get_signal_history(db: AsyncSession, days: int = 7) -> dict:
                 "calories_in": d.get("calories_in"),
                 "protein_g": d.get("protein_g"),
                 "water_ml": d.get("water_ml"),
+                "calories_out": d.get("calories_out"),
             }
             for d in day_values
         ],
