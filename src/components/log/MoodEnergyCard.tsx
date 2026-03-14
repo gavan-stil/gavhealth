@@ -164,7 +164,7 @@ export default function MoodEnergyCard({ open, onToggle, date }: Props) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
         <span className="label-text" style={{ color: 'var(--text-muted)' }}>{label}</span>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           {[1, 2, 3, 4, 5].map(val => {
             const active = selected === val;
             return (
