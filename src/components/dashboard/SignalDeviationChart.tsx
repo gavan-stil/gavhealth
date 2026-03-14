@@ -1,12 +1,11 @@
 import {
-  BarChart,
-  Bar,
+  AreaChart,
+  Area,
   ReferenceLine,
   ReferenceArea,
   XAxis,
   Tooltip,
   ResponsiveContainer,
-  Cell,
 } from "recharts";
 
 interface DayValue {
@@ -46,39 +45,30 @@ export default function SignalDeviationChart({
   const tMin = targetMin ?? null;
   const tMax = targetMax ?? null;
 
-  const underwater =
-    baseline !== null && tMin !== null && baseline < tMin;
-
   const height = compact ? 60 : 100;
-
-  // Compute y-domain with a little padding
-  const devs = chartData.map((d) => d.dev).filter((v): v is number => v !== null);
-  const minDev = devs.length ? Math.min(...devs) : -1;
-  const pad = Math.max(0.5, Math.abs((devs.length ? Math.max(...devs) : 1) - minDev) * 0.2);
-  const yMin = minDev - pad;
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={chartData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-        {/* Target zone band (deviation space: shift to baseline-relative coords) */}
+      <AreaChart data={chartData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+        <defs>
+          <linearGradient id="sdcGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#e8c47a" stopOpacity={0.35} />
+            <stop offset="95%" stopColor="#e8c47a" stopOpacity={0.04} />
+          </linearGradient>
+        </defs>
+
+        {/* Target zone band */}
         {baseline !== null && tMin !== null && tMax !== null && (
           <ReferenceArea
             y1={+(tMin - baseline).toFixed(2)}
             y2={+(tMax - baseline).toFixed(2)}
-            fill="rgba(232,196,122,0.10)"
-            stroke="rgba(232,196,122,0.25)"
+            fill="rgba(232,196,122,0.08)"
+            stroke="rgba(232,196,122,0.2)"
             strokeDasharray="3 3"
           />
         )}
-        {/* Underwater zone: below target min */}
-        {underwater && baseline !== null && tMin !== null && (
-          <ReferenceArea
-            y1={yMin}
-            y2={+(tMin - baseline).toFixed(2)}
-            fill="rgba(100,140,200,0.08)"
-          />
-        )}
-        {/* Zero line = baseline */}
+
+        {/* Zero line = 28d baseline */}
         <ReferenceLine y={0} stroke="#7a7060" strokeDasharray="3 3" strokeWidth={1} />
 
         {!compact && (
@@ -115,21 +105,16 @@ export default function SignalDeviationChart({
           labelFormatter={(label: any) => fmtDate(label)}
         />
 
-        <Bar dataKey="dev" radius={[2, 2, 0, 0]} maxBarSize={20}>
-          {chartData.map((entry, i) => (
-            <Cell
-              key={i}
-              fill={
-                entry.dev === null
-                  ? "#2a2a20"
-                  : entry.dev >= 0
-                  ? "#e8c47a"
-                  : "rgba(100,140,200,0.6)"
-              }
-            />
-          ))}
-        </Bar>
-      </BarChart>
+        <Area
+          type="monotone"
+          dataKey="dev"
+          stroke="#e8c47a"
+          strokeWidth={1.5}
+          fill="url(#sdcGrad)"
+          dot={false}
+          connectNulls
+        />
+      </AreaChart>
     </ResponsiveContainer>
   );
 }
