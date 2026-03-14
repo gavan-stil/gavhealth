@@ -282,7 +282,14 @@ async def save_strength_log(body: StrengthLogCreate, db: AsyncSession = Depends(
     import json
 
     exercises_json = json.dumps(body.exercises) if not isinstance(body.exercises, str) else body.exercises
-    start_ts = datetime.fromisoformat(body.start_time) if body.start_time else None
+    start_ts = None
+    if body.start_time:
+        dt = datetime.fromisoformat(body.start_time)
+        # Normalise to UTC so asyncpg receives a plain UTC datetime for TIMESTAMPTZ
+        if dt.tzinfo is not None:
+            start_ts = dt.astimezone(timezone.utc)
+        else:
+            start_ts = dt
 
     result = await db.execute(
         text("""
@@ -971,6 +978,8 @@ class StrengthSessionUpdate(BaseModel):
 async def update_strength_session(id: int, body: StrengthSessionUpdate, db: AsyncSession = Depends(get_db)):
     if body.session_datetime is not None:
         new_dt = datetime.fromisoformat(body.session_datetime)
+        if new_dt.tzinfo is not None:
+            new_dt = new_dt.astimezone(timezone.utc)
         await db.execute(
             text("UPDATE strength_sessions SET session_datetime = :dt WHERE id = :id"),
             {"dt": new_dt, "id": id},
@@ -1122,7 +1131,11 @@ class WaterLogCreate(BaseModel):
 
 @router.post("/log/water")
 async def log_water(body: WaterLogCreate, db: AsyncSession = Depends(get_db)):
-    logged_at_val = datetime.fromisoformat(body.logged_at) if body.logged_at else datetime.now(timezone.utc)
+    if body.logged_at:
+        _dt = datetime.fromisoformat(body.logged_at)
+        logged_at_val = _dt.astimezone(timezone.utc) if _dt.tzinfo else _dt
+    else:
+        logged_at_val = datetime.now(timezone.utc)
     result = await db.execute(
         text("""
             INSERT INTO water_logs (ml, logged_at)
@@ -1224,7 +1237,11 @@ class MoodLogCreate(BaseModel):
 
 @router.post("/log/mood")
 async def log_mood(body: MoodLogCreate, db: AsyncSession = Depends(get_db)):
-    logged_at_val = datetime.fromisoformat(body.logged_at) if body.logged_at else datetime.now(timezone.utc)
+    if body.logged_at:
+        _dt = datetime.fromisoformat(body.logged_at)
+        logged_at_val = _dt.astimezone(timezone.utc) if _dt.tzinfo else _dt
+    else:
+        logged_at_val = datetime.now(timezone.utc)
     result = await db.execute(
         text("""
             INSERT INTO mood_logs (mood, energy, logged_at)
@@ -1417,9 +1434,10 @@ async def update_activity_log(id: int, body: ActivityLogUpdate, db: AsyncSession
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
 
-    # Resolve started_at string → typed datetime to avoid asyncpg NULL-cast bug
+    # Resolve started_at string → UTC datetime to avoid asyncpg NULL-cast / tz-offset bug
     if "started_at" in updates and isinstance(updates["started_at"], str):
-        updates["started_at"] = datetime.fromisoformat(updates["started_at"])
+        _dt = datetime.fromisoformat(updates["started_at"])
+        updates["started_at"] = _dt.astimezone(timezone.utc) if _dt.tzinfo else _dt
 
     # Resolve activity_date string → Python date
     if "activity_date" in updates and isinstance(updates["activity_date"], str):

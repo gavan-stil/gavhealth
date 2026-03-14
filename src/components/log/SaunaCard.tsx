@@ -17,7 +17,7 @@ export default function SaunaCard({ open, onToggle }: { open: boolean; onToggle:
       await apiFetch('/api/log/sauna', {
         method: 'POST',
         body: JSON.stringify({
-          session_datetime: new Date().toISOString(),
+          session_datetime: new Date().toLocaleString('sv', { timeZone: 'Australia/Brisbane' }).replace(' ', 'T') + '+10:00',
           duration_mins: Number(duration),
           ...(temperature ? { temperature_c: Number(temperature) } : {}),
           did_devotions: hasDevotion,

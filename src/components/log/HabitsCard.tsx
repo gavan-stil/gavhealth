@@ -13,7 +13,7 @@ interface HabitsResponse {
 }
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  return new Date().toLocaleDateString('en-CA');
 }
 
 function formatShortDate(dateStr: string) {
