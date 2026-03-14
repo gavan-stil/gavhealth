@@ -14,16 +14,23 @@ All 9 tasks shipped. App is live, logging flows work end-to-end.
 
 ## Active Task
 
-**T23 — Withings Sync Completeness** (`tasks/T23-withings-sync-completeness.md`)
-- Fix RHR gap (derive from sleep_hr_min)
-- Fix weight body comp gap (fetch meastype 1,5,6,8,76,77,88)
-- Store all currently-discarded fields (spo2, pause, pool_laps, strokes, intensity mins)
-- New migration 004, model + schema updates, query source preference fixes
-- No frontend changes needed
+None — all tasks complete. See backlog.
 
 ---
 
 ## Recent Session (2026-03-14)
+
+**T23 — Withings Sync Completeness** — ✅ complete (commit: `a410424`)
+- `sync_weight`: fetches all body comp measttypes (1,5,6,8,76,77,88) grouped by grpid → fills `fat_mass_kg`, `muscle_mass_kg`, `bone_mass_kg`, `hydration_kg`, `fat_ratio_pct`, `fat_free_mass_kg` from same scale session
+- `sync_sleep`: added `spo2_average` to data_fields → stores `sleep_hr_max` + `spo2_avg`
+- `derive_rhr_from_sleep`: new function — reads `sleep_hr_min` from last 7 days, inserts into `rhr_logs` with `on_conflict_do_nothing` (meastype-11 spot checks win; sleep fills gaps from Mar 5 onwards)
+- `sync_activities`: stores `soft_mins`, `moderate_mins`, `intense_mins` from Withings daily summary
+- `sync_workouts`: stores `spo2_avg`, `pause_duration_mins`, `pool_laps`, `strokes` with COALESCE upsert
+- `run_full_sync`: calls `derive_rhr_from_sleep` after main sync loop
+- Migration 004 + `main.py` lifespan: `ADD COLUMN IF NOT EXISTS` for all 11 new columns
+- Models + schemas updated; `ActivityResponse` now includes `min_hr` (was missing)
+- `summary.py`: RHR query `.order_by(source.desc())` so `"withings"` beats `"withings_csv"`
+- `data.py`: sleep list uses `DISTINCT ON (sleep_date)` preferring `"withings"` source
 
 **Momentum v2 Restyle** — match `archive/momentum-mockup-v2.html` design
 - `MomentumCard`: replaced Recharts with custom SVG chart — day labels (Sat→Today), ochre target zone band, dashed avg baseline, recovery area fill (ochre gradient), strain dashed line (clay), today radial glow dot, "goal"/"avg" right-side axis labels. Dynamic headline comparing recovery vs strain averages (e.g. "Recovery trailing strain this week"). Footer: `● RECOVERY ● STRAIN | X of Y on track`. Expanded rows grouped by `signal.group` with status pill badges (On track/Improving/Off track) + mini sparkline SVGs.
@@ -125,6 +132,7 @@ Full task list: `tasks/T14-sprint.md`
 
 | Task | Date | Summary |
 |------|------|---------|
+| T23 Withings Sync Completeness | 2026-03-14 | Body comp from scale (fat_ratio_pct, fat_free_mass_kg + existing fields); RHR derived from sleep_hr_min (fills 9-day gap); sleep_hr_max + spo2_avg from sleep summary; activity intensity breakdown (soft/moderate/intense_mins); workout detail fields (spo2_avg, pause_duration_mins, pool_laps, strokes). Migration 004. commit: a410424 |
 | T22 Momentum Card + Goals | 2026-03-14 | MomentumCard replaces ReadinessCard; 5 new API endpoints; GoalsPage /goals; SignalDeviationChart; protein+water targets dynamic from health_goals |
 | Withings GPS late-delivery fix | 2026-03-14 | Recurring bug (GPS arrives 30-60min after upload; first sync stale). Fix: guaranteed 48h re-fetch in run_full_sync, 'ride' added to backfill IS NULL check, per-workout Railway logging, force-refresh endpoint POST /api/withings/refresh-workout/{external_id}. Root causes + rationale in DECISIONS.md D007. commit: 6e11b28 |
 | Run/ride stat block standardisation | 2026-03-13 | ActivityFeed cards now show dist+pace inline. ActivityDetailSheet + DayDetailSheet both use horizontal bordered stat blocks for run/ride (dist+pace row, time+bpm row). Backend feed endpoint exposes distance_km + avg_pace_secs. commits: ad1d613, 6d9f4ce |

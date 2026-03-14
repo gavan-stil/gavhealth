@@ -64,6 +64,7 @@
 ## Backend / Infrastructure
 
 - **Withings OAuth + auto-sync** — scheduled at 5:30am + 8:00am Brisbane (UTC+10); `workout` type = LiftWeights (category 46); category 187 remapped → run
+- **Withings sync completeness (T23)** — `sync_weight` fetches all body comp measttypes (1,5,6,8,76,77,88) grouped by grpid; `sync_sleep` stores `sleep_hr_max` + `spo2_avg`; `sync_activities` stores `soft_mins`/`moderate_mins`/`intense_mins`; `sync_workouts` stores `spo2_avg`/`pause_duration_mins`/`pool_laps`/`strokes`; `derive_rhr_from_sleep` fills `rhr_logs` from `sleep_hr_min` for dates with no meastype-11 spot check (`on_conflict_do_nothing` so manual readings win); migration 004 adds all new columns
 - **Withings sync reliability** — COALESCE upserts (on_conflict_do_update), 30-day lookback for workouts, 7-day for daily, 3-day min for sleep (covers Withings processing delays)
 - **Intraday HR sync** — `hr_intraday` table; getintradayactivity → hourly buckets; Brisbane UTC+10 timestamps
 - **Sleep stages sync** — `sleep_logs.stages` JSONB; `GET /api/sleep/stages`
@@ -90,4 +91,4 @@
 
 ---
 
-*Last updated: 2026-03-14 (Momentum v2 restyle + calories_out signal)*
+*Last updated: 2026-03-14 (T23 Withings sync completeness — body comp, RHR from sleep, workout detail fields)*
