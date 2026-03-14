@@ -6,6 +6,9 @@ import type { MomentumSignal } from "@/hooks/useMomentum";
 import useMomentumSignals from "@/hooks/useMomentumSignals";
 import SignalDeviationChart from "./SignalDeviationChart";
 
+// Strain signals are harm-minimizers: lower is always better, no user goal to "achieve"
+const STRAIN_SIGNALS = ["sleep_deficit", "calorie_deficit", "non_exercise_hr"];
+
 interface Props {
   signal: string;
   signals: MomentumSignal[];
@@ -41,17 +44,31 @@ export default function GoalDetailSheet({ signal, signals, onClose }: Props) {
     value: (d as unknown as Record<string, number | null>)[signal] ?? null,
   })) ?? [];
 
+  const isStrainSignal = STRAIN_SIGNALS.includes(signal);
+
   const baseline = data?.baselines?.[signal] ?? meta?.baseline_28d ?? null;
   const target = data?.targets?.[signal];
   const tMin = target?.min ?? meta?.target_min ?? null;
   const tMax = target?.max ?? meta?.target_max ?? null;
   const unit = meta?.unit ?? "";
 
-  // Compute GAP: how far baseline is from target
+  // For strain signals: compute today + 7d average instead of TARGET/BASELINE/GAP
+  const todayValue = chartDays.length > 0 ? chartDays[chartDays.length - 1].value : null;
+  const validVals = chartDays.map(d => d.value).filter(v => v !== null) as number[];
+  const avgValue7d = validVals.length > 0
+    ? validVals.reduce((a, b) => a + b, 0) / validVals.length
+    : null;
+
+  // Strain: threshold is the max acceptable value (default if no user target)
+  const strainThreshold = tMax ?? (signal === "sleep_deficit" ? 0.5 : signal === "calorie_deficit" ? 200 : 70);
+  const strainToday = todayValue;
+  const strainGood = strainToday !== null && strainToday <= strainThreshold;
+
+  // Recovery: Compute GAP — how far baseline is from target
   let gapValue: number | null = null;
   let gapLabel = "";
   let gapColor = "var(--text-secondary)";
-  if (baseline !== null) {
+  if (!isStrainSignal && baseline !== null) {
     if (tMin !== null && baseline < tMin) {
       gapValue = +(baseline - tMin).toFixed(1);
       gapLabel = "below target";
@@ -69,7 +86,26 @@ export default function GoalDetailSheet({ signal, signals, onClose }: Props) {
   // Insight text
   let insightText = "";
   let insightDir: "up" | "down" | null = null;
-  if (meta && baseline !== null && tMin !== null) {
+
+  if (isStrainSignal && strainToday !== null) {
+    const valFmt = `${fmtVal(strainToday, unit)} ${unitLabel(unit)}`;
+    if (signal === "sleep_deficit") {
+      insightDir = strainGood ? "up" : "down";
+      insightText = strainGood
+        ? `Sleep deficit of ${valFmt} — within ideal range. Good recovery window.`
+        : `Sleep deficit of ${valFmt} — aim to get to bed earlier to close this gap.`;
+    } else if (signal === "calorie_deficit") {
+      insightDir = strainGood ? "up" : "down";
+      insightText = strainGood
+        ? `Calorie deficit of ${valFmt} — within acceptable range for your goals.`
+        : `Calorie deficit of ${valFmt} — eating more will support muscle gain and recovery.`;
+    } else if (signal === "non_exercise_hr") {
+      insightDir = strainGood ? "up" : "down";
+      insightText = strainGood
+        ? `Daytime HR of ${valFmt} — within a healthy range.`
+        : `Daytime HR of ${valFmt} — lower values reflect improving cardiovascular fitness.`;
+    }
+  } else if (!isStrainSignal && meta && baseline !== null && tMin !== null) {
     const absBelowFloor = tMin - baseline;
     const trend = meta.trend_7d;
     if (absBelowFloor > 0) {
@@ -86,8 +122,12 @@ export default function GoalDetailSheet({ signal, signals, onClose }: Props) {
   }
 
   const isBelow = gapValue !== null && gapValue < 0;
-  const insightBg = isBelow ? "rgba(127,170,188,0.08)" : gapValue !== null && gapValue > 0 ? "rgba(196,133,106,0.08)" : "rgba(232,196,122,0.08)";
-  const insightFg = isBelow ? "#7FAABC" : gapValue !== null && gapValue > 0 ? "#c4856a" : "#e8c47a";
+  const insightBg = isStrainSignal
+    ? (strainGood ? "rgba(232,196,122,0.08)" : "rgba(196,133,106,0.08)")
+    : (isBelow ? "rgba(127,170,188,0.08)" : gapValue !== null && gapValue > 0 ? "rgba(196,133,106,0.08)" : "rgba(232,196,122,0.08)");
+  const insightFg = isStrainSignal
+    ? (strainGood ? "#e8c47a" : "#c4856a")
+    : (isBelow ? "#7FAABC" : gapValue !== null && gapValue > 0 ? "#c4856a" : "#e8c47a");
 
   return createPortal(
     <>
@@ -115,16 +155,18 @@ export default function GoalDetailSheet({ signal, signals, onClose }: Props) {
               {meta?.label ?? signal}
             </div>
             <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>
-              7-day trend vs your baseline
+              {isStrainSignal ? "7-day trend — lower is better" : "7-day trend vs your baseline"}
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button
-              onClick={() => navigate("/goals")}
-              style={{ background: "none", border: "none", color: "#a07830", fontSize: 11, fontWeight: 600, cursor: "pointer", padding: 0 }}
-            >
-              Edit Target ›
-            </button>
+            {!isStrainSignal && (
+              <button
+                onClick={() => navigate("/goals")}
+                style={{ background: "none", border: "none", color: "#a07830", fontSize: 11, fontWeight: 600, cursor: "pointer", padding: 0 }}
+              >
+                Edit Target ›
+              </button>
+            )}
             <button
               onClick={onClose}
               style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 4, display: "flex", alignItems: "center" }}
@@ -143,9 +185,11 @@ export default function GoalDetailSheet({ signal, signals, onClose }: Props) {
           ) : (
             <SignalDeviationChart
               days={chartDays}
-              baseline={baseline}
-              targetMin={tMin}
-              targetMax={tMax}
+              // Strain signals: no baseline line (lower-is-better, no avg reference makes sense)
+              // Show threshold band (0 → tMax) as the "ideal zone" instead
+              baseline={isStrainSignal ? null : baseline}
+              targetMin={isStrainSignal ? 0 : tMin}
+              targetMax={isStrainSignal ? strainThreshold : tMax}
               unit={unit}
             />
           )}
@@ -153,30 +197,64 @@ export default function GoalDetailSheet({ signal, signals, onClose }: Props) {
 
         {/* Legend */}
         <div style={{ display: "flex", gap: 16, justifyContent: "center", padding: "8px 0 12px" }}>
-          {[
-            { bg: "#d4a04a", opacity: 0.6, dashed: false, label: "Target zone" },
-            { bg: "#7a7060", opacity: 0.5, dashed: true,  label: "Baseline (28d)" },
-            { bg: "#7FAABC", opacity: 0.5, dashed: false, label: "Below baseline" },
-          ].map(item => (
-            <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <div style={{
-                width: 12, height: item.dashed ? 0 : 3, borderRadius: 2,
-                background: item.dashed ? "transparent" : item.bg,
-                borderTop: item.dashed ? `1px dashed ${item.bg}` : undefined,
-                opacity: item.opacity,
-              }} />
-              <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{item.label}</span>
-            </div>
-          ))}
+          {isStrainSignal ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <div style={{ width: 12, height: 3, borderRadius: 2, background: "#d4a04a", opacity: 0.6 }} />
+                <span style={{ fontSize: 10, color: "var(--text-muted)" }}>Ideal zone</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <div style={{ width: 12, height: 3, borderRadius: 2, background: "#b0a070", opacity: 0.7 }} />
+                <span style={{ fontSize: 10, color: "var(--text-muted)" }}>Actual values</span>
+              </div>
+            </>
+          ) : (
+            <>
+              {[
+                { bg: "#d4a04a", opacity: 0.6, dashed: false, label: "Target zone" },
+                { bg: "#7a7060", opacity: 0.5, dashed: true,  label: "Baseline (28d)" },
+                { bg: "#7FAABC", opacity: 0.5, dashed: false, label: "Below baseline" },
+              ].map(item => (
+                <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <div style={{
+                    width: 12, height: item.dashed ? 0 : 3, borderRadius: 2,
+                    background: item.dashed ? "transparent" : item.bg,
+                    borderTop: item.dashed ? `1px dashed ${item.bg}` : undefined,
+                    opacity: item.opacity,
+                  }} />
+                  <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{item.label}</span>
+                </div>
+              ))}
+            </>
+          )}
         </div>
 
-        {/* Stats row: TARGET / BASELINE / GAP */}
+        {/* Stats row: different for strain vs recovery signals */}
         <div style={{
           display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
           gap: 1, background: "var(--border-subtle)",
           borderRadius: "var(--radius-md)", overflow: "hidden", marginBottom: 12,
         }}>
-          {[
+          {(isStrainSignal ? [
+            {
+              label: "IDEAL",
+              value: `0`,
+              sub: unitLabel(unit),
+              color: "#e8c47a",
+            },
+            {
+              label: "TODAY",
+              value: fmtVal(strainToday, unit),
+              sub: strainGood ? "within range" : "above ideal",
+              color: strainGood ? "#e8c47a" : "#c4856a",
+            },
+            {
+              label: "7D AVG",
+              value: fmtVal(avgValue7d, unit),
+              sub: unitLabel(unit),
+              color: "var(--text-secondary)",
+            },
+          ] : [
             {
               label: "TARGET",
               value: tMin !== null && tMax !== null ? `${fmtVal(tMin, unit)}–${fmtVal(tMax, unit)}` : "Not set",
@@ -195,7 +273,7 @@ export default function GoalDetailSheet({ signal, signals, onClose }: Props) {
               sub: gapLabel,
               color: gapColor,
             },
-          ].map(cell => (
+          ]).map(cell => (
             <div key={cell.label} style={{ background: "var(--bg-card)", padding: 12, textAlign: "center" }}>
               <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: "1px", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 4 }}>
                 {cell.label}

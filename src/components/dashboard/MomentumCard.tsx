@@ -42,65 +42,91 @@ function fmtDeviation(signal: MomentumSignal) {
   return `${prefix}${Math.round(dev)} vs avg`;
 }
 
-// Fixed absolute scales for all signals — prevents relative (v-b)/b from exploding when
-// baseline is small (calorie_balance, deficit signals) or when a few bad nights drop sleep baseline.
-// Scale = the deviation from baseline that represents a "full swing" contribution of ±1.
+// Fixed absolute scales per signal:
+// Recovery: ±this value from target midpoint = full swing (contrib ±1)
+// Strain:   this value = maximum expected load (contrib 1 = maximum drag)
 const SIGNAL_ABS_SCALE: Record<keyof MomentumDay, number | undefined> = {
   date:             undefined,
-  sleep_hrs:        2.0,   // ±2 hrs from baseline — 8h vs 7.5h baseline → contrib +0.25
-  protein_g:        150,   // ±150g from baseline
-  water_ml:         2000,  // ±2000ml from baseline
-  calorie_balance:  600,   // ±600 kcal from baseline
-  sleep_deficit:    2,     // ±2 hrs deficit from baseline
-  calorie_deficit:  800,   // ±800 kcal deficit from baseline
-  non_exercise_hr:  15,    // ±15 bpm from baseline
-  // legacy fields — not used in chart, no scale needed
+  sleep_hrs:        2.0,   // recovery: ±2 hrs from target midpoint (8.25h)
+  protein_g:        150,   // recovery: ±150g from target midpoint
+  water_ml:         2000,  // recovery: ±2000ml from target midpoint
+  calorie_balance:  600,   // recovery: ±600 kcal from target midpoint
+  sleep_deficit:    2,     // strain: 0–2h range (2h = max drag)
+  calorie_deficit:  800,   // strain: 0–800 kcal range
+  non_exercise_hr:  20,    // strain: 0–20 bpm above ideal daytime HR
+  // legacy fields — not used in chart
   rhr_bpm:          undefined,
   weight_kg:        undefined,
   calories_in:      undefined,
   calories_out:     undefined,
 };
 
-function signalContrib(v: number, b: number | null, key: keyof MomentumDay): number | null {
-  if (b === null) return null;
+// Recovery: compare value to TARGET MIDPOINT (not 28d baseline).
+// Baseline is pulled down by bad stretches — using it makes any decent night look exceptional.
+// Target midpoint gives a stable, goal-anchored reference.
+// Falls back to baseline when no target is configured.
+function recSignalContrib(
+  v: number,
+  b: number | null,
+  tMin: number | null,
+  tMax: number | null,
+  key: keyof MomentumDay
+): number | null {
   const absScale = SIGNAL_ABS_SCALE[key];
-  if (absScale === undefined) return null; // legacy fields not used in chart
-  if (absScale === 0) return null;
-  return Math.max(-1, Math.min(1, (v - b) / absScale));
+  if (absScale === undefined || absScale === 0) return null;
+  const ref = (tMin !== null && tMax !== null) ? (tMin + tMax) / 2 : b;
+  if (ref === null) return null;
+  return Math.max(-1, Math.min(1, (v - ref) / absScale));
 }
 
-// Multiplier: score = 50 ± (avgContrib × 100).
-// At contrib=+0.25 (e.g. 8h sleep vs 7.5h baseline) → score = 75 (mid goal zone).
-// At contrib=+0.5 (strong above baseline) → score = 100 (exceptional, clamps).
-// At contrib=−0.5 (well below baseline) → score = 0 (clamps).
-const CHART_MULT = 100;
+// Strain: absolute load model — lower is always better, no baseline or user goal needed.
+// 0 = no load (no drag on momentum), abs_scale = maximum expected value (full drag).
+function strainAbsContrib(v: number, key: keyof MomentumDay): number {
+  const absScale = SIGNAL_ABS_SCALE[key];
+  if (!absScale) return 0;
+  return Math.max(0, Math.min(1, v / absScale));
+}
+
+const RECOVERY_TOTAL    = 4;  // sleep_hrs, protein_g, water_ml, calorie_balance
+const STRAIN_TOTAL      = 3;  // sleep_deficit, calorie_deficit, non_exercise_hr
+const CHART_MULT        = 50; // recovery: all 4 signals maxed → score 100, none → 50
+const CHART_STRAIN_MULT = 40; // strain: all 3 maxed → score 10, none → 50
 
 function computeChartPoints(
   days: MomentumDay[],
-  baselines: Record<string, number | null>
+  baselines: Record<string, number | null>,
+  targets: Record<string, { min: number | null; max: number | null }>
 ) {
   return days.map((d) => {
     const recoveryFields = ["sleep_hrs", "protein_g", "water_ml", "calorie_balance"] as const;
-    const strainFields = ["sleep_deficit", "calorie_deficit", "non_exercise_hr"] as const;
+    const strainFields   = ["sleep_deficit", "calorie_deficit", "non_exercise_hr"] as const;
 
-    let recSum = 0, recCount = 0;
+    // Recovery: each signal scored vs target midpoint (falls back to baseline if no target)
+    let recSum = 0;
     for (const key of recoveryFields) {
       const v = d[key];
       if (v === null) continue;
-      const c = signalContrib(v, baselines[key] ?? null, key);
-      if (c !== null) { recSum += c; recCount++; }
+      const t = targets[key];
+      const c = recSignalContrib(v, baselines[key] ?? null, t?.min ?? null, t?.max ?? null, key);
+      if (c !== null) recSum += c;
     }
 
-    let strainSum = 0, strainCount = 0;
+    // Strain: absolute load — 0=no drag, abs_scale=maximum drag. Null days are skipped.
+    let strainSum = 0;
+    let strainCount = 0;
     for (const key of strainFields) {
       const v = d[key];
       if (v === null) continue;
-      const c = signalContrib(v, baselines[key] ?? null, key);
-      if (c !== null) { strainSum += c; strainCount++; }
+      strainSum += strainAbsContrib(v, key);
+      strainCount++;
     }
 
-    const recovery = recCount > 0 ? Math.round(50 + (recSum / recCount) * CHART_MULT) : null;
-    const strain = strainCount > 0 ? Math.round(50 - (strainSum / strainCount) * CHART_MULT) : null;
+    // Recovery: divide by TOTAL_SIGNALS so no single signal dominates
+    const recovery = Math.max(0, Math.min(100, Math.round(50 + (recSum / RECOVERY_TOTAL) * CHART_MULT)));
+    // Strain: null when no data at all; otherwise drag from 50 toward 0
+    const strain = strainCount === 0
+      ? null
+      : Math.max(0, Math.min(100, Math.round(50 - (strainSum / STRAIN_TOTAL) * CHART_STRAIN_MULT)));
     return { date: d.date, recovery, strain };
   });
 }
@@ -242,12 +268,15 @@ function MiniSparkline({ data, color }: { data: (number | null)[]; color: string
 
   const vMin = Math.min(...valid.map(p => p.v));
   const vMax = Math.max(...valid.map(p => p.v));
-  const range = vMax - vMin || 1;
+  const range = vMax - vMin;
   const W = 52, H = 24, pad = 2;
+  const innerH = H - pad * 2;
+  const centerY = pad + innerH / 2;
 
   const pts = valid.map(p => ({
     x: pad + ((p.i / (data.length - 1)) * (W - pad * 2)),
-    y: pad + (H - pad * 2) - ((p.v - vMin) / range) * (H - pad * 2),
+    // When all values are identical (e.g., all zeros), render at center not bottom edge
+    y: range === 0 ? centerY : pad + innerH - ((p.v - vMin) / range) * innerH,
   }));
 
   const path = smoothPath(pts);
@@ -274,7 +303,7 @@ export default function MomentumCard({ data }: Props) {
   const navigate = useNavigate();
   const { data: signals7d } = useMomentumSignals(14);
 
-  const chartPoints = signals7d ? computeChartPoints(signals7d.days, signals7d.baselines) : [];
+  const chartPoints = signals7d ? computeChartPoints(signals7d.days, signals7d.baselines, signals7d.targets) : [];
   const last7 = chartPoints.slice(-7);
 
   // Dynamic headline: compare avg recovery vs strain score
