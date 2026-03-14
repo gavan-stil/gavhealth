@@ -26,7 +26,8 @@ export interface StrengthSessionForSheet {
   id: number;
   session_date: string;
   category: string;
-  duration_mins: number;
+  session_label?: string | null;
+  duration_mins: number | null;
   exercises: string[];
   activity_log_id: number | null;
 }
@@ -707,7 +708,7 @@ export default function ActivityDetailSheet({
                             font: '400 11px/1 JetBrains Mono, monospace',
                             color: 'var(--text-muted)', letterSpacing: '-0.3px',
                           }}>
-                            {session.session_date} · {session.exercises.length} ex · {formatDuration(session.duration_mins)}
+                            {session.session_date} · {session.exercises.length} ex · {formatDuration(session.duration_mins ?? 0)}
                           </span>
                         </div>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>

@@ -81,7 +81,7 @@ function today() {
 }
 
 function buildStartTime(dateInput: string, timeInput: string) {
-  return `${dateInput}T${timeInput}:00`;
+  return `${dateInput}T${timeInput}:00+10:00`;
 }
 
 function formatShortDate(dateStr: string): string {

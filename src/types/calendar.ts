@@ -12,6 +12,7 @@ export type CategoryDot = {
   saunaHasDevotion?: boolean; // did_devotions === true → show ▲
   workoutSplit?: 'push' | 'pull'; // strength session split — push/pull always wins; legs shown via hasLegExercise
   hasLegExercise?: boolean;                 // any exercise in session is legs category
+  hasAbsSession?: boolean;                  // session is tagged abs/core
   /** DB record id — used for editing (activity_logs.id, sleep_logs.id, sauna_logs.id) */
   recordId?: number;
 };

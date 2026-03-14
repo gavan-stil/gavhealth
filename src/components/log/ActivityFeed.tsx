@@ -5,6 +5,8 @@ import { EnergyIcon } from './MoodEnergyCard';
 import { apiFetch } from '@/lib/api';
 import StrengthCard from './StrengthCard';
 import ActivityDetailSheet from './ActivityDetailSheet';
+import ActivityEditSheet from '@/components/ActivityEditSheet';
+import type { EditInit } from '@/components/ActivityEditSheet';
 
 type EffortLevel = 'basic' | 'mid' | 'lets_go';
 
@@ -28,7 +30,8 @@ interface StrengthSession {
   session_date: string;
   session_datetime: string | null;
   category: string;
-  duration_mins: number;
+  session_label: string | null;
+  duration_mins: number | null;
   exercises: string[];
   activity_log_id: number | null;
 }
@@ -138,6 +141,7 @@ export default function ActivityFeed() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deletingActivityId, setDeletingActivityId] = useState<number | null>(null);
   const [orphanLinkingId, setOrphanLinkingId] = useState<number | null>(null); // orphan showing activity picker
+  const [editingOrphan, setEditingOrphan] = useState<{ id: number; init: EditInit } | null>(null);
 
   const fetchStrengthSessions = useCallback(async () => {
     try {
@@ -366,6 +370,7 @@ export default function ActivityFeed() {
                 linkingSessionId={linkingSessionId}
                 onDelete={handleDelete}
                 onLink={handleLink}
+                onEdit={(id, init) => setEditingOrphan({ id, init })}
               />
             );
           }
@@ -483,6 +488,19 @@ export default function ActivityFeed() {
         document.body
       )}
 
+      {/* Strength session edit sheet */}
+      {editingOrphan !== null && createPortal(
+        <ActivityEditSheet
+          type="strength_session"
+          id={editingOrphan.id}
+          label="Strength Session"
+          init={editingOrphan.init}
+          onSave={() => { fetchStrengthSessions(); setEditingOrphan(null); }}
+          onClose={() => setEditingOrphan(null)}
+        />,
+        document.body
+      )}
+
       {/* Strength sheet overlay — portal to body so position:fixed works inside scroll container */}
       {strengthSheetActivityId !== null && createPortal(
         <>
@@ -527,7 +545,7 @@ export default function ActivityFeed() {
 /* ── OrphanCard ─────────────────────────────────────────────────────────── */
 function OrphanCard({
   session, orphanLinkingId, setOrphanLinkingId,
-  unlinkedWorkouts, deletingId, linkingSessionId, onDelete, onLink,
+  unlinkedWorkouts, deletingId, linkingSessionId, onDelete, onLink, onEdit,
 }: {
   session: StrengthSession;
   orphanLinkingId: number | null;
@@ -537,6 +555,7 @@ function OrphanCard({
   linkingSessionId: number | null;
   onDelete: (id: number) => void;
   onLink: (sessionId: number, activityId: number) => void;
+  onEdit: (id: number, init: EditInit) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [detail, setDetail] = useState<OrphanDetail | null>(null);
@@ -632,12 +651,12 @@ function OrphanCard({
           {formatDate(session.session_date)}
           {session.session_datetime ? ` · ${formatTime(session.session_datetime)}` : ''}
           {' · '}{session.exercises.length} exercises
-          {' · '}{formatDuration(session.duration_mins)}
+          {' · '}{formatDuration(session.duration_mins ?? 0)}
         </div>
         <div style={{ paddingLeft: 'calc(10px + var(--space-sm))', display: 'flex', alignItems: 'center', gap: 4 }}>
           <Dumbbell size={11} color="var(--rust)" />
           <span style={{ font: '600 11px/1 Inter, sans-serif', color: 'var(--rust)', textTransform: 'capitalize' }}>
-            {session.category}
+            {session.category !== 'mixed' ? session.category : (session.session_label ?? 'Mixed')}
           </span>
         </div>
       </div>
@@ -710,17 +729,31 @@ function OrphanCard({
           {/* Action buttons */}
           <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
             <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const label = session.session_label as "push" | "pull" | "legs" | "abs" | null ?? null;
+                onEdit(session.id, {
+                  session_label: label,
+                  duration_minutes: session.duration_mins ?? undefined,
+                  started_at: session.session_datetime,
+                });
+              }}
+              style={{ flex: 1, padding: '8px', background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)', font: '600 12px/1 Inter, sans-serif', cursor: 'pointer' }}
+            >
+              Edit
+            </button>
+            <button
               onClick={(e) => { e.stopPropagation(); onDelete(session.id); }}
               disabled={deletingId === session.id}
               style={{ flex: 1, padding: '8px', background: 'transparent', border: '1px solid var(--signal-bad)', borderRadius: 'var(--radius-md)', color: 'var(--signal-bad)', font: '600 12px/1 Inter, sans-serif', cursor: 'pointer', opacity: deletingId === session.id ? 0.5 : 1 }}
             >
-              {deletingId === session.id ? 'Deleting…' : 'Delete session'}
+              {deletingId === session.id ? 'Deleting…' : 'Delete'}
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); setOrphanLinkingId(orphanLinkingId === session.id ? null : session.id); }}
               style={{ flex: 1, padding: '8px', background: orphanLinkingId === session.id ? 'var(--bg-elevated)' : 'transparent', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)', font: '600 12px/1 Inter, sans-serif', cursor: 'pointer' }}
             >
-              Link to workout
+              Link
             </button>
           </div>
 

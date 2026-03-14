@@ -59,6 +59,7 @@ function todayKey(): string {
 /** Split icon(s) for a strength bar.
  *  Pull/push: explicit or auto-detected from exercise majority.
  *  Leg ●: any exercise in session is legs — shown independently alongside pull/push.
+ *  Abs ◆: session is tagged abs/core.
  */
 function barIcon(dot: CategoryDot): string {
   if (dot.category !== "strength") return "";
@@ -67,7 +68,8 @@ function barIcon(dot: CategoryDot): string {
     : dot.workoutSplit === "pull" ? "▼"
     : "";
   const legDot = dot.hasLegExercise ? "●" : "";
-  return splitIcon + legDot;
+  const absDot = dot.hasAbsSession ? "◆" : "";
+  return splitIcon + legDot + absDot;
 }
 
 /** Duration label inside an activity bar */

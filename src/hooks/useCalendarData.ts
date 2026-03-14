@@ -47,7 +47,10 @@ type RawRhr = {
 type RawStrengthSession = {
   id: number;
   session_date: string;
+  session_datetime?: string | null;
   activity_log_id: number | null;
+  session_label?: string | null;
+  duration_mins?: number | null;
   total_sets: number;
   total_reps: number;
   exercises?: string[];
@@ -64,6 +67,7 @@ type DayEntry = {
   saunaHasDevotion?: boolean;
   workoutSplit?: "push" | "pull";
   hasLegExercise?: boolean;
+  hasAbsSession?: boolean;
   recordId?: number;
 };
 
@@ -248,6 +252,7 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
     if (!workoutSplit && inferred.split) workoutSplit = inferred.split;
     // hasLegExercise: true if any exercises are legs, OR if activity was explicitly tagged "legs"
     const hasLegExercise = inferred.hasLegExercise || a.workout_split === "legs";
+    const hasAbsSession = a.workout_split === "abs";
     addEntry(activityDate(a), {
       category: "strength",
       duration: durStr,
@@ -258,7 +263,32 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
       isLetsGo: a.effort === "lets_go",
       workoutSplit,
       hasLegExercise,
+      hasAbsSession,
       recordId: a.id,
+    });
+  }
+
+  // Unlinked strength sessions (orphans — no activity_log) appear directly on calendar
+  for (const s of (strengthSessionsRes || [])) {
+    if (s.activity_log_id !== null) continue; // linked ones handled via activity_logs
+    if (!s.session_date) continue;
+    const durStr = s.duration_mins ? fmtInt(s.duration_mins, "m") : "—";
+    const label = s.session_label ?? "";
+    let workoutSplit: "push" | "pull" | undefined;
+    if (label === "push") workoutSplit = "push";
+    else if (label === "pull") workoutSplit = "pull";
+    const inferred = inferSplit(s.exercises ?? []);
+    if (!workoutSplit && inferred.split) workoutSplit = inferred.split;
+    const hasLegExercise = inferred.hasLegExercise || label === "legs";
+    const hasAbsSession = label === "abs" || label === "core";
+    addEntry(s.session_date, {
+      category: "strength",
+      duration: durStr,
+      subMetrics: { sets: `${s.total_sets}` },
+      workoutSplit,
+      hasLegExercise,
+      hasAbsSession,
+      recordId: s.id,
     });
   }
 
@@ -310,6 +340,7 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
         saunaHasDevotion: e.saunaHasDevotion,
         workoutSplit: e.workoutSplit,
         hasLegExercise: e.hasLegExercise,
+        hasAbsSession: e.hasAbsSession,
         recordId: e.recordId,
       } as CategoryDot))
     );

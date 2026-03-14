@@ -57,11 +57,12 @@ def _infer_category(name: str) -> str:
     return "other"
 
 
-def _session_category(categories: list[str]) -> str:
+def _session_category(categories: list[str], session_label: str | None = None) -> str:
     """Map a list of exercise DB categories → scatter colour group.
 
     DB categories: chest, back, shoulders, arms, legs, core, other
     Scatter groups: push, pull, legs, abs, mixed
+    Falls back to session_label when exercise categories are ambiguous.
     """
     MACRO = {
         "chest": "push", "shoulders": "push", "arms": "push",
@@ -73,6 +74,9 @@ def _session_category(categories: list[str]) -> str:
     cats = {MACRO.get(c, "mixed") for c in (categories or []) if c}
     cats.discard("mixed")          # ignore unknowns when deciding
     if not cats:
+        LABEL_MAP = {"push": "push", "pull": "pull", "legs": "legs", "abs": "abs"}
+        if session_label and session_label.lower() in LABEL_MAP:
+            return LABEL_MAP[session_label.lower()]
         return "mixed"
     if len(cats) == 1:
         return cats.pop()
@@ -849,7 +853,8 @@ async def strength_sessions(days: int = Query(default=90), db: AsyncSession = De
                 (ss.session_datetime AT TIME ZONE 'Australia/Brisbane')::date AS session_date,
                 ss.session_datetime                    AS session_datetime,
                 ss.activity_log_id,
-                al.duration_mins,
+                ss.session_label,
+                COALESCE(al.duration_mins, msl.duration_minutes) AS duration_mins,
                 al.avg_hr,
                 al.calories_burned                     AS calories,
                 COUNT(st.id)                           AS total_sets,
@@ -870,9 +875,10 @@ async def strength_sessions(days: int = Query(default=90), db: AsyncSession = De
             LEFT JOIN strength_sets st ON st.session_id = ss.id
             LEFT JOIN exercises e ON e.id = st.exercise_id
             LEFT JOIN activity_logs al ON al.id = ss.activity_log_id
+            LEFT JOIN manual_strength_logs msl ON msl.bridged_session_id = ss.id
             WHERE ss.session_datetime >= CURRENT_TIMESTAMP - (:days * INTERVAL '1 day')
-            GROUP BY ss.id, ss.session_datetime, ss.activity_log_id,
-                     al.duration_mins, al.avg_hr, al.calories_burned
+            GROUP BY ss.id, ss.session_datetime, ss.session_label, ss.activity_log_id,
+                     al.duration_mins, al.avg_hr, al.calories_burned, msl.duration_minutes
             ORDER BY ss.session_datetime DESC
         """),
         {"days": days},
@@ -885,6 +891,7 @@ async def strength_sessions(days: int = Query(default=90), db: AsyncSession = De
             "session_date": r["session_date"].isoformat() if r["session_date"] else None,
             "session_datetime": r["session_datetime"].isoformat() if r["session_datetime"] else None,
             "activity_log_id": r["activity_log_id"],
+            "session_label": r["session_label"],
             "duration_mins": float(r["duration_mins"]) if r["duration_mins"] is not None else None,
             "avg_hr": r["avg_hr"],
             "calories": r["calories"],
@@ -893,7 +900,10 @@ async def strength_sessions(days: int = Query(default=90), db: AsyncSession = De
             "total_load_kg": float(r["total_load_kg"]),
             "avg_load_per_set_kg": float(r["avg_load_per_set_kg"]),
             "exercises": [e for e in (r["exercises"] or []) if e is not None],
-            "category": _session_category([c for c in (r["categories"] or []) if c is not None]),
+            "category": _session_category(
+                [c for c in (r["categories"] or []) if c is not None],
+                r["session_label"],
+            ),
         }
         for r in rows
     ]
@@ -942,6 +952,42 @@ async def link_strength_session(id: int, body: LinkBody, db: AsyncSession = Depe
     row = result.mappings().first()
     if not row:
         raise HTTPException(status_code=404, detail="Session not found")
+    await db.commit()
+    return {"ok": True, "id": id}
+
+
+# ---------------------------------------------------------------------------
+# A3d2. PATCH /api/strength/sessions/{id}
+# Edit session_datetime (date+time), session_label (split), and duration on
+# manual_strength_logs via bridged_session_id.
+# ---------------------------------------------------------------------------
+class StrengthSessionUpdate(BaseModel):
+    session_datetime: str | None = None   # ISO with +10:00 offset
+    session_label: str | None = None      # "push" | "pull" | "legs" | "abs"
+    duration_minutes: int | None = None
+
+
+@router.patch("/strength/sessions/{id}")
+async def update_strength_session(id: int, body: StrengthSessionUpdate, db: AsyncSession = Depends(get_db)):
+    if body.session_datetime is not None:
+        new_dt = datetime.fromisoformat(body.session_datetime)
+        await db.execute(
+            text("UPDATE strength_sessions SET session_datetime = :dt WHERE id = :id"),
+            {"dt": new_dt, "id": id},
+        )
+
+    if body.session_label is not None:
+        await db.execute(
+            text("UPDATE strength_sessions SET session_label = :label WHERE id = :id"),
+            {"label": body.session_label, "id": id},
+        )
+
+    if body.duration_minutes is not None:
+        await db.execute(
+            text("UPDATE manual_strength_logs SET duration_minutes = :dur WHERE bridged_session_id = :id"),
+            {"dur": body.duration_minutes, "id": id},
+        )
+
     await db.commit()
     return {"ok": True, "id": id}
 
