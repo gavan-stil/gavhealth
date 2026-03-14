@@ -61,8 +61,8 @@ SIGNALS = list(SIGNAL_META.keys())
 # Default seed targets — used when no health_goals row exists for a signal
 SIGNAL_DEFAULTS: dict[str, dict[str, float]] = {
     "sleep_hrs":   {"min": 7.0,    "max": 8.5},
-    "rhr_bpm":     {"min": 45.0,   "max": 50.0},
-    "weight_kg":   {"min": 82.0,   "max": 86.0},
+    "rhr_bpm":     {"min": 52.0,   "max": 60.0},
+    "weight_kg":   {"min": 71.0,   "max": 72.0},
     "calories_in": {"min": 2000.0, "max": 2400.0},
     "protein_g":   {"min": 160.0,  "max": 200.0},
     "water_ml":    {"min": 2500.0, "max": 3500.0},

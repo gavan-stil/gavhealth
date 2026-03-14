@@ -11,7 +11,9 @@ import SleepCard from "@/components/dashboard/SleepCard";
 import SleepHistorySheet from "@/components/dashboard/SleepHistorySheet";
 import IntradayHRChart from "@/components/dashboard/IntradayHRChart";
 import MomentumCard from "@/components/dashboard/MomentumCard";
+import ProgressCard from "@/components/dashboard/ProgressCard";
 import useMomentum from "@/hooks/useMomentum";
+import useProgress from "@/hooks/useProgress";
 import VitalsCard from "@/components/dashboard/VitalsCard";
 import StreaksCard from "@/components/dashboard/StreaksCard";
 import CardSkeleton from "@/components/dashboard/CardSkeleton";
@@ -53,6 +55,7 @@ export default function DashboardPage() {
 
   const { readiness, vitals, streaks } = useDashboard();
   const momentum = useMomentum();
+  const progress = useProgress();
   const v2 = useDashboardV2(selectedDate);
   const goalRings = useGoalRings(selectedDate);
   const sleepStages = useSleepStages(selectedDate);
@@ -217,6 +220,9 @@ export default function DashboardPage() {
       ) : (
         <CardEmpty section="momentum" />
       )}
+
+      {/* Progress */}
+      {progress.data && <ProgressCard data={progress.data} />}
 
       {/* Sleep stages */}
       {sleepStages.loading ? null : sleepStages.data ? (
