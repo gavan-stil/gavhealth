@@ -100,12 +100,12 @@ function CustomTooltip({
         </span>
       </div>
       {d.calories_in > 0 && (
-        <div style={{ color: "var(--ochre)", marginBottom: 2 }}>
+        <div style={{ color: "var(--sand)", marginBottom: 2 }}>
           In: {d.calories_in.toLocaleString()} kcal
         </div>
       )}
       {d.calories_burned_total != null && (
-        <div style={{ color: "var(--dawn)", marginBottom: 2 }}>
+        <div style={{ color: "var(--rust)", marginBottom: 2 }}>
           Burn: {d.calories_burned_total.toLocaleString()} kcal
         </div>
       )}
@@ -122,7 +122,7 @@ function CustomTooltip({
         </div>
       )}
       {d.weight_kg != null && (
-        <div style={{ color: "var(--clay)", marginTop: 4 }}>
+        <div style={{ color: "var(--ember)", marginTop: 4 }}>
           Weight: {d.weight_kg.toFixed(1)} kg
         </div>
       )}
@@ -206,14 +206,14 @@ function SummaryRow({ days, target = 180 }: { days: EnergyDay[]; target?: number
 
       <div style={cellStyle}>
         <span style={labelStyle}>Avg In</span>
-        <span style={valueStyle("var(--ochre)")}>{avgIn.toLocaleString()}</span>
+        <span style={valueStyle("var(--sand)")}>{avgIn.toLocaleString()}</span>
         <span style={{ fontSize: 9, color: "var(--text-muted)" }}>kcal</span>
       </div>
 
       {avgBurn != null && (
         <div style={cellStyle}>
           <span style={labelStyle}>Avg Burn</span>
-          <span style={valueStyle("var(--dawn)")}>{avgBurn.toLocaleString()}</span>
+          <span style={valueStyle("var(--rust)")}>{avgBurn.toLocaleString()}</span>
           <span style={{ fontSize: 9, color: "var(--text-muted)" }}>kcal</span>
         </div>
       )}
@@ -236,7 +236,7 @@ function SummaryRow({ days, target = 180 }: { days: EnergyDay[]; target?: number
           <span style={labelStyle}>Weight Δ</span>
           <span
             style={valueStyle(
-              weightDelta < 0 ? "var(--signal-good)" : "var(--rust)"
+              weightDelta < 0 ? "var(--signal-good)" : "var(--ember)"
             )}
           >
             {weightDelta > 0 ? "+" : ""}
@@ -406,7 +406,7 @@ export default function EnergyBalanceChart({ proteinTarget = 180 }: { proteinTar
               width: 10,
               height: 10,
               borderRadius: 2,
-              background: "var(--ochre)",
+              background: "var(--sand)",
               display: "inline-block",
             }}
           />
@@ -418,7 +418,7 @@ export default function EnergyBalanceChart({ proteinTarget = 180 }: { proteinTar
               width: 10,
               height: 10,
               borderRadius: 2,
-              background: "var(--dawn)",
+              background: "var(--rust)",
               display: "inline-block",
             }}
           />
@@ -429,7 +429,7 @@ export default function EnergyBalanceChart({ proteinTarget = 180 }: { proteinTar
             style={{
               width: 10,
               height: 2,
-              background: "var(--clay)",
+              background: "var(--ember)",
               display: "inline-block",
             }}
           />
@@ -470,7 +470,7 @@ export default function EnergyBalanceChart({ proteinTarget = 180 }: { proteinTar
                 yAxisId="wt"
                 orientation="right"
                 domain={[weightMin, weightMax]}
-                tick={{ fill: "var(--clay)", fontSize: 10 }}
+                tick={{ fill: "var(--ember)", fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={(v) => `${v}kg`}
@@ -481,7 +481,7 @@ export default function EnergyBalanceChart({ proteinTarget = 180 }: { proteinTar
               <Bar
                 yAxisId="cal"
                 dataKey="calories_in"
-                fill="var(--ochre)"
+                fill="var(--sand)"
                 opacity={0.85}
                 radius={[2, 2, 0, 0]}
                 maxBarSize={18}
@@ -491,8 +491,8 @@ export default function EnergyBalanceChart({ proteinTarget = 180 }: { proteinTar
               <Bar
                 yAxisId="cal"
                 dataKey="calories_burned_total"
-                fill="var(--dawn)"
-                opacity={0.7}
+                fill="var(--rust)"
+                opacity={0.8}
                 radius={[2, 2, 0, 0]}
                 maxBarSize={18}
                 name="Burn"
@@ -501,9 +501,9 @@ export default function EnergyBalanceChart({ proteinTarget = 180 }: { proteinTar
               <Line
                 yAxisId="wt"
                 dataKey="weight_kg"
-                stroke="var(--clay)"
+                stroke="var(--ember)"
                 strokeWidth={2}
-                dot={{ r: 3, fill: "var(--clay)", strokeWidth: 0 }}
+                dot={{ r: 3, fill: "var(--ember)", strokeWidth: 0 }}
                 connectNulls
                 type="monotone"
                 name="Weight"

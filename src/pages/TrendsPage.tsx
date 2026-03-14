@@ -2,8 +2,6 @@ import { useState } from "react";
 import { useTrendsData } from "@/hooks/useTrendsData";
 import type { TimeRange } from "@/hooks/useTrendsData";
 import { useStrengthTrends } from "@/hooks/useStrengthTrends";
-import RecoverySparklines from "@/components/trends/RecoverySparklines";
-import PerformanceOverlay from "@/components/trends/PerformanceOverlay";
 import EnergyBalanceChart from "@/components/trends/EnergyBalanceChart";
 import ProteinWeightChart from "@/components/trends/ProteinWeightChart";
 import StrengthQualityChart from "@/components/trends/StrengthQualityChart";
@@ -180,8 +178,6 @@ export default function TrendsPage() {
           <ProteinWeightChart proteinTarget={proteinTarget} />
           <StrengthQualityChart />
           <RunHRZonesChart />
-          <RecoverySparklines data={data} />
-          <PerformanceOverlay data={data} />
           <NutritionTrendsChart nutrition={data.nutrition} proteinTarget={proteinTarget} />
           <WaterTrendsChart water={data.water} waterTarget={waterTarget} />
           <WorkoutVolumeChart

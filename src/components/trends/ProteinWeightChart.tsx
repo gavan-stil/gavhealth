@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import {
   ComposedChart,
-  Bar,
+  Area,
   Line,
   XAxis,
   YAxis,
   Tooltip,
-  Cell,
   ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
@@ -84,7 +83,7 @@ function CustomTooltip({
         </span>
       </div>
       {d.weight_kg != null && (
-        <div style={{ color: "var(--clay)", marginTop: 4 }}>
+        <div style={{ color: "var(--ember)", marginTop: 4 }}>
           Weight: {d.weight_kg.toFixed(1)} kg
         </div>
       )}
@@ -170,7 +169,7 @@ function SummaryRow({ days, target = 180 }: { days: EnergyDay[]; target?: number
           <span style={labelStyle}>Weight Δ</span>
           <span
             style={valueStyle(
-              weightDelta < 0 ? "var(--signal-good)" : weightDelta > 0 ? "var(--rust)" : "var(--text-primary)"
+              weightDelta < 0 ? "var(--signal-good)" : weightDelta > 0 ? "var(--ember)" : "var(--text-primary)"
             )}
           >
             {weightDelta > 0 ? "+" : ""}
@@ -183,7 +182,7 @@ function SummaryRow({ days, target = 180 }: { days: EnergyDay[]; target?: number
       {weightDays.length > 0 && (
         <div style={cellStyle}>
           <span style={labelStyle}>Latest</span>
-          <span style={valueStyle("var(--clay)")}>
+          <span style={valueStyle("var(--ember)")}>
             {weightDays[weightDays.length - 1]?.weight_kg?.toFixed(1)}
           </span>
           <span style={{ fontSize: 9, color: "var(--text-muted)" }}>kg</span>
@@ -310,25 +309,16 @@ export default function ProteinWeightChart({ proteinTarget = 180 }: { proteinTar
           <span
             style={{
               width: 10, height: 10, borderRadius: 2,
-              background: "var(--signal-good)", display: "inline-block",
-            }}
-          />
-          <span style={{ color: "var(--text-muted)" }}>On target</span>
-        </span>
-        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <span
-            style={{
-              width: 10, height: 10, borderRadius: 2,
               background: "var(--ochre)", display: "inline-block",
             }}
           />
-          <span style={{ color: "var(--text-muted)" }}>Below {proteinTarget}g</span>
+          <span style={{ color: "var(--text-muted)" }}>Protein</span>
         </span>
         <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <span
             style={{
               width: 10, height: 2,
-              background: "var(--clay)", display: "inline-block",
+              background: "var(--ember)", display: "inline-block",
             }}
           />
           <span style={{ color: "var(--text-muted)" }}>Weight</span>
@@ -343,6 +333,12 @@ export default function ProteinWeightChart({ proteinTarget = 180 }: { proteinTar
               data={days}
               margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
             >
+              <defs>
+                <linearGradient id="proteinGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#d4a04a" stopOpacity={0.45} />
+                  <stop offset="95%" stopColor="#d4a04a" stopOpacity={0.05} />
+                </linearGradient>
+              </defs>
               <XAxis
                 dataKey="date"
                 tick={{ fill: "var(--text-muted)", fontSize: 10 }}
@@ -367,7 +363,7 @@ export default function ProteinWeightChart({ proteinTarget = 180 }: { proteinTar
                 yAxisId="wt"
                 orientation="right"
                 domain={[weightMin, weightMax]}
-                tick={{ fill: "var(--clay)", fontSize: 10 }}
+                tick={{ fill: "var(--ember)", fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={(v) => `${v}kg`}
@@ -381,33 +377,25 @@ export default function ProteinWeightChart({ proteinTarget = 180 }: { proteinTar
                 stroke="rgba(255,255,255,0.2)"
                 strokeDasharray="4 3"
               />
-              {/* Protein bars */}
-              <Bar
+              {/* Protein area */}
+              <Area
                 yAxisId="prot"
                 dataKey="protein_g"
-                radius={[2, 2, 0, 0]}
-                maxBarSize={18}
+                stroke="#e8c47a"
+                strokeWidth={1.5}
+                fill="url(#proteinGrad)"
+                dot={false}
+                connectNulls
+                type="monotone"
                 name="Protein"
-              >
-                {days.map((d, i) => (
-                  <Cell
-                    key={i}
-                    fill={
-                      d.protein_g >= proteinTarget
-                        ? "var(--signal-good)"
-                        : "var(--ochre)"
-                    }
-                    opacity={0.85}
-                  />
-                ))}
-              </Bar>
+              />
               {/* Weight line */}
               <Line
                 yAxisId="wt"
                 dataKey="weight_kg"
-                stroke="var(--clay)"
+                stroke="var(--ember)"
                 strokeWidth={2}
-                dot={{ r: 3, fill: "var(--clay)", strokeWidth: 0 }}
+                dot={{ r: 3, fill: "var(--ember)", strokeWidth: 0 }}
                 connectNulls
                 type="monotone"
                 name="Weight"
