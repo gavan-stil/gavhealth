@@ -68,6 +68,25 @@ function mssToSecs(mss: string): number | null {
   return m * 60 + s;
 }
 
+/** Convert decimal minutes to MM:SS string, e.g. 26.2 → "26:12" */
+function minsToMMSS(mins: number): string {
+  const m = Math.floor(mins);
+  const s = Math.round((mins - m) * 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+/** Parse MM:SS string to decimal minutes, e.g. "26:12" → 26.2. Returns null if invalid. */
+function mmssToMins(mmss: string): number | null {
+  const trimmed = mmss.trim();
+  if (!trimmed) return null;
+  const parts = trimmed.split(":");
+  if (parts.length !== 2) return null;
+  const m = parseInt(parts[0], 10);
+  const s = parseInt(parts[1], 10);
+  if (isNaN(m) || isNaN(s) || s < 0 || s >= 60 || m < 0) return null;
+  return m + s / 60;
+}
+
 /** Calculate pace (secs/km) from duration (mins) and distance (km) */
 function calcPace(durationMins: number, distanceKm: number): number | null {
   if (!distanceKm || distanceKm <= 0 || !durationMins || durationMins <= 0) return null;
@@ -141,6 +160,25 @@ function numField(
   );
 }
 
+function durationField(
+  value: string,
+  onChange: (v: string) => void
+) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <label style={labelStyle}>Duration (mm:ss)</label>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={value}
+        placeholder="e.g. 26:12"
+        onChange={(e) => onChange(e.target.value)}
+        style={fieldStyle}
+      />
+    </div>
+  );
+}
+
 function paceField(
   value: string,
   onChange: (v: string) => void,
@@ -170,14 +208,20 @@ function paceField(
 /* ── Component ───────────────────────────────────────────────────────── */
 
 export default function ActivityEditSheet({ type, id, label, init, onSave, onClose }: Props) {
-  // Flatten init to string-valued form state (exclude pace — handled separately)
+  // Flatten init to string-valued form state (exclude pace & duration — handled separately)
   const [fields, setFields] = useState<Record<string, string>>(() => {
     const out: Record<string, string> = {};
     for (const [k, v] of Object.entries(init)) {
-      if (k === "avg_pace_secs") continue; // pace uses its own M:SS field
+      if (k === "avg_pace_secs" || k === "duration_mins") continue;
       if (v != null && v !== undefined) out[k] = String(v);
     }
     return out;
+  });
+
+  // Duration as MM:SS string for activity types (runs/rides)
+  const [durationStr, setDurationStr] = useState(() => {
+    const ai = init as ActivityInit;
+    return ai.duration_mins ? minsToMMSS(ai.duration_mins) : "";
   });
 
   // Pace as M:SS string (separate from numeric fields)
@@ -200,7 +244,7 @@ export default function ActivityEditSheet({ type, id, label, init, onSave, onClo
   const set = (k: string, v: string) => setFields((prev) => ({ ...prev, [k]: v }));
 
   // Derived calculated values for runs
-  const durationMins = parseFloat(fields.duration_mins ?? "");
+  const durationMins = type === "activity" ? (mmssToMins(durationStr) ?? NaN) : parseFloat(fields.duration_mins ?? "");
   const distanceKm = parseFloat(fields.distance_km ?? "");
   const avgHr = parseFloat(fields.avg_hr ?? "");
 
@@ -223,6 +267,14 @@ export default function ActivityEditSheet({ type, id, label, init, onSave, onClo
         if (v.trim() === "") continue;
         const n = parseFloat(v);
         if (!isNaN(n)) body[k] = n;
+      }
+
+      // Handle duration: MM:SS → decimal minutes
+      if (type === "activity") {
+        const parsedDuration = mmssToMins(durationStr);
+        if (parsedDuration !== null) {
+          body.duration_mins = Math.round(parsedDuration * 100) / 100;
+        }
       }
 
       // Handle pace: manual M:SS entry → convert to secs, else use calculated
@@ -305,7 +357,7 @@ export default function ActivityEditSheet({ type, id, label, init, onSave, onClo
         {/* Fields */}
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {type === "activity" && (<>
-            {numField("Duration", "duration_mins", fields.duration_mins ?? "", set, "e.g. 26", "1", "min")}
+            {durationField(durationStr, setDurationStr)}
             {numField("Distance", "distance_km", fields.distance_km ?? "", set, "e.g. 5.58", "0.01", "km")}
             {paceField(paceStr, setPaceStr, calculatedPace)}
             {numField("Avg HR", "avg_hr", fields.avg_hr ?? "", set, "e.g. 145", "1", "bpm")}
