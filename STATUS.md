@@ -14,11 +14,25 @@ All 9 tasks shipped. App is live, logging flows work end-to-end.
 
 ## Active Task
 
-None — ready for next task.
+**T23 — Withings Sync Completeness** (`tasks/T23-withings-sync-completeness.md`)
+- Fix RHR gap (derive from sleep_hr_min)
+- Fix weight body comp gap (fetch meastype 1,5,6,8,76,77,88)
+- Store all currently-discarded fields (spo2, pause, pool_laps, strokes, intensity mins)
+- New migration 004, model + schema updates, query source preference fixes
+- No frontend changes needed
 
 ---
 
 ## Recent Session (2026-03-14)
+
+**Momentum v2 Restyle** — match `archive/momentum-mockup-v2.html` design
+- `MomentumCard`: replaced Recharts with custom SVG chart — day labels (Sat→Today), ochre target zone band, dashed avg baseline, recovery area fill (ochre gradient), strain dashed line (clay), today radial glow dot, "goal"/"avg" right-side axis labels. Dynamic headline comparing recovery vs strain averages (e.g. "Recovery trailing strain this week"). Footer: `● RECOVERY ● STRAIN | X of Y on track`. Expanded rows grouped by `signal.group` with status pill badges (On track/Improving/Off track) + mini sparkline SVGs.
+- `SignalDeviationChart`: rewritten as absolute-value custom SVG — value labels at each data point (dawn=below baseline, ochre=above), target zone band with axis value labels, warm/cool split area fills, today glow dot, day labels.
+- `GoalDetailSheet`: new header (signal name in dawn, "7-day trend vs your baseline" subtitle, "Edit Target ›"), chart legend (Target zone / Baseline / Below baseline), TARGET/BASELINE/GAP stats row, insight text with direction arrow.
+- Backend: `calories_out` added as new strain signal — fetches daily calories burned from `activity_logs` (daily_summary rows, kJ→kcal guard). Default target 1800–2800 kcal.
+- Frontend: `MomentumDay` type + `computeChartPoints` updated to include `calories_out` in strain composite score.
+- RHR data investigation: `rhr_logs` table likely empty (Withings sync hasn't pulled data). Being handled in separate T23 session.
+- Commits: `9ad8345`, `c45417e`
 
 **Datetime audit + asyncpg fix + feed default**
 - Full datetime audit across frontend and backend — documented in `reference/timezone.md`
@@ -40,13 +54,13 @@ None — ready for next task.
 
 ---
 
-**T22** — Momentum Card + Goals System — ✅ complete (2026-03-14)
-- Backend: `health_goals` table (append-only, seed targets for all 6 signals)
+**T22** — Momentum Card + Goals System — ✅ complete (2026-03-14), restyled to v2 design same day
+- Backend: `health_goals` table (append-only, seed targets for all 7 signals incl. calories_out)
 - Backend: `GET /api/momentum`, `GET /api/momentum/signals`, `GET /api/goals`, `POST /api/goals`, `GET /api/goals/{signal}/history`
-- Frontend: `MomentumCard` — positioned above SleepCard on Dashboard; collapsed state: dual-area gradient chart (Recovery gold fill + Strain clay dashed, 14-day) + signal dots + count; expanded: 6 signal rows each with mini gradient sparkline (colour-matched to status)
-- Frontend: `GoalDetailSheet` — bottom sheet via `createPortal` (fixes position:fixed in scroll container); gradient area chart via `SignalDeviationChart`
-- Frontend: `SignalDeviationChart` — gradient area chart (gold line + fill gradient); dashed baseline at y=0; ochre target-zone ReferenceArea band; used in GoalDetailSheet + GoalsPage
-- Frontend: `/goals` route (`GoalsPage`) — all 6 signals, 7-day sparkline, set-new-target form, append-only history
+- Frontend: `MomentumCard` — custom SVG chart (replaced Recharts): day labels, target zone, today glow, "goal"/"avg" axis labels, dynamic headline, grouped expanded rows with status badges + sparklines
+- Frontend: `GoalDetailSheet` — bottom sheet with absolute-value SVG chart (value labels per point, warm/cool split fill), legend, TARGET/BASELINE/GAP stats row, insight text
+- Frontend: `SignalDeviationChart` — custom SVG (replaced Recharts): value labels, target zone with axis values, baseline, today glow
+- Frontend: `/goals` route (`GoalsPage`) — all 7 signals, 7-day sparkline, set-new-target form, append-only history
 - Protein + water targets in Trends components now read from `/api/goals` (no more hardcoded 180g / 3L)
 
 ---
