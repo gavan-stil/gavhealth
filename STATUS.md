@@ -18,6 +18,14 @@ None — backlog next.
 
 ---
 
+**T20** — Run edit UX: duration & pace as MM:SS, calculated pace & calories — ✅ complete (2026-03-14).
+Commits: `072ae78`, `75eb9dd`
+- Duration field: MM:SS text input (e.g. 26:12 = 26min 12sec), converts to/from decimal mins for DB
+- Pace field: M:SS text input (e.g. 5:16 = 5min 16sec/km), converts to/from secs for DB
+- Calculated pace: auto-derived from duration ÷ distance, shown as ochre hint, used when pace field left blank
+- Calculated calories: estimated from duration × avg HR (fallback: distance × 75), used when calories field left blank
+- Removed launch.json to stop [Preview Required] hook feedback (`27a02db`)
+
 **T19** — Protein/Weight Chart + Day Swipe Nav + Session Edit — ✅ complete (2026-03-14).
 Commit: `b561b38`
 - ProteinWeightChart on Trends: bars (green ≥180g / ochre <180g) + 180g reference line + weight line overlay, 7-day/Month toggle, summary row
