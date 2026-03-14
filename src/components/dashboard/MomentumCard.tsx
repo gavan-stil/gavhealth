@@ -1,56 +1,49 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { AreaChart, Area, ResponsiveContainer, ReferenceLine, Tooltip } from "recharts";
 import type { MomentumData, MomentumSignal } from "@/hooks/useMomentum";
 import useMomentumSignals from "@/hooks/useMomentumSignals";
+import type { MomentumDay } from "@/hooks/useMomentumSignals";
 import GoalDetailSheet from "./GoalDetailSheet";
 
 interface Props {
   data: MomentumData;
 }
 
-function trendIcon(trend: string, size = 14) {
-  if (trend === "improving") return <TrendingUp size={size} color="#e8c47a" />;
-  if (trend === "declining") return <TrendingDown size={size} color="#c47a6a" />;
-  return <Minus size={size} color="#7a7060" />;
-}
-
 function statusColor(status: string) {
   if (status === "on_track") return "#e8c47a";
   if (status === "improving") return "#d4a04a";
-  return "#c47a6a";
+  return "#7FAABC";
 }
 
 function fmtValue(signal: MomentumSignal) {
   if (signal.today === null) return "—";
   const v = signal.today;
-  if (signal.unit === "hrs") return `${v.toFixed(1)} hrs`;
-  if (signal.unit === "bpm") return `${Math.round(v)} bpm`;
-  if (signal.unit === "kg") return `${v.toFixed(1)} kg`;
-  if (signal.unit === "kcal") return `${Math.round(v)} kcal`;
-  if (signal.unit === "g") return `${Math.round(v)} g`;
-  if (signal.unit === "ml") return `${Math.round(v)} ml`;
-  return `${v}`;
+  if (signal.unit === "hrs") return v.toFixed(1);
+  if (signal.unit === "bpm") return String(Math.round(v));
+  if (signal.unit === "kg") return v.toFixed(1);
+  if (signal.unit === "kcal") return String(Math.round(v));
+  if (signal.unit === "g") return String(Math.round(v));
+  if (signal.unit === "ml") return String(Math.round(v));
+  return String(v);
+}
+
+function unitLabel(unit: string) {
+  if (unit === "hrs") return "hr";
+  return unit;
 }
 
 function fmtDeviation(signal: MomentumSignal) {
   if (signal.today === null || signal.baseline_28d === null) return "";
   const dev = signal.today - signal.baseline_28d;
   const prefix = dev >= 0 ? "+" : "";
-  if (signal.unit === "hrs") return `${prefix}${dev.toFixed(1)}hr vs avg`;
+  if (signal.unit === "hrs") return `${prefix}${dev.toFixed(1)} vs avg`;
   if (signal.unit === "bpm") return `${prefix}${Math.round(dev)} vs avg`;
   if (signal.unit === "kg") return `${prefix}${dev.toFixed(1)} vs avg`;
-  if (signal.unit === "kcal") return `${prefix}${Math.round(dev)} vs avg`;
-  if (signal.unit === "g") return `${prefix}${Math.round(dev)}g vs avg`;
-  if (signal.unit === "ml") return `${prefix}${Math.round(dev)}ml vs avg`;
-  return `${prefix}${dev.toFixed(1)}`;
+  return `${prefix}${Math.round(dev)} vs avg`;
 }
 
-// Compute a normalized score (0–100) for a signal vs its baseline
-// recoverySignals: higher is better; strainSignals: lower is better (inverted)
 function computeChartPoints(
-  days: import("@/hooks/useMomentumSignals").MomentumDay[],
+  days: MomentumDay[],
   baselines: Record<string, number | null>
 ) {
   return days.map((d) => {
@@ -59,29 +52,151 @@ function computeChartPoints(
 
     let recSum = 0, recCount = 0;
     for (const key of recoveryFields) {
-      const v = d[key];
-      const b = baselines[key];
-      if (v !== null && b !== null && b !== 0) {
-        recSum += (v - b) / b; // positive = above baseline = good
-        recCount++;
-      }
+      const v = d[key], b = baselines[key];
+      if (v !== null && b !== null && b !== 0) { recSum += (v - b) / b; recCount++; }
     }
 
     let strainSum = 0, strainCount = 0;
     for (const key of strainFields) {
-      const v = d[key];
-      const b = baselines[key];
-      if (v !== null && b !== null && b !== 0) {
-        strainSum += (v - b) / b; // positive = above baseline = bad (inverted below)
-        strainCount++;
-      }
+      const v = d[key], b = baselines[key];
+      if (v !== null && b !== null && b !== 0) { strainSum += (v - b) / b; strainCount++; }
     }
 
     const recovery = recCount > 0 ? Math.round(50 + (recSum / recCount) * 500) : null;
     const strain = strainCount > 0 ? Math.round(50 - (strainSum / strainCount) * 500) : null;
-
     return { date: d.date, recovery, strain };
   });
+}
+
+function smoothPath(pts: Array<{ x: number; y: number }>): string {
+  if (pts.length < 2) return "";
+  let d = `M${pts[0].x},${pts[0].y}`;
+  for (let i = 1; i < pts.length; i++) {
+    const cx = (pts[i - 1].x + pts[i].x) / 2;
+    d += ` C${cx},${pts[i - 1].y} ${cx},${pts[i].y} ${pts[i].x},${pts[i].y}`;
+  }
+  return d;
+}
+
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function MomentumChart({ points }: { points: Array<{ date: string; recovery: number | null; strain: number | null }> }) {
+  if (points.length < 2) return null;
+
+  const W = 335, H = 150;
+  const padL = 10, padR = 28, padT = 10, padB = 20;
+  const cW = W - padL - padR, cH = H - padT - padB;
+
+  // score 0–100 → Y (0=bottom, 100=top)
+  const sy = (s: number) => padT + cH - (s / 100) * cH;
+  const baseline = sy(50);
+  const targetTop = sy(85);
+  const targetBot = sy(70);
+
+  const n = points.length;
+  const xOf = (i: number) => padL + (i / (n - 1)) * cW;
+
+  const recPts = points
+    .map((p, i) => p.recovery !== null ? { x: xOf(i), y: sy(Math.max(0, Math.min(100, p.recovery))) } : null)
+    .filter(Boolean) as Array<{ x: number; y: number }>;
+
+  const strPts = points
+    .map((p, i) => p.strain !== null ? { x: xOf(i), y: sy(Math.max(0, Math.min(100, p.strain))) } : null)
+    .filter(Boolean) as Array<{ x: number; y: number }>;
+
+  const recPath = smoothPath(recPts);
+  const strPath = smoothPath(strPts);
+  const recArea = recPts.length >= 2
+    ? `${recPath} L${recPts[recPts.length - 1].x},${baseline} L${recPts[0].x},${baseline} Z` : "";
+  const strArea = strPts.length >= 2
+    ? `${strPath} L${strPts[strPts.length - 1].x},${baseline} L${strPts[0].x},${baseline} Z` : "";
+
+  const todayRec = recPts.length > 0 ? recPts[recPts.length - 1] : null;
+
+  const labels = points.map((p, i) => {
+    const isToday = i === n - 1;
+    const [yr, mo, dy] = p.date.split("-").map(Number);
+    return { x: xOf(i), label: isToday ? "Today" : DAY_NAMES[new Date(yr, mo - 1, dy).getDay()], isToday };
+  });
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block" }}>
+      <defs>
+        <linearGradient id="mc-rg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#d4a04a" stopOpacity="0.45" />
+          <stop offset="70%" stopColor="#d4a04a" stopOpacity="0.08" />
+          <stop offset="100%" stopColor="#d4a04a" stopOpacity="0" />
+        </linearGradient>
+        <linearGradient id="mc-sg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#7FAABC" stopOpacity="0" />
+          <stop offset="30%" stopColor="#7FAABC" stopOpacity="0.06" />
+          <stop offset="100%" stopColor="#7FAABC" stopOpacity="0.28" />
+        </linearGradient>
+        <linearGradient id="mc-rl" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#d4a04a" stopOpacity="0.5" />
+          <stop offset="100%" stopColor="#e8c47a" stopOpacity="1" />
+        </linearGradient>
+        <linearGradient id="mc-sl" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#c4856a" stopOpacity="0.5" />
+          <stop offset="100%" stopColor="#c4856a" stopOpacity="1" />
+        </linearGradient>
+        <radialGradient id="mc-tg" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#e8c47a" stopOpacity="0.9" />
+          <stop offset="40%" stopColor="#e8c47a" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="#e8c47a" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+
+      {/* Target zone */}
+      <rect x={padL} y={targetTop} width={cW} height={targetBot - targetTop} fill="rgba(212,160,74,0.06)" />
+      <line x1={padL} y1={targetTop} x2={padL + cW} y2={targetTop} stroke="#d4a04a" strokeOpacity="0.10" strokeWidth="0.5" />
+      <line x1={padL} y1={targetBot} x2={padL + cW} y2={targetBot} stroke="#d4a04a" strokeOpacity="0.12" strokeWidth="0.5" />
+
+      {/* Baseline */}
+      <line x1={padL} y1={baseline} x2={padL + cW} y2={baseline} stroke="#7a7060" strokeDasharray="3 3" strokeWidth="0.6" opacity="0.4" />
+      {/* Below-baseline cool tint */}
+      <rect x={padL} y={baseline} width={cW} height={padT + cH - baseline} fill="rgba(74,122,138,0.04)" />
+
+      {/* Recovery area + line */}
+      {recArea && <path d={recArea} fill="url(#mc-rg)" />}
+      {recPath && <path d={recPath} fill="none" stroke="url(#mc-rl)" strokeWidth="1.8" strokeLinecap="round" />}
+
+      {/* Strain area + line */}
+      {strArea && <path d={strArea} fill="url(#mc-sg)" />}
+      {strPath && <path d={strPath} fill="none" stroke="url(#mc-sl)" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="4 2" />}
+
+      {/* Recovery dots (not today) */}
+      {recPts.slice(0, -1).map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#d4a04a" opacity="0.5" />
+      ))}
+      {/* Strain dots (not today) */}
+      {strPts.slice(0, -1).map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="2" fill="#c4856a" opacity="0.4" />
+      ))}
+
+      {/* Today glow */}
+      {todayRec && <>
+        <circle cx={todayRec.x} cy={todayRec.y} r="8" fill="url(#mc-tg)" />
+        <circle cx={todayRec.x} cy={todayRec.y} r="3" fill="#e8c47a" />
+        <circle cx={todayRec.x} cy={todayRec.y} r="1.5" fill="#f0ece4" />
+      </>}
+
+      {/* Day labels */}
+      {labels.map((l) => (
+        <text key={l.x} x={l.x} y={H - 3}
+          fontFamily="Inter, sans-serif" fontSize="8"
+          fill={l.isToday ? "#e8c47a" : "#7a7060"}
+          fontWeight={l.isToday ? "600" : "400"}
+          opacity={l.isToday ? 1 : 0.6}
+          textAnchor="middle"
+        >{l.label}</text>
+      ))}
+
+      {/* Right-side axis labels */}
+      <text x={W - 2} y={targetTop + 4} fontFamily="JetBrains Mono, monospace" fontSize="7" fill="#d4a04a" opacity="0.35" textAnchor="end">goal</text>
+      <text x={W - 2} y={baseline + 3} fontFamily="JetBrains Mono, monospace" fontSize="7" fill="#7a7060" opacity="0.35" textAnchor="end">avg</text>
+    </svg>
+  );
 }
 
 export default function MomentumCard({ data }: Props) {
@@ -90,243 +205,165 @@ export default function MomentumCard({ data }: Props) {
   const navigate = useNavigate();
   const { data: signals7d } = useMomentumSignals(14);
 
-  const chartPoints =
-    signals7d ? computeChartPoints(signals7d.days, signals7d.baselines) : [];
+  const chartPoints = signals7d ? computeChartPoints(signals7d.days, signals7d.baselines) : [];
+  const last7 = chartPoints.slice(-7);
 
-  const isUnderwater = data.signals_on_track < Math.ceil(data.signals_total / 2);
+  // Dynamic headline: compare avg recovery vs strain score
+  const recVals = last7.map(p => p.recovery).filter(v => v !== null) as number[];
+  const strVals = last7.map(p => p.strain).filter(v => v !== null) as number[];
+  const avgRec = recVals.length > 0 ? recVals.reduce((a, b) => a + b, 0) / recVals.length : null;
+  const avgStr = strVals.length > 0 ? strVals.reduce((a, b) => a + b, 0) / strVals.length : null;
 
-  const cardBg = isUnderwater
-    ? "rgba(100,140,200,0.04)"
-    : "var(--bg-card)";
+  let trendText = "In balance this week";
+  let trendDir: "up" | "down" | "flat" = "flat";
+  if (avgRec !== null && avgStr !== null) {
+    const diff = avgRec - avgStr;
+    if (diff < -3) { trendText = "Recovery trailing strain this week"; trendDir = "down"; }
+    else if (diff > 3) { trendText = "Recovery leading strain this week"; trendDir = "up"; }
+  } else if (data.overall_trend === "improving") {
+    trendText = "Trending toward goals"; trendDir = "up";
+  } else if (data.overall_trend === "declining") {
+    trendText = "Trending away from goals"; trendDir = "down";
+  }
 
-  const trendLabel =
-    data.overall_trend === "improving"
-      ? "Trending toward goals"
-      : data.overall_trend === "declining"
-      ? "Trending away from goals"
-      : "Holding steady";
+  const arrowColor = trendDir === "up" ? "#e8c47a" : trendDir === "down" ? "#7FAABC" : "#7a7060";
+  const arrow = trendDir === "up" ? "↑" : trendDir === "down" ? "↓" : "→";
+
+  // Group signals by signal.group
+  const groups: Record<string, MomentumSignal[]> = {};
+  for (const s of data.signals) {
+    const g = s.group || "other";
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(s);
+  }
+  const groupOrder = ["recovery", "strain", "other"];
+  const groupStyle: Record<string, { color: string; dimColor: string }> = {
+    recovery: { color: "#d4a04a", dimColor: "#a07830" },
+    strain:   { color: "#c4856a", dimColor: "#a05840" },
+    other:    { color: "#7a7060", dimColor: "#5a5040" },
+  };
 
   return (
     <>
       <div
         style={{
-          background: cardBg,
-          border: `1px solid ${isUnderwater ? "rgba(100,140,200,0.15)" : "var(--border-default)"}`,
+          background: "linear-gradient(180deg, rgba(90,130,160,0.05) 0%, var(--bg-card) 40%)",
+          border: "1px solid rgba(127,170,188,0.10)",
           borderRadius: "var(--radius-lg)",
-          padding: "var(--space-lg)",
+          overflow: "hidden",
           cursor: "pointer",
         }}
-        onClick={() => setExpanded((e) => !e)}
+        onClick={() => setExpanded(e => !e)}
       >
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10 }}>
-          <div>
-            <div className="label-text" style={{ color: "var(--text-muted)", marginBottom: 4 }}>
-              MOMENTUM
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              {trendIcon(data.overall_trend, 16)}
-              <span className="body-text" style={{ color: "var(--text-secondary)" }}>
-                {trendLabel}
-              </span>
-            </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate("/goals");
-              }}
-              style={{
-                background: "none",
-                border: "none",
-                color: "var(--ochre)",
-                fontSize: 12,
-                cursor: "pointer",
-                padding: 0,
-                whiteSpace: "nowrap",
-              }}
-            >
-              Edit Goals →
-            </button>
-            {expanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
-          </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 20px 0" }}>
+          <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "1.2px", textTransform: "uppercase", color: "var(--text-muted)" }}>
+            MOMENTUM
+          </span>
+          <button
+            onClick={e => { e.stopPropagation(); navigate("/goals"); }}
+            style={{ background: "none", border: "none", color: "#a07830", fontSize: 11, fontWeight: 600, cursor: "pointer", padding: 0, letterSpacing: "0.3px" }}
+          >
+            Edit Goals ›
+          </button>
         </div>
 
-        {/* Dual-area chart (collapsed state only) */}
-        {!expanded && chartPoints.length > 1 && (
-          <div style={{ height: 56, marginBottom: 10, marginLeft: -4, marginRight: -4 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartPoints} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="recovGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#e8c47a" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#e8c47a" stopOpacity={0.05} />
-                  </linearGradient>
-                </defs>
-                <ReferenceLine y={50} stroke="var(--border-default)" strokeDasharray="2 2" strokeWidth={1} />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (!active || !payload?.length) return null;
-                    const rec = payload.find((p) => p.dataKey === "recovery")?.value;
-                    const str = payload.find((p) => p.dataKey === "strain")?.value;
-                    return (
-                      <div style={{
-                        background: "var(--bg-elevated)",
-                        border: "1px solid var(--border-default)",
-                        borderRadius: 6,
-                        padding: "4px 8px",
-                        fontSize: 11,
-                      }}>
-                        {rec != null && <div style={{ color: "#e8c47a" }}>Recovery {rec}</div>}
-                        {str != null && <div style={{ color: "#c47a6a" }}>Strain {str}</div>}
-                      </div>
-                    );
-                  }}
-                  cursor={false}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="recovery"
-                  stroke="#e8c47a"
-                  strokeWidth={1.5}
-                  fill="url(#recovGrad)"
-                  dot={false}
-                  connectNulls
-                />
-                <Area
-                  type="monotone"
-                  dataKey="strain"
-                  stroke="#c47a6a"
-                  strokeWidth={1.5}
-                  strokeDasharray="4 3"
-                  fill="none"
-                  dot={false}
-                  connectNulls
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        {/* Trend headline */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 20px 0" }}>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 16, fontWeight: 800, color: arrowColor, lineHeight: 1 }}>
+            {arrow}
+          </span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", letterSpacing: "-0.3px" }}>
+            {trendText}
+          </span>
+        </div>
 
-        {/* Signal dots + count */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ display: "flex", gap: 5 }}>
-            {data.signals.map((s) => (
-              <div
-                key={s.signal}
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  background: statusColor(s.status),
-                  opacity: s.status === "off_track" ? 0.45 : 1,
-                }}
-              />
-            ))}
+        {/* Chart */}
+        <div style={{ marginTop: 8 }}>
+          <MomentumChart points={last7} />
+        </div>
+
+        {/* Footer legend */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 20px 20px" }}>
+          <div style={{ display: "flex", gap: 16 }}>
+            {groupOrder.filter(g => groups[g]?.length).slice(0, 2).map(g => {
+              const gs = groupStyle[g] ?? groupStyle.other;
+              return (
+                <div key={g} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <div style={{ width: 5, height: 5, borderRadius: "50%", background: gs.color }} />
+                  <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", color: gs.dimColor }}>
+                    {g.charAt(0).toUpperCase() + g.slice(1)}
+                  </span>
+                </div>
+              );
+            })}
           </div>
-          <span className="body-text" style={{ color: "var(--text-muted)", fontSize: 12 }}>
+          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
             {data.signals_on_track} of {data.signals_total} on track
           </span>
         </div>
 
-        {/* Expanded signal rows */}
+        {/* Expanded: grouped signal rows */}
         {expanded && (
           <div
-            style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 2 }}
-            onClick={(e) => e.stopPropagation()}
+            style={{ borderTop: "1px solid rgba(255,255,255,0.03)", margin: "0 20px", paddingBottom: 20 }}
+            onClick={e => e.stopPropagation()}
           >
-            {data.signals.map((s) => (
-              <div
-                key={s.signal}
-                onClick={() => setDetailSignal(s.signal)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "10px 8px",
-                  borderRadius: 8,
-                  cursor: "pointer",
-                  background: "transparent",
-                  transition: "background 120ms",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-card-hover)")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-              >
-                {/* Status dot */}
-                <div
-                  style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: "50%",
-                    background: statusColor(s.status),
-                    flexShrink: 0,
-                    marginRight: 10,
-                  }}
-                />
-                {/* Label */}
-                <span
-                  className="body-text"
-                  style={{ color: "var(--text-secondary)", width: 80, flexShrink: 0 }}
-                >
-                  {s.label}
-                </span>
-                {/* Value */}
-                <span
-                  className="small-number"
-                  style={{ color: "var(--text-primary)", width: 90, flexShrink: 0 }}
-                >
-                  {fmtValue(s)}
-                </span>
-                {/* Deviation */}
-                <span
-                  className="body-text"
-                  style={{ color: "var(--text-muted)", fontSize: 11, flex: 1 }}
-                >
-                  {fmtDeviation(s)}
-                </span>
-                {/* Mini sparkline */}
-                {(() => {
-                  const sparkData = signals7d?.days.map((d) => ({
-                    v: (d as unknown as Record<string, number | null>)[s.signal] ?? null,
-                  })) ?? [];
-                  const col = statusColor(s.status);
-                  const sparkId = `spark-${s.signal}`;
-                  return (
-                    <div style={{ width: 56, height: 28, flexShrink: 0 }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={sparkData} margin={{ top: 2, right: 0, left: 0, bottom: 2 }}>
-                          <defs>
-                            <linearGradient id={sparkId} x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor={col} stopOpacity={0.4} />
-                              <stop offset="95%" stopColor={col} stopOpacity={0.05} />
-                            </linearGradient>
-                          </defs>
-                          <Area
-                            type="monotone"
-                            dataKey="v"
-                            stroke={col}
-                            strokeWidth={1.5}
-                            fill={`url(#${sparkId})`}
-                            dot={false}
-                            connectNulls
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
+            {groupOrder.filter(g => groups[g]?.length).map(g => {
+              const gs = groupStyle[g] ?? groupStyle.other;
+              return (
+                <div key={g}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 0 4px" }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: gs.color }} />
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", color: gs.dimColor }}>
+                      {g.charAt(0).toUpperCase() + g.slice(1)}
+                    </span>
+                  </div>
+                  {groups[g].map(s => (
+                    <div
+                      key={s.signal}
+                      onClick={() => setDetailSignal(s.signal)}
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "72px 1fr auto",
+                        alignItems: "center",
+                        padding: "8px 0",
+                        gap: 8,
+                        borderBottom: "1px solid rgba(255,255,255,0.02)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)" }}>
+                        {s.label}
+                      </span>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
+                        <span style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700, letterSpacing: "-0.5px", color: statusColor(s.status), minWidth: 36 }}>
+                          {fmtValue(s)}
+                        </span>
+                        <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{unitLabel(s.unit)}</span>
+                        {fmtDeviation(s) && (
+                          <span style={{ fontSize: 10, color: "var(--text-muted)", marginLeft: 4 }}>{fmtDeviation(s)}</span>
+                        )}
+                      </div>
+                      <span style={{
+                        fontSize: 9, fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase",
+                        padding: "3px 7px", borderRadius: 100, whiteSpace: "nowrap",
+                        background: s.status === "on_track" ? "rgba(232,196,122,0.1)" : s.status === "improving" ? "rgba(212,160,74,0.08)" : "rgba(127,170,188,0.1)",
+                        color: s.status === "on_track" ? "#e8c47a" : s.status === "improving" ? "#d4a04a" : "#7FAABC",
+                      }}>
+                        {s.status === "on_track" ? "On track" : s.status === "improving" ? "Improving" : "Off track"}
+                      </span>
                     </div>
-                  );
-                })()}
-              </div>
-            ))}
+                  ))}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
 
       {detailSignal && (
-        <GoalDetailSheet
-          signal={detailSignal}
-          signals={data.signals}
-          onClose={() => setDetailSignal(null)}
-        />
+        <GoalDetailSheet signal={detailSignal} signals={data.signals} onClose={() => setDetailSignal(null)} />
       )}
     </>
   );

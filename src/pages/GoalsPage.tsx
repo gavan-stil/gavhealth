@@ -156,7 +156,6 @@ function SignalSection({ goal, signals7d }: SignalSectionProps) {
           targetMin={target?.min}
           targetMax={target?.max}
           unit={goal.unit}
-          compact={false}
         />
       )}
 
