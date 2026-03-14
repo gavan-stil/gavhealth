@@ -115,13 +115,23 @@ function WeightChart({ days, targetMin, targetMax }: {
 }) {
   const last7 = days.slice(-7);
   const values = last7.map(d => d.weight_kg).filter((v): v is number => v !== null);
-  if (values.length < 2) return null;
+  if (values.length < 1) return null;
+
+  // Carry last known weight forward so the line always extends to today
+  let lastKnown: number | null = null;
+  const filled = last7.map(d => {
+    if (d.weight_kg !== null) { lastKnown = d.weight_kg; return { ...d, carried: false }; }
+    return lastKnown !== null ? { ...d, weight_kg: lastKnown, carried: true } : { ...d, carried: false };
+  });
+  // Only render if we have at least 2 data points after filling
+  const filledValues = filled.map(d => d.weight_kg).filter((v): v is number => v !== null);
+  if (filledValues.length < 2) return null;
 
   const W = 335, H = 150;
   const padL = 10, padR = 28, padT = 10, padB = 20;
   const cW = W - padL - padR, cH = H - padT - padB;
 
-  const allVals = [...values];
+  const allVals = [...filledValues];
   if (targetMin !== null) allVals.push(targetMin);
   if (targetMax !== null) allVals.push(targetMax);
   const dataMin = Math.min(...allVals) - 1;
@@ -129,18 +139,32 @@ function WeightChart({ days, targetMin, targetMax }: {
   const range = dataMax - dataMin || 1;
 
   const sy = (v: number) => padT + cH - ((v - dataMin) / range) * cH;
-  const n = last7.length;
+  const n = filled.length;
   const xOf = (i: number) => padL + (i / (n - 1)) * cW;
 
-  const pts = last7
+  // Split into measured points and carried-forward points for different styling
+  const measuredPts = filled
+    .map((d, i) => !d.carried && d.weight_kg !== null ? { x: xOf(i), y: sy(d.weight_kg) } : null)
+    .filter(Boolean) as Array<{ x: number; y: number }>;
+
+  const allPts = filled
     .map((d, i) => d.weight_kg !== null ? { x: xOf(i), y: sy(d.weight_kg) } : null)
     .filter(Boolean) as Array<{ x: number; y: number }>;
 
-  const linePath = smoothPath(pts);
-  const areaPath = pts.length >= 2
-    ? `${linePath} L${pts[pts.length - 1].x},${padT + cH} L${pts[0].x},${padT + cH} Z` : "";
+  // Find split point: last measured → carried forward
+  const lastMeasuredIdx = filled.reduce((acc, d, i) => !d.carried && d.weight_kg !== null ? i : acc, -1);
+  const carriedPts = lastMeasuredIdx >= 0
+    ? allPts.slice(allPts.findIndex(p => p.x === xOf(lastMeasuredIdx)))
+    : [];
 
-  const todayPt = pts.length > 0 ? pts[pts.length - 1] : null;
+  const linePath = smoothPath(measuredPts);
+  const carriedPath = carriedPts.length >= 2 ? smoothPath(carriedPts) : "";
+  const areaPath = allPts.length >= 2
+    ? `${smoothPath(allPts)} L${allPts[allPts.length - 1].x},${padT + cH} L${allPts[0].x},${padT + cH} Z` : "";
+
+  // Today dot: use actual today point (last in allPts) — glow only if measured today
+  const todayPt = allPts.length > 0 ? allPts[allPts.length - 1] : null;
+  const todayMeasured = filled[filled.length - 1]?.carried === false && filled[filled.length - 1]?.weight_kg !== null;
 
   const labels = last7.map((d, i) => {
     const isToday = i === n - 1;
@@ -178,18 +202,27 @@ function WeightChart({ days, targetMin, targetMax }: {
         </>
       )}
 
+      {/* Area under full line (measured + carried) */}
       {areaPath && <path d={areaPath} fill="url(#pc-wg)" />}
+      {/* Measured segment — solid */}
       {linePath && <path d={linePath} fill="none" stroke="url(#pc-wl)" strokeWidth="1.8" strokeLinecap="round" />}
+      {/* Carried-forward segment — dashed, faded */}
+      {carriedPath && <path d={carriedPath} fill="none" stroke="#7FAABC" strokeWidth="1.2" strokeDasharray="4 3" strokeOpacity="0.4" strokeLinecap="round" />}
 
-      {pts.slice(0, -1).map((p, i) => (
+      {/* Dots on measured points only */}
+      {measuredPts.slice(0, measuredPts.length - 1).map((p, i) => (
         <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#7FAABC" opacity="0.5" />
       ))}
 
-      {todayPt && <>
+      {/* Today glow — full if measured today, faint if carried */}
+      {todayPt && todayMeasured && <>
         <circle cx={todayPt.x} cy={todayPt.y} r="8" fill="url(#pc-tg)" />
         <circle cx={todayPt.x} cy={todayPt.y} r="3" fill="#7FAABC" />
         <circle cx={todayPt.x} cy={todayPt.y} r="1.5" fill="#f0ece4" />
       </>}
+      {todayPt && !todayMeasured && (
+        <circle cx={todayPt.x} cy={todayPt.y} r="2.5" fill="#7FAABC" opacity="0.3" />
+      )}
 
       {labels.map((l) => (
         <text key={l.x} x={l.x} y={H - 3}

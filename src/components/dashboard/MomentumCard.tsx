@@ -42,25 +42,38 @@ function fmtDeviation(signal: MomentumSignal) {
   return `${prefix}${Math.round(dev)} vs avg`;
 }
 
-// Absolute scales for signals where baseline can be near 0 (prevents enormous relative deviations).
-// For all other signals, relative (v-b)/b is used and clamped to ±1.
-const SIGNAL_ABS_SCALE: Partial<Record<keyof MomentumDay, number>> = {
-  calorie_balance: 600,  // ±600 kcal from baseline = full meaningful swing
-  sleep_deficit:   2,    // ±2 hrs deficit = full swing
-  calorie_deficit: 800,  // ±800 kcal deficit = full swing
+// Fixed absolute scales for all signals — prevents relative (v-b)/b from exploding when
+// baseline is small (calorie_balance, deficit signals) or when a few bad nights drop sleep baseline.
+// Scale = the deviation from baseline that represents a "full swing" contribution of ±1.
+const SIGNAL_ABS_SCALE: Record<keyof MomentumDay, number | undefined> = {
+  date:             undefined,
+  sleep_hrs:        2.0,   // ±2 hrs from baseline — 8h vs 7.5h baseline → contrib +0.25
+  protein_g:        150,   // ±150g from baseline
+  water_ml:         2000,  // ±2000ml from baseline
+  calorie_balance:  600,   // ±600 kcal from baseline
+  sleep_deficit:    2,     // ±2 hrs deficit from baseline
+  calorie_deficit:  800,   // ±800 kcal deficit from baseline
+  non_exercise_hr:  15,    // ±15 bpm from baseline
+  // legacy fields — not used in chart, no scale needed
+  rhr_bpm:          undefined,
+  weight_kg:        undefined,
+  calories_in:      undefined,
+  calories_out:     undefined,
 };
 
 function signalContrib(v: number, b: number | null, key: keyof MomentumDay): number | null {
   if (b === null) return null;
   const absScale = SIGNAL_ABS_SCALE[key];
-  if (absScale !== undefined) {
-    return Math.max(-1, Math.min(1, (v - b) / absScale));
-  }
-  if (b === 0) return null; // skip zero baseline for relative mode
-  return Math.max(-1, Math.min(1, (v - b) / b));
+  if (absScale === undefined) return null; // legacy fields not used in chart
+  if (absScale === 0) return null;
+  return Math.max(-1, Math.min(1, (v - b) / absScale));
 }
 
-const CHART_MULT = 150; // multiplier — score 50±(avg contrib × 150). At contrib=0.2 → score=80 (in goal zone).
+// Multiplier: score = 50 ± (avgContrib × 100).
+// At contrib=+0.25 (e.g. 8h sleep vs 7.5h baseline) → score = 75 (mid goal zone).
+// At contrib=+0.5 (strong above baseline) → score = 100 (exceptional, clamps).
+// At contrib=−0.5 (well below baseline) → score = 0 (clamps).
+const CHART_MULT = 100;
 
 function computeChartPoints(
   days: MomentumDay[],
