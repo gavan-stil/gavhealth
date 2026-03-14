@@ -15,6 +15,7 @@ from app.services.withings_service import (
     force_refresh_workout,
     get_auth_url,
     run_full_sync,
+    run_historical_backfill,
     store_tokens,
 )
 
@@ -113,6 +114,26 @@ async def refresh_workout(external_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error("force_refresh_workout failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/backfill", dependencies=[Depends(verify_api_key)])
+async def withings_backfill(
+    since: str = "2020-01-01",
+    db: AsyncSession = Depends(get_db),
+):
+    """Backfill all historical Withings data from a given date.
+
+    Chunks sleep and daily-activity calls into 90-day windows (API limit).
+    Workouts use built-in pagination. Weight fetches the full range in one call.
+
+    ?since=YYYY-MM-DD  (default: 2020-01-01)
+    """
+    try:
+        result = await run_historical_backfill(db, since_date_str=since)
+        return {"status": "complete", "since": since, **result}
+    except Exception as e:
+        logger.error("Historical backfill failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 

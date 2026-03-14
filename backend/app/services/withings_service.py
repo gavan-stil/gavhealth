@@ -273,19 +273,21 @@ async def sync_weight(db: AsyncSession, access_token: str, since_ts: int) -> int
 BRISBANE_TZ = timezone(timedelta(hours=10))
 
 
-async def sync_sleep(db: AsyncSession, access_token: str, since_ts: int) -> int:
+async def sync_sleep(db: AsyncSession, access_token: str, since_ts: int, end_date_str: str | None = None) -> int:
     """Pull sleep summaries from Withings and upsert into sleep_logs.
 
     Always looks back at least 3 days so that Withings processing delays
     (sleep data is sometimes published hours after the scheduled sync windows)
     don't cause permanent gaps.
+
+    end_date_str: explicit YYYY-MM-DD end date (for chunked backfill). Defaults to today.
     """
     # Always look back at least 3 days — Withings can be slow to publish sleep summaries.
     three_days_ago = int((datetime.now(timezone.utc) - timedelta(days=3)).timestamp())
     effective_since = min(since_ts, three_days_ago)
     start_date = datetime.fromtimestamp(effective_since, tz=timezone.utc).strftime("%Y-%m-%d")
     # Use Brisbane local date — Withings files sleep under the wake date (local)
-    end_date = datetime.now(BRISBANE_TZ).strftime("%Y-%m-%d")
+    end_date = end_date_str or datetime.now(BRISBANE_TZ).strftime("%Y-%m-%d")
 
     body = await _withings_get(access_token, WITHINGS_SLEEP_URL, {
         "action": "getsummary",
@@ -633,17 +635,19 @@ async def cleanup_anomalous_rhr(db: AsyncSession) -> dict:
     return {"sauna_created": created, "rhr_deleted": deleted}
 
 
-async def sync_activities(db: AsyncSession, access_token: str, since_ts: int) -> int:
+async def sync_activities(db: AsyncSession, access_token: str, since_ts: int, end_date_str: str | None = None) -> int:
     """Pull activities from Withings and upsert into activity_logs.
 
     Always looks back at least 7 days so that daily summaries Withings finalises
     late (step counts, HR averages) are picked up on the next sync even if
     since_ts is more recent than the update.
+
+    end_date_str: explicit YYYY-MM-DD end date (for chunked backfill). Defaults to today.
     """
     seven_days_ago = int((datetime.now(timezone.utc) - timedelta(days=7)).timestamp())
     effective_since = min(since_ts, seven_days_ago)
-    start_date = datetime.fromtimestamp(effective_since, tz=timezone.utc).strftime("%Y-%m-%d")
-    end_date = datetime.now(BRISBANE_TZ).strftime("%Y-%m-%d")
+    start_date = datetime.fromtimestamp(effective_since, tz=timezone.utc).astimezone(BRISBANE_TZ).strftime("%Y-%m-%d")
+    end_date = end_date_str or datetime.now(BRISBANE_TZ).strftime("%Y-%m-%d")
 
     body = await _withings_get(access_token, WITHINGS_ACTIVITY_URL, {
         "action": "getactivity",
@@ -921,6 +925,92 @@ async def force_refresh_workout(db: AsyncSession, external_id: str) -> dict:
     count = await sync_workouts(db, access_token, sixty_days_ago)
     logger.info("force_refresh_workout: external_id=%s triggered sync; %d rows touched", external_id, count)
     return {"external_id": external_id, "rows_touched": count}
+
+
+async def run_historical_backfill(db: AsyncSession, since_date_str: str = "2020-01-01") -> dict:
+    """Backfill all historical Withings data from since_date to today.
+
+    The Withings API has a 90-day window limit for getsummary (sleep) and
+    getactivity, so we chunk those into 90-day slices. getworkouts uses
+    lastupdate and already paginates. getmeas (weight) accepts any date range.
+
+    Returns counts per data type.
+    """
+    from datetime import date as date_type
+    access_token = await get_valid_token(db)
+
+    since_date = date_type.fromisoformat(since_date_str)
+    since_ts = int(datetime(since_date.year, since_date.month, since_date.day, tzinfo=timezone.utc).timestamp())
+    today = datetime.now(BRISBANE_TZ).date()
+
+    results: dict = {}
+
+    # --- Weight (body comp) — getmeas accepts arbitrary date range, no chunking needed ---
+    try:
+        count = await sync_weight(db, access_token, since_ts)
+        await db.commit()
+        results["weight"] = count
+        logger.info("backfill weight: %d rows", count)
+    except Exception as e:
+        logger.error("backfill weight error: %s", e)
+        results["weight"] = f"error: {e}"
+
+    # --- Workouts — getworkouts uses lastupdate + built-in pagination ---
+    try:
+        count = await sync_workouts(db, access_token, since_ts)
+        await db.commit()
+        results["workouts"] = count
+        logger.info("backfill workouts: %d rows", count)
+    except Exception as e:
+        logger.error("backfill workouts error: %s", e)
+        results["workouts"] = f"error: {e}"
+
+    # --- Sleep — getsummary is limited to 90 days per call, chunk it ---
+    sleep_count = 0
+    chunk_start = since_date
+    while chunk_start <= today:
+        chunk_end = min(chunk_start + timedelta(days=89), today)
+        chunk_since_ts = int(datetime(chunk_start.year, chunk_start.month, chunk_start.day, tzinfo=timezone.utc).timestamp())
+        chunk_end_str = chunk_end.strftime("%Y-%m-%d")
+        try:
+            n = await sync_sleep(db, access_token, chunk_since_ts, end_date_str=chunk_end_str)
+            await db.commit()
+            sleep_count += n
+            logger.info("backfill sleep chunk %s→%s: %d rows", chunk_start, chunk_end, n)
+        except Exception as e:
+            logger.error("backfill sleep chunk %s→%s error: %s", chunk_start, chunk_end, e)
+        chunk_start = chunk_end + timedelta(days=1)
+    results["sleep"] = sleep_count
+
+    # --- Daily activities — chunk 90 days at a time to be safe ---
+    activity_count = 0
+    chunk_start = since_date
+    while chunk_start <= today:
+        chunk_end = min(chunk_start + timedelta(days=89), today)
+        chunk_since_ts = int(datetime(chunk_start.year, chunk_start.month, chunk_start.day, tzinfo=timezone.utc).timestamp())
+        chunk_end_str = chunk_end.strftime("%Y-%m-%d")
+        try:
+            n = await sync_activities(db, access_token, chunk_since_ts, end_date_str=chunk_end_str)
+            await db.commit()
+            activity_count += n
+            logger.info("backfill activities chunk %s→%s: %d rows", chunk_start, chunk_end, n)
+        except Exception as e:
+            logger.error("backfill activities chunk %s→%s error: %s", chunk_start, chunk_end, e)
+        chunk_start = chunk_end + timedelta(days=1)
+    results["activities"] = activity_count
+
+    # --- Derive RHR from sleep_hr_min across the full backfill window ---
+    try:
+        derived = await derive_rhr_from_sleep(db, since_ts)
+        await db.commit()
+        results["rhr_derived"] = derived
+        logger.info("backfill rhr_derived: %d rows", derived)
+    except Exception as e:
+        logger.error("backfill rhr_derived error: %s", e)
+        results["rhr_derived"] = f"error: {e}"
+
+    logger.info("Historical backfill complete since=%s: %s", since_date_str, results)
+    return results
 
 
 async def run_full_sync(db: AsyncSession) -> dict:
