@@ -42,6 +42,26 @@ function fmtDeviation(signal: MomentumSignal) {
   return `${prefix}${Math.round(dev)} vs avg`;
 }
 
+// Absolute scales for signals where baseline can be near 0 (prevents enormous relative deviations).
+// For all other signals, relative (v-b)/b is used and clamped to ±1.
+const SIGNAL_ABS_SCALE: Partial<Record<keyof MomentumDay, number>> = {
+  calorie_balance: 600,  // ±600 kcal from baseline = full meaningful swing
+  sleep_deficit:   2,    // ±2 hrs deficit = full swing
+  calorie_deficit: 800,  // ±800 kcal deficit = full swing
+};
+
+function signalContrib(v: number, b: number | null, key: keyof MomentumDay): number | null {
+  if (b === null) return null;
+  const absScale = SIGNAL_ABS_SCALE[key];
+  if (absScale !== undefined) {
+    return Math.max(-1, Math.min(1, (v - b) / absScale));
+  }
+  if (b === 0) return null; // skip zero baseline for relative mode
+  return Math.max(-1, Math.min(1, (v - b) / b));
+}
+
+const CHART_MULT = 150; // multiplier — score 50±(avg contrib × 150). At contrib=0.2 → score=80 (in goal zone).
+
 function computeChartPoints(
   days: MomentumDay[],
   baselines: Record<string, number | null>
@@ -52,18 +72,22 @@ function computeChartPoints(
 
     let recSum = 0, recCount = 0;
     for (const key of recoveryFields) {
-      const v = d[key], b = baselines[key];
-      if (v !== null && b !== null && b !== 0) { recSum += (v - b) / b; recCount++; }
+      const v = d[key];
+      if (v === null) continue;
+      const c = signalContrib(v, baselines[key] ?? null, key);
+      if (c !== null) { recSum += c; recCount++; }
     }
 
     let strainSum = 0, strainCount = 0;
     for (const key of strainFields) {
-      const v = d[key], b = baselines[key];
-      if (v !== null && b !== null && b !== 0) { strainSum += (v - b) / b; strainCount++; }
+      const v = d[key];
+      if (v === null) continue;
+      const c = signalContrib(v, baselines[key] ?? null, key);
+      if (c !== null) { strainSum += c; strainCount++; }
     }
 
-    const recovery = recCount > 0 ? Math.round(50 + (recSum / recCount) * 500) : null;
-    const strain = strainCount > 0 ? Math.round(50 - (strainSum / strainCount) * 500) : null;
+    const recovery = recCount > 0 ? Math.round(50 + (recSum / recCount) * CHART_MULT) : null;
+    const strain = strainCount > 0 ? Math.round(50 - (strainSum / strainCount) * CHART_MULT) : null;
     return { date: d.date, recovery, strain };
   });
 }
