@@ -192,11 +192,10 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
         allEx.forEach((e) => exMap.set(e.name.toLowerCase(), e));
 
         /* API date filter is unreliable — enforce client-side.
-           Then prefer sessions that have exercises logged. */
+           Never fall back to other-date sessions (causes ghost sessions across days). */
         const onDate = rawSessions.filter((s) => s.session_date === date);
-        const pool = onDate.length > 0 ? onDate : rawSessions;
-        const withEx = pool.filter((s) => s.exercises.length > 0);
-        const sessionsToUse = withEx.length > 0 ? withEx : pool;
+        const withEx = onDate.filter((s) => s.exercises.length > 0);
+        const sessionsToUse = withEx.length > 0 ? withEx : onDate;
 
         /* collect unique exercise IDs across sessions to show */
         const ids = new Set<number>();
