@@ -1346,3 +1346,105 @@ async def hr_zones(days: int = Query(default=30, ge=1, le=365), db: AsyncSession
         }
         for r in rows
     ]
+
+
+# ---------------------------------------------------------------------------
+# T19-3. PATCH /api/activity-logs/{id}
+# Edit editable fields on an activity_logs row (runs, rides, workouts).
+# ---------------------------------------------------------------------------
+class ActivityLogUpdate(BaseModel):
+    started_at: str | None = None       # ISO datetime string
+    duration_mins: float | None = None
+    avg_hr: int | None = None
+    min_hr: int | None = None
+    max_hr: int | None = None
+    distance_km: float | None = None
+    avg_pace_secs: float | None = None
+    calories_burned: int | None = None
+
+
+@router.patch("/activity-logs/{id}")
+async def update_activity_log(id: int, body: ActivityLogUpdate, db: AsyncSession = Depends(get_db)):
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    # Resolve started_at string → typed datetime to avoid asyncpg NULL-cast bug
+    if "started_at" in updates and isinstance(updates["started_at"], str):
+        updates["started_at"] = datetime.fromisoformat(updates["started_at"])
+
+    set_clause = ", ".join(f"{col} = :{col}" for col in updates)
+    params = {**updates, "id": id}
+
+    result = await db.execute(
+        text(f"UPDATE activity_logs SET {set_clause} WHERE id = :id RETURNING *"),
+        params,
+    )
+    row = result.mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    await db.commit()
+    return dict(row)
+
+
+# ---------------------------------------------------------------------------
+# T19-3. PATCH /api/sleep/{id}
+# Edit editable fields on a sleep_logs row.
+# ---------------------------------------------------------------------------
+class SleepLogUpdate(BaseModel):
+    total_sleep_hrs: float | None = None
+    deep_sleep_hrs: float | None = None
+    light_sleep_hrs: float | None = None
+    sleep_hr_avg: float | None = None
+    sleep_score: float | None = None
+
+
+@router.patch("/sleep/{id}")
+async def update_sleep_log(id: int, body: SleepLogUpdate, db: AsyncSession = Depends(get_db)):
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    set_clause = ", ".join(f"{col} = :{col}" for col in updates)
+    params = {**updates, "id": id}
+
+    result = await db.execute(
+        text(f"UPDATE sleep_logs SET {set_clause} WHERE id = :id RETURNING id, sleep_date, total_sleep_hrs, deep_sleep_hrs, sleep_hr_avg, sleep_score"),
+        params,
+    )
+    row = result.mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Sleep record not found")
+    await db.commit()
+    return dict(row)
+
+
+# ---------------------------------------------------------------------------
+# T19-3. PATCH /api/sauna/{id}
+# Edit editable fields on a sauna_logs row.
+# ---------------------------------------------------------------------------
+class SaunaLogUpdate(BaseModel):
+    duration_mins: int | None = None
+    temperature_c: int | None = None
+    did_breathing: bool | None = None
+    did_devotions: bool | None = None
+
+
+@router.patch("/sauna/{id}")
+async def update_sauna_log(id: int, body: SaunaLogUpdate, db: AsyncSession = Depends(get_db)):
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    set_clause = ", ".join(f"{col} = :{col}" for col in updates)
+    params = {**updates, "id": id}
+
+    result = await db.execute(
+        text(f"UPDATE sauna_logs SET {set_clause} WHERE id = :id RETURNING id, session_datetime, duration_mins, temperature_c, did_breathing, did_devotions"),
+        params,
+    )
+    row = result.mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Sauna record not found")
+    await db.commit()
+    return dict(row)

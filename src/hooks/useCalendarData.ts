@@ -6,6 +6,7 @@ import { CATEGORY_COLORS, CATEGORY_ORDER } from "@/types/calendar";
 /* ── Raw API response shapes ── */
 
 type RawActivity = {
+  id: number;
   activity_date: string;
   activity_type: string;
   duration_mins: number;
@@ -18,12 +19,14 @@ type RawActivity = {
 };
 
 type RawSleep = {
+  id: number;
   sleep_date: string;
   total_sleep_hrs: number;
   deep_sleep_hrs: number | null;
 };
 
 type RawSauna = {
+  id: number;
   session_datetime: string;
   duration_mins: number;
   temperature_c: number;
@@ -60,6 +63,7 @@ type DayEntry = {
   saunaHasDevotion?: boolean;
   workoutSplit?: "push" | "pull" | "legs";
   hasLegExercise?: boolean;
+  recordId?: number;
 };
 
 function fmt(n: number | undefined | null, unit: string, decimals = 1): string {
@@ -186,6 +190,7 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
       category: "sleep",
       duration: fmt(s.total_sleep_hrs, "h"),
       subMetrics: { deep: `${deepPct}%` },
+      recordId: s.id,
     });
   }
 
@@ -220,6 +225,7 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
       },
       isLetsGo: a.effort === "lets_go",
       isInterval,
+      recordId: a.id,
     });
   }
 
@@ -244,6 +250,7 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
       isLetsGo: a.effort === "lets_go",
       workoutSplit,
       hasLegExercise: inferred.hasLegExercise,
+      recordId: a.id,
     });
   }
 
@@ -262,6 +269,7 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
         speed: "—",
       },
       isLetsGo: r.effort === "lets_go",
+      recordId: r.id,
     });
   }
 
@@ -276,6 +284,7 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
         temp: fmtInt(s.temperature_c, "°"),
       },
       saunaHasDevotion: s.did_devotions === true,
+      recordId: s.id,
     });
   }
 
@@ -298,6 +307,7 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
         saunaHasDevotion: e.saunaHasDevotion,
         workoutSplit: e.workoutSplit,
         hasLegExercise: e.hasLegExercise,
+        recordId: e.recordId,
       } as CategoryDot;
     });
   }

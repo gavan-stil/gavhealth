@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { EnergyIcon } from "@/components/log/MoodEnergyCard";
 import type { CSSProperties } from "react";
 import type { CategoryDot } from "@/types/calendar";
 import { CATEGORY_LABELS, CATEGORY_COLORS, SUB_TOGGLE_DEFS } from "@/types/calendar";
 import { apiFetch } from "@/lib/api";
+import ActivityEditSheet from "@/components/ActivityEditSheet";
+import type { EditableType, EditInit } from "@/components/ActivityEditSheet";
 
 /* ─── Domain types ───────────────────────────────────────────────────── */
 type RawSession = {
@@ -133,15 +135,28 @@ type Props = {
   dots: CategoryDot[];
   onClose: () => void;
   onSessionDeleted?: () => void;
+  onNavigate?: (date: string) => void;
 };
 
+/* ─── Navigation helpers ─────────────────────────────────────────────── */
+function offsetDate(dateStr: string, days: number): string {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate() + days);
+  return d.toLocaleDateString("en-CA");
+}
+
 /* ─── Component ──────────────────────────────────────────────────────── */
-export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted }: Props) {
+export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, onNavigate }: Props) {
   const [sessions, setSessions]               = useState<SessionDetail[]>([]);
   const [loadingStrength, setLoadingStrength] = useState(false);
   const [expandedKey, setExpandedKey]         = useState<string | null>(null);
   const [unlinking, setUnlinking]             = useState<number | null>(null);
   const [deletingId, setDeletingId]           = useState<number | null>(null);
+
+  const touchStartX = useRef<number | null>(null);
+
+  type EditTarget = { type: EditableType; id: number; label: string; init: EditInit } | null;
+  const [editTarget, setEditTarget] = useState<EditTarget>(null);
 
   const hasStrength = dots.some((d) => d.category === "strength");
 
@@ -311,14 +326,48 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted }
           overflowY: "auto",
           animation: "slideUpDD 300ms cubic-bezier(0.34,1.4,0.64,1)",
         }}
+        onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+        onTouchEnd={(e) => {
+          if (touchStartX.current === null || !onNavigate || !date) return;
+          const dx = e.changedTouches[0].clientX - touchStartX.current;
+          touchStartX.current = null;
+          if (Math.abs(dx) < 60) return;
+          onNavigate(offsetDate(date, dx < 0 ? 1 : -1));
+        }}
       >
         {/* Grab handle */}
         <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.15)", margin: "0 auto 14px" }} />
 
-        {/* Date header */}
-        <h3 style={{ font: "600 14px/1.3 'Inter',sans-serif", letterSpacing: "-0.3px", color: "var(--text-primary)", margin: "0 0 16px" }}>
-          {formatDate(date)}
-        </h3>
+        {/* Date header with navigation */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+          {onNavigate && date && (
+            <button
+              onClick={() => onNavigate(offsetDate(date, -1))}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                color: "var(--text-muted)", fontSize: 18, padding: "0 4px",
+                lineHeight: 1, flexShrink: 0,
+              }}
+            >
+              ‹
+            </button>
+          )}
+          <h3 style={{ font: "600 14px/1.3 'Inter',sans-serif", letterSpacing: "-0.3px", color: "var(--text-primary)", margin: 0, flex: 1 }}>
+            {formatDate(date)}
+          </h3>
+          {onNavigate && date && (
+            <button
+              onClick={() => onNavigate(offsetDate(date, 1))}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                color: "var(--text-muted)", fontSize: 18, padding: "0 4px",
+                lineHeight: 1, flexShrink: 0,
+              }}
+            >
+              ›
+            </button>
+          )}
+        </div>
 
         {/* Card stack */}
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -729,6 +778,39 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted }
                         </div>
                       )
                     )}
+
+                    {/* Edit button — only for categories with a record ID */}
+                    {dot.recordId != null && (dot.category === "running" || dot.category === "ride" || dot.category === "strength" || dot.category === "sleep" || dot.category === "sauna") && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const editType: EditableType =
+                            dot.category === "sleep" ? "sleep"
+                            : dot.category === "sauna" ? "sauna"
+                            : "activity";
+                          setEditTarget({
+                            type: editType,
+                            id: dot.recordId!,
+                            label: CATEGORY_LABELS[dot.category],
+                            init: {},
+                          });
+                        }}
+                        style={{
+                          marginTop: 12,
+                          width: "100%",
+                          font: "500 11px/1 'Inter',sans-serif",
+                          letterSpacing: "0.3px",
+                          padding: "8px 10px",
+                          borderRadius: 6,
+                          border: "1px solid var(--border-default)",
+                          background: "transparent",
+                          color: "var(--text-muted)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Edit details
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -749,6 +831,18 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted }
           )}
         </div>{/* card stack */}
       </div>{/* sheet */}
+
+      {/* Edit sheet — renders above DayDetailSheet */}
+      {editTarget && (
+        <ActivityEditSheet
+          type={editTarget.type}
+          id={editTarget.id}
+          label={editTarget.label}
+          init={editTarget.init}
+          onSave={() => { setEditTarget(null); onSessionDeleted?.(); }}
+          onClose={() => setEditTarget(null)}
+        />
+      )}
 
       <style>{`
         @keyframes fadeInDD {

@@ -1,7 +1,9 @@
 import { useState, useEffect, type ReactNode } from 'react';
-import { X, Dumbbell } from 'lucide-react';
+import { X, Dumbbell, Pencil } from 'lucide-react';
 import { EnergyIcon } from './MoodEnergyCard';
 import { apiFetch } from '@/lib/api';
+import ActivityEditSheet from '@/components/ActivityEditSheet';
+import type { EditableType } from '@/components/ActivityEditSheet';
 
 type EffortLevel = 'basic' | 'mid' | 'lets_go';
 
@@ -180,6 +182,7 @@ export default function ActivityDetailSheet({
   const [localEffort, setLocalEffort] = useState<EffortLevel>(item.effort);
   const [detail, setDetail] = useState<SessionDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
 
   const isWorkout = item.type === 'workout' || item.type === 'strength';
   const typeColor = TYPE_COLOURS[item.type] || 'var(--text-muted)';
@@ -319,6 +322,19 @@ export default function ActivityDetailSheet({
           }}>
             {TYPE_LABELS[item.type] || item.type}
           </span>
+          {/* Edit button — for editable activity types */}
+          {(item.type === 'run' || item.type === 'ride' || item.type === 'workout' || item.type === 'strength') && (
+            <button
+              onClick={() => setShowEdit(true)}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--text-muted)', padding: 4, display: 'flex',
+              }}
+              title="Edit details"
+            >
+              <Pencil size={15} />
+            </button>
+          )}
           <button
             onClick={onClose}
             style={{
@@ -731,6 +747,25 @@ export default function ActivityDetailSheet({
           </div>
         )}
       </div>
+
+      {/* Edit sheet for activity_logs */}
+      {showEdit && (
+        <ActivityEditSheet
+          type={'activity' as EditableType}
+          id={item.id}
+          label={TYPE_LABELS[item.type] || item.type}
+          init={{
+            duration_mins: item.duration_minutes ?? undefined,
+            avg_hr: item.avg_bpm ?? undefined,
+            min_hr: item.min_hr ?? undefined,
+            max_hr: item.max_hr ?? undefined,
+            distance_km: item.distance_km ?? undefined,
+            avg_pace_secs: item.avg_pace_secs ?? undefined,
+          }}
+          onSave={() => { setShowEdit(false); onClose(); }}
+          onClose={() => setShowEdit(false)}
+        />
+      )}
     </>
   );
 }

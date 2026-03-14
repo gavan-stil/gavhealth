@@ -12,6 +12,8 @@ export type CategoryDot = {
   saunaHasDevotion?: boolean; // did_devotions === true → show ▲
   workoutSplit?: 'push' | 'pull' | 'legs'; // strength session split type
   hasLegExercise?: boolean;                 // any exercise in session is legs category
+  /** DB record id — used for editing (activity_logs.id, sleep_logs.id, sauna_logs.id) */
+  recordId?: number;
 };
 
 /** Key: YYYY-MM-DD, Value: array of category dots present that day */

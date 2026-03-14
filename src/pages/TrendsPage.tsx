@@ -5,6 +5,7 @@ import { useStrengthTrends } from "@/hooks/useStrengthTrends";
 import RecoverySparklines from "@/components/trends/RecoverySparklines";
 import PerformanceOverlay from "@/components/trends/PerformanceOverlay";
 import EnergyBalanceChart from "@/components/trends/EnergyBalanceChart";
+import ProteinWeightChart from "@/components/trends/ProteinWeightChart";
 import StrengthQualityChart from "@/components/trends/StrengthQualityChart";
 import RunHRZonesChart from "@/components/trends/RunHRZonesChart";
 import WorkoutVolumeChart from "@/components/trends/WorkoutVolumeChart";
@@ -172,6 +173,7 @@ export default function TrendsPage() {
             </div>
           )}
           <EnergyBalanceChart />
+          <ProteinWeightChart />
           <StrengthQualityChart />
           <RunHRZonesChart />
           <RecoverySparklines data={data} />

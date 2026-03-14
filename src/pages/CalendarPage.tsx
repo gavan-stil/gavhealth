@@ -74,6 +74,10 @@ export default function CalendarPage() {
     setSelectedDate(null);
   }, []);
 
+  const handleNavigateDay = useCallback((date: string) => {
+    setSelectedDate(date);
+  }, []);
+
   const selectedDots = useMemo(() => {
     if (!selectedDate || !combinedData[selectedDate]) return [];
     return combinedData[selectedDate].filter((d) => activeCategories.has(d.category));
@@ -258,6 +262,7 @@ export default function CalendarPage() {
         dots={selectedDots}
         onClose={handleCloseSheet}
         onSessionDeleted={refetch}
+        onNavigate={handleNavigateDay}
       />
     </div>
   );
