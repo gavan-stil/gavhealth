@@ -285,11 +285,9 @@ async def save_strength_log(body: StrengthLogCreate, db: AsyncSession = Depends(
     start_ts = None
     if body.start_time:
         dt = datetime.fromisoformat(body.start_time)
-        # Normalise to UTC so asyncpg receives a plain UTC datetime for TIMESTAMPTZ
-        if dt.tzinfo is not None:
-            start_ts = dt.astimezone(timezone.utc)
-        else:
-            start_ts = dt
+        # asyncpg requires naive UTC for TIMESTAMPTZ params in text() queries.
+        # Convert tz-aware input to UTC then strip tzinfo.
+        start_ts = dt.astimezone(timezone.utc).replace(tzinfo=None) if dt.tzinfo else dt
 
     result = await db.execute(
         text("""
