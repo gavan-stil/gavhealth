@@ -77,8 +77,8 @@ function computeChartPoints(
       }
     }
 
-    const recovery = recCount > 0 ? Math.round(50 + (recSum / recCount) * 200) : null;
-    const strain = strainCount > 0 ? Math.round(50 - (strainSum / strainCount) * 200) : null;
+    const recovery = recCount > 0 ? Math.round(50 + (recSum / recCount) * 500) : null;
+    const strain = strainCount > 0 ? Math.round(50 - (strainSum / strainCount) * 500) : null;
 
     return { date: d.date, recovery, strain };
   });
@@ -284,28 +284,37 @@ export default function MomentumCard({ data }: Props) {
                 >
                   {fmtDeviation(s)}
                 </span>
-                {/* Trend */}
-                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  {trendIcon(s.trend_7d)}
-                  <span
-                    className="body-text"
-                    style={{
-                      fontSize: 11,
-                      color:
-                        s.trend_7d === "improving"
-                          ? "#e8c47a"
-                          : s.trend_7d === "declining"
-                          ? "#c47a6a"
-                          : "var(--text-muted)",
-                    }}
-                  >
-                    {s.trend_7d === "improving"
-                      ? "Improving"
-                      : s.trend_7d === "declining"
-                      ? "Declining"
-                      : "Stable"}
-                  </span>
-                </div>
+                {/* Mini sparkline */}
+                {(() => {
+                  const sparkData = signals7d?.days.map((d) => ({
+                    v: (d as unknown as Record<string, number | null>)[s.signal] ?? null,
+                  })) ?? [];
+                  const col = statusColor(s.status);
+                  const sparkId = `spark-${s.signal}`;
+                  return (
+                    <div style={{ width: 56, height: 28, flexShrink: 0 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={sparkData} margin={{ top: 2, right: 0, left: 0, bottom: 2 }}>
+                          <defs>
+                            <linearGradient id={sparkId} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor={col} stopOpacity={0.4} />
+                              <stop offset="95%" stopColor={col} stopOpacity={0.05} />
+                            </linearGradient>
+                          </defs>
+                          <Area
+                            type="monotone"
+                            dataKey="v"
+                            stroke={col}
+                            strokeWidth={1.5}
+                            fill={`url(#${sparkId})`}
+                            dot={false}
+                            connectNulls
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  );
+                })()}
               </div>
             ))}
           </div>
