@@ -18,7 +18,36 @@ None — all tasks complete. See backlog.
 
 ---
 
-## Recent Session (2026-03-14) — Momentum signal rearrangement + Progress card drilldown
+## Recent Session (2026-03-15) — Momentum scoring model + schema bug fix
+
+**Root cause found & fixed (commit `de3701e`):**
+- `MomentumDayResponse` Pydantic schema (backend `schemas/health.py`) still had the old fields (`training_load_mins`, missing all derived signals). Pydantic silently stripped `calorie_balance`, `sleep_deficit`, `calorie_deficit`, `non_exercise_hr`, `calories_out` from API responses. Chart had no data → looked blank/broken.
+
+**Scoring model redesigned (`873049a`, `3bb0e3d`):**
+- **Recovery signals**: now compared vs TARGET MIDPOINT (not 28d baseline). Baseline was pulled down by bad stretches — using it made any decent sleep night look like an outlier. Falls back to baseline when no target is set.
+- **Strain signals**: switched from baseline-deviation to threshold-relative model: `max(0, (v − tMax) / absScale)`. Strain only fires when exceeding the acceptable ceiling (tMax). Below tMax = 0 strain. This fixes `non_exercise_hr` which previously always maxed (72 bpm / 20 = 3.6 → clamped) because it's an absolute value, not 0-based.
+- `CHART_MULT`: 150→50. Prevents any clamping: all 4 recovery signals maxed → exactly 100, single signal maxed → 62.5.
+
+**GoalDetailSheet — Strain signal framing (`873049a`):**
+- Strain signals (`sleep_deficit`, `calorie_deficit`, `non_exercise_hr`) are harm-minimizers with no user "goal" to achieve.
+- Stats row changed from TARGET/BASELINE/GAP → IDEAL/TODAY/7D AVG.
+- Chart: `baseline=null` (no dashed reference), target zone = 0→tMax (ideal zone at bottom).
+- Insight text: "Sleep deficit of X hr — get to bed earlier to close this gap."
+- "Edit Target ›" button hidden for strain signals.
+- Legend: "Ideal zone / Actual values" instead of "Target zone / Baseline / Below baseline".
+
+**MiniSparkline fix:** When all values are identical (range=0, e.g. sleep_deficit=0 every day), render flat line at center height instead of invisible bottom edge.
+
+**Weight carry-forward (`624d179`):** ProgressCard weight chart now carries last known weight forward for no-weigh-in days — solid line for measured days, dashed/faded for carried segment. Today dot: full glow if measured today, faint circle if carried.
+
+**Scoring worked out (real data March 14):**
+- sleep_hrs=6.42, protein=192g, water=1250ml, cal_balance=-350 → recovery≈26 (below avg, short sleep + low water)
+- sleep_deficit=0, cal_deficit=350, non_ex_hr=72 → strain≈48 (near neutral)
+- Chart shows recovery trailing below avg line, strain near neutral — accurate for the day
+
+---
+
+## Previous Session (2026-03-14) — Momentum signal rearrangement + Progress card drilldown
 
 **Momentum signal model rearranged:**
 - **Recovery signals (4):** `sleep_hrs`, `protein_g`, `water_ml`, `calorie_balance` (calories_in − calories_out)
