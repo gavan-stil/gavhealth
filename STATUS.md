@@ -18,6 +18,14 @@ None — backlog next.
 
 ---
 
+**T19** — Protein/Weight Chart + Day Swipe Nav + Session Edit — ✅ complete (2026-03-14).
+Commit: `b561b38`
+- ProteinWeightChart on Trends: bars (green ≥180g / ochre <180g) + 180g reference line + weight line overlay, 7-day/Month toggle, summary row
+- DayDetailSheet swipe navigation: swipe left/right or ‹ › arrows to move between calendar days without closing sheet
+- Session edit: PATCH /api/activity-logs/{id}, /api/sleep/{id}, /api/sauna/{id} backend endpoints; ActivityEditSheet frontend; Edit button on all DayDetailSheet cards (run/ride/strength/sleep/sauna) + pencil icon in ActivityDetailSheet (Log page); recordId propagated through CategoryDot chain
+
+---
+
 **T18** — Strength Volume Fix + Per-Exercise & Session-Level Comparison — ✅ complete (2026-03-13).
 Commits: `5838fd9`, `7e1d89c`
 - Backend: exercise history SQL now includes `bodyweight_at_session`; new `GET /api/strength/sessions/last-by-split/{split}` endpoint
