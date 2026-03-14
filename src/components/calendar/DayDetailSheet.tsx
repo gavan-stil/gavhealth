@@ -153,6 +153,7 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
   const [expandedKey, setExpandedKey]         = useState<string | null>(null);
   const [unlinking, setUnlinking]             = useState<number | null>(null);
   const [deletingId, setDeletingId]           = useState<number | null>(null);
+  const [deletingActivityId, setDeletingActivityId] = useState<number | null>(null);
 
   const touchStartX = useRef<number | null>(null);
 
@@ -296,6 +297,20 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
       console.error('[DayDetailSheet] delete error:', err);
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleDeleteActivity = async (activityLogId: number) => {
+    if (!window.confirm('Delete this workout from Withings? This cannot be undone.')) return;
+    setDeletingActivityId(activityLogId);
+    try {
+      await apiFetch(`/api/activity-logs/${activityLogId}`, { method: 'DELETE' });
+      onSessionDeleted?.();
+      onClose();
+    } catch (err) {
+      console.error('[DayDetailSheet] delete activity error:', err);
+    } finally {
+      setDeletingActivityId(null);
     }
   };
 
@@ -543,6 +558,29 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
                           }}
                         >
                           {unlinking === s.id ? "Unlinking…" : "Unlink Withings"}
+                        </button>
+                      )}
+                      {s.activityLogId !== null && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteActivity(s.activityLogId!);
+                          }}
+                          disabled={deletingActivityId === s.activityLogId}
+                          style={{
+                            flex: 1,
+                            font: "500 10px/1 'Inter',sans-serif",
+                            letterSpacing: "0.3px",
+                            padding: "7px 10px",
+                            borderRadius: 6,
+                            border: "1px solid var(--signal-bad)",
+                            background: "transparent",
+                            color: "var(--signal-bad)",
+                            cursor: deletingActivityId === s.activityLogId ? "wait" : "pointer",
+                            opacity: deletingActivityId === s.activityLogId ? 0.5 : 1,
+                          }}
+                        >
+                          {deletingActivityId === s.activityLogId ? "Deleting…" : "Delete workout"}
                         </button>
                       )}
                     </div>

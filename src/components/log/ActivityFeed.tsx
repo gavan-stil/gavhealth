@@ -136,6 +136,7 @@ export default function ActivityFeed() {
   const [strengthSessions, setStrengthSessions] = useState<StrengthSession[]>([]);
   const [linkingSessionId, setLinkingSessionId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deletingActivityId, setDeletingActivityId] = useState<number | null>(null);
   const [orphanLinkingId, setOrphanLinkingId] = useState<number | null>(null); // orphan showing activity picker
 
   const fetchStrengthSessions = useCallback(async () => {
@@ -215,6 +216,19 @@ export default function ActivityFeed() {
       setSelectedItem(null);
     } catch {
       // silently ignore
+    }
+  };
+
+  const handleDeleteActivity = async (activityId: number) => {
+    if (!window.confirm('Delete this workout? This cannot be undone.')) return;
+    setDeletingActivityId(activityId);
+    setItems((prev) => prev.filter((i) => i.id !== activityId));
+    try {
+      await apiFetch(`/api/activity-logs/${activityId}`, { method: 'DELETE' });
+    } catch {
+      await fetchFeed();
+    } finally {
+      setDeletingActivityId(null);
     }
   };
 
@@ -424,6 +438,24 @@ export default function ActivityFeed() {
                   </div>
                 )}
               </div>
+              {isWorkout(item.type) && (
+                <div style={{ padding: '0 var(--space-lg) var(--space-md)', display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDeleteActivity(item.id); }}
+                    disabled={deletingActivityId === item.id}
+                    style={{
+                      font: '500 10px/1 Inter, sans-serif', letterSpacing: '0.3px',
+                      padding: '5px 10px', borderRadius: 6,
+                      border: '1px solid var(--signal-bad)', background: 'transparent',
+                      color: 'var(--signal-bad)',
+                      cursor: deletingActivityId === item.id ? 'wait' : 'pointer',
+                      opacity: deletingActivityId === item.id ? 0.5 : 1,
+                    }}
+                  >
+                    {deletingActivityId === item.id ? 'Deleting…' : 'Delete workout'}
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}

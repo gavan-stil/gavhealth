@@ -1394,6 +1394,18 @@ async def update_activity_log(id: int, body: ActivityLogUpdate, db: AsyncSession
     return dict(row)
 
 
+@router.delete("/activity-logs/{id}")
+async def delete_activity_log(id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        text("DELETE FROM activity_logs WHERE id = :id RETURNING id"),
+        {"id": id},
+    )
+    if not result.mappings().first():
+        raise HTTPException(status_code=404, detail="Activity not found")
+    await db.commit()
+    return {"ok": True}
+
+
 # ---------------------------------------------------------------------------
 # T19-3. PATCH /api/sleep/{id}
 # Edit editable fields on a sleep_logs row.
