@@ -52,6 +52,8 @@ Full task list: `tasks/T14-sprint.md`
 
 | Task | Date | Summary |
 |------|------|---------|
+| Withings GPS late-delivery fix | 2026-03-14 | Recurring bug (GPS arrives 30-60min after upload; first sync stale). Fix: guaranteed 48h re-fetch in run_full_sync, 'ride' added to backfill IS NULL check, per-workout Railway logging, force-refresh endpoint POST /api/withings/refresh-workout/{external_id}. Root causes + rationale in DECISIONS.md D007. commit: 6e11b28 |
+| Run/ride stat block standardisation | 2026-03-13 | ActivityFeed cards now show dist+pace inline. ActivityDetailSheet + DayDetailSheet both use horizontal bordered stat blocks for run/ride (dist+pace row, time+bpm row). Backend feed endpoint exposes distance_km + avg_pace_secs. commits: ad1d613, 6d9f4ce |
 | T18 BW volume fix + session header | 2026-03-13 | Backend SQL fixed (bodyweight_at_session in session_volume_kg). New last-by-split endpoint. Frontend: correct bw/bw+ volume formula, dual reps+vol badges, session comparison header, whole-kg rounding. commits: 5838fd9, 7e1d89c |
 | StrengthCard last/now tally | 2026-03-11 | Exercise cards show Last: sets·reps·vol·date + live Now: tally + % diff badge (gold/red, ≥0.5% threshold). BW+ extra kg included in volume. commit: 7227eb4 |
 | T15 Trends Redesign | 2026-03-10 | EnergyBalanceChart (intake/burn bars + weight line, dual y-axis, protein-first summary row). StrengthQualityChart (scatter: duration vs avg_hr, bubble=sets, category colour). Both at top of TrendsPage; CorrelationSummary removed. Data quality fix: kJ→kcal CASE guard in energy-balance endpoint (daily_summary rows from CSV bulk import stored kJ). Commits: 29dbae4, 382fd68, f82dd9a |
@@ -119,7 +121,7 @@ Full list with notes: `tasks/backlog.md`
 | `reference/withings-data.md` | Withings field map, DB gaps, backend tasks for T11 |
 | `reference/brand.md` | Design tokens v1.2: colors, typography, motion, spacing |
 | `reference/stack.md` | Tech stack, deployment credentials |
-| `specs/{dashboard,calendar,log,trends}.md` | Feature specs per route |
-| `DECISIONS.md` | Architectural decisions with rationale (D001–D006) |
+| `features.md` | Flat inventory of all live features per route (source of truth) |
+| `DECISIONS.md` | Architectural decisions with rationale (D001–D007) |
 | `tasks/README.md` | Task execution protocol |
 | `SESSION.md` | Per-session scratchpad — overwrite each session, delete when done |
