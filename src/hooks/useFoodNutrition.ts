@@ -117,7 +117,7 @@ export function useFoodNutrition(date: string) {
           method: 'POST',
           body: JSON.stringify({
             name: item.name,
-            calories_kcal: item.calories_kcal,
+            calories_kcal: Math.round(item.calories_kcal),
             protein_g: item.protein_g,
             carbs_g: item.carbs_g,
             fat_g: item.fat_g,
@@ -129,9 +129,10 @@ export function useFoodNutrition(date: string) {
       setTodayLog(prev =>
         prev.map(e => e.id === tempId ? toLogEntry({ ...saved, description_raw: saved.description_raw ?? item.name }) : e)
       );
-    } catch {
-      // Roll back on failure
+    } catch (err) {
+      // Roll back on failure and rethrow so caller knows it failed
       setTodayLog(prev => prev.filter(e => e.id !== tempId));
+      throw err;
     }
   }, [date]);
 

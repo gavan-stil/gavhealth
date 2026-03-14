@@ -60,8 +60,12 @@ export default function FoodNutritionCard({
   const [deletingId,   setDeletingId]     = useState<number | null>(null);
 
   const handleLogItem = async (item: ParsedItem | Omit<SavedMeal, 'id'>, idx?: number) => {
-    await logItem(item);
-    if (idx !== undefined) setAddedIndexes(prev => new Set(prev).add(idx));
+    try {
+      await logItem(item);
+      if (idx !== undefined) setAddedIndexes(prev => new Set(prev).add(idx));
+    } catch {
+      // logItem already rolled back the optimistic entry; don't mark as added
+    }
   };
 
   const handleSaveToLibrary = async (item: ParsedItem, idx: number) => {

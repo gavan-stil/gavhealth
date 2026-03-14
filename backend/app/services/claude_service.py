@@ -28,6 +28,8 @@ return a JSON object with these fields:
 - confidence: "high" | "medium" | "low"
 
 Use Australian serving sizes. Be conservative with estimates.
+For alcoholic drinks (wine, beer, spirits, etc.), calculate calories from ethanol content (~7 kcal/g) plus any carbs. Do not leave alcohol calories as zero.
+All calories_kcal values must be whole integers (no decimals).
 Return ONLY valid JSON, no markdown fences, no commentary."""
 
 STRENGTH_SYSTEM_PROMPT = """You are a strength training log parser. Given a free-text workout description,
