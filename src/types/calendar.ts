@@ -15,6 +15,9 @@ export type CategoryDot = {
   hasAbsSession?: boolean;                  // session is tagged abs/core
   /** DB record id — used for editing (activity_logs.id, sleep_logs.id, sauna_logs.id) */
   recordId?: number;
+  /** True for strength sessions that have no linked activity_log (orphan sessions).
+   *  Their recordId is a strength_session.id, NOT an activity_log.id — must NOT be used as a link target. */
+  isOrphanSession?: boolean;
 };
 
 /** Key: YYYY-MM-DD, Value: array of category dots present that day */

@@ -355,9 +355,10 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
   const SCOL = CATEGORY_COLORS.strength;
   const nonStrengthDots = dots.filter((d) => d.category !== "strength");
 
-  // Unlinked Withings workout IDs (strength dots not claimed by any session)
+  // Unlinked Withings workout IDs (activity_log entries not claimed by any session).
+  // Exclude isOrphanSession dots — their recordId is a strength_session.id, not an activity_log.id.
   const unmatchedWorkoutIds = dots
-    .filter(d => d.category === "strength" && d.recordId != null && !sessions.some(s => s.activityLogId === d.recordId))
+    .filter(d => d.category === "strength" && d.recordId != null && !d.isOrphanSession && !sessions.some(s => s.activityLogId === d.recordId))
     .map(d => d.recordId!);
 
   return (

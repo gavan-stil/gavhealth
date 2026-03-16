@@ -69,6 +69,7 @@ type DayEntry = {
   hasLegExercise?: boolean;
   hasAbsSession?: boolean;
   recordId?: number;
+  isOrphanSession?: boolean;
 };
 
 /** Derive Brisbane local date (YYYY-MM-DD) from an activity.
@@ -289,6 +290,7 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
       hasLegExercise,
       hasAbsSession,
       recordId: s.id,
+      isOrphanSession: true,
     });
   }
 
@@ -342,6 +344,7 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
         hasLegExercise: e.hasLegExercise,
         hasAbsSession: e.hasAbsSession,
         recordId: e.recordId,
+        isOrphanSession: e.isOrphanSession,
       } as CategoryDot))
     );
   }
