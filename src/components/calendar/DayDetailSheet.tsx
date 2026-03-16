@@ -29,6 +29,7 @@ type RawSession = {
   session_date: string;
   session_datetime?: string | null;
   activity_log_id: number | null;
+  session_label?: string | null;
   duration_mins: number | null;
   total_sets: number;
   total_reps: number;
@@ -58,6 +59,7 @@ type SessionDetail = {
   id: number;
   activityLogId: number | null;
   sessionDatetime: string | null;
+  sessionLabel: string | null;
   split: string;
   bodyAreas: string[];
   totalSets: number;
@@ -168,8 +170,10 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
   const [loadingStrength, setLoadingStrength] = useState(false);
   const [expandedKey, setExpandedKey]         = useState<string | null>(null);
   const [unlinking, setUnlinking]             = useState<number | null>(null);
+  const [linking, setLinking]                 = useState<number | null>(null);
   const [deletingId, setDeletingId]           = useState<number | null>(null);
   const [deletingActivityId, setDeletingActivityId] = useState<number | null>(null);
+  const [refreshKey, setRefreshKey]           = useState(0);
 
   const touchStartX = useRef<number | null>(null);
 
@@ -262,6 +266,7 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
             id: s.id,
             activityLogId: s.activity_log_id,
             sessionDatetime: s.session_datetime ?? null,
+            sessionLabel: s.session_label ?? null,
             split: deriveSplit(s.exercises),
             bodyAreas: deriveBodyAreas(s.exercises),
             totalSets: s.total_sets,
@@ -281,7 +286,7 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
       }
     })();
     return () => { cancelled = true; };
-  }, [date, hasStrength]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [date, hasStrength, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!date) return null;
 
@@ -299,6 +304,23 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
       console.error("[DayDetailSheet] unlink error:", err);
     } finally {
       setUnlinking(null);
+    }
+  };
+
+  const handleLink = async (sessionId: number, activityLogId: number) => {
+    setLinking(sessionId);
+    try {
+      await apiFetch(`/api/strength/sessions/${sessionId}/link`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ activity_id: activityLogId }),
+      });
+      setRefreshKey(k => k + 1);
+      onSessionDeleted?.();
+    } catch (err) {
+      console.error("[DayDetailSheet] link error:", err);
+    } finally {
+      setLinking(null);
     }
   };
 
@@ -332,6 +354,11 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
 
   const SCOL = CATEGORY_COLORS.strength;
   const nonStrengthDots = dots.filter((d) => d.category !== "strength");
+
+  // Unlinked Withings workout IDs (strength dots not claimed by any session)
+  const unmatchedWorkoutIds = dots
+    .filter(d => d.category === "strength" && d.recordId != null && !sessions.some(s => s.activityLogId === d.recordId))
+    .map(d => d.recordId!);
 
   return (
     <>
@@ -530,6 +557,59 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
                           }}
                         >
                           Edit
+                        </button>
+                      )}
+                      {s.activityLogId === null && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditTarget({
+                              type: "strength_session",
+                              id: s.id,
+                              label: "Session",
+                              init: {
+                                session_label: (s.sessionLabel ?? undefined) as "push" | "pull" | "legs" | "abs" | undefined,
+                                duration_minutes: s.durationMins ?? undefined,
+                                started_at: s.sessionDatetime ?? undefined,
+                              },
+                            });
+                          }}
+                          style={{
+                            flex: 1,
+                            font: "500 10px/1 'Inter',sans-serif",
+                            letterSpacing: "0.3px",
+                            padding: "7px 10px",
+                            borderRadius: 6,
+                            border: "1px solid var(--border-default)",
+                            background: "transparent",
+                            color: "var(--text-muted)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Edit session
+                        </button>
+                      )}
+                      {s.activityLogId === null && unmatchedWorkoutIds.length > 0 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleLink(s.id, unmatchedWorkoutIds[0]);
+                          }}
+                          disabled={linking === s.id}
+                          style={{
+                            flex: 1,
+                            font: "500 10px/1 'Inter',sans-serif",
+                            letterSpacing: "0.3px",
+                            padding: "7px 10px",
+                            borderRadius: 6,
+                            border: "1px solid var(--ochre)",
+                            background: "transparent",
+                            color: "var(--ochre)",
+                            cursor: linking === s.id ? "wait" : "pointer",
+                            opacity: linking === s.id ? 0.5 : 1,
+                          }}
+                        >
+                          {linking === s.id ? "Linking…" : "Link workout"}
                         </button>
                       )}
                       <button
@@ -944,7 +1024,7 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
           id={editTarget.id}
           label={editTarget.label}
           init={editTarget.init}
-          onSave={() => { setEditTarget(null); onSessionDeleted?.(); }}
+          onSave={() => { setEditTarget(null); setRefreshKey(k => k + 1); onSessionDeleted?.(); }}
           onClose={() => setEditTarget(null)}
         />
       )}
