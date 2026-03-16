@@ -20,10 +20,10 @@ function formatComponent(v: number): string {
 }
 
 const TOOLTIPS: Record<string, string> = {
-  SLEEP: "Score from sleep duration & efficiency",
-  RHR: "Resting heart rate vs your baseline",
-  LOAD: "Training load from recent activity",
-  REST: "Days since last hard session",
+  SLEEP: "Sleep duration & deep sleep vs target (7.6 hr, 43% deep)",
+  RHR: "Today's RHR vs your 7-day average — lower today = better recovery",
+  LOAD: "Training consistency: +5 at normal load, fades negative if you haven't trained or have overtrained vs your 28-day average",
+  REST: "Penalty for 5+ consecutive training days — encourages a rest day after 4 straight sessions",
 };
 
 export default function ReadinessCard({ data }: { data: ReadinessData }) {
@@ -118,8 +118,8 @@ export default function ReadinessCard({ data }: { data: ReadinessData }) {
             <div>± sleep duration <span style={{ color: "var(--text-muted)" }}>(target 7.6hr)</span></div>
             <div>± deep sleep % <span style={{ color: "var(--text-muted)" }}>(target 43%)</span></div>
             <div>± RHR vs 7-day avg</div>
-            <div>− load penalty <span style={{ color: "var(--text-muted)" }}>(if ACWR &lt; 1.3)</span></div>
-            <div>− rest penalty <span style={{ color: "var(--text-muted)" }}>(5pts/day after 4 consecutive)</span></div>
+            <div>± load <span style={{ color: "var(--text-muted)" }}>(+5 at normal, fades to −10 if overtrained or detrained)</span></div>
+            <div>− rest penalty <span style={{ color: "var(--text-muted)" }}>(−5pts/day after 4 consecutive sessions)</span></div>
           </div>
         )}
       </div>

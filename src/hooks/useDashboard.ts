@@ -10,7 +10,7 @@ interface ApiReadiness {
     sleep_delta: number;
     deep_delta: number;
     rhr_delta: number;
-    load_penalty: number;
+    load_delta: number;
     rest_penalty: number;
   };
   recommendation: string;
@@ -73,8 +73,10 @@ function transformReadiness(raw: ApiReadiness): ReadinessData {
     components: {
       sleep: (raw.components.sleep_delta ?? 0) + (raw.components.deep_delta ?? 0),
       rhr: raw.components.rhr_delta ?? 0,
-      load: raw.components.load_penalty ?? 0,
-      rest: raw.components.rest_penalty ?? 0,
+      // load_delta is two-sided (positive = good, negative = over/under-trained)
+      load: raw.components.load_delta ?? 0,
+      // rest_penalty is subtracted from score — negate so the card shows it as negative when active
+      rest: -(raw.components.rest_penalty ?? 0),
     },
     narrative: raw.recommendation ?? '',
   };

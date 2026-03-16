@@ -1,13 +1,13 @@
 """Deterministic readiness score fallback.
 
-Formula from IMPLEMENTATION_SPEC.md:
-  base = 70
+Formula:
+  base         = 70
   sleep_delta  = (actual_sleep - 7.6) * 8
   deep_delta   = (actual_deep_pct - 0.43) * 20
   rhr_delta    = (rhr_7day_avg - rhr_today) * 3
-  load_penalty = min(0, (1.3 - acwr) * 20)
-  rest_penalty = max(0, (consecutive_days - 4)) * 5
-  score = clamp(base + sleep_delta + deep_delta + rhr_delta + load_penalty - rest_penalty, 0, 100)
+  load_delta   = clamp(5 - |acwr - 1.0| * 10, -10, 8)   # two-sided; +5 at baseline, fades negative with under/overtraining
+  rest_penalty = max(0, (consecutive_days - 4)) * 5       # penalises 5+ consecutive training days
+  score = clamp(base + sleep_delta + deep_delta + rhr_delta + load_delta - rest_penalty, 0, 100)
 """
 
 from datetime import date, timedelta
@@ -84,7 +84,7 @@ async def compute_readiness(db: AsyncSession, target_date: date) -> dict:
         )
     ).scalar_one()
 
-    chronic_weekly = float(chronic_load) / 4.0 if chronic_load else 1.0
+    chronic_weekly = float(chronic_load) / 4.0 if chronic_load else 0.0
     acwr = float(acute_load) / chronic_weekly if chronic_weekly > 0 else 1.0
 
     # --- Consecutive training days ---
@@ -113,10 +113,18 @@ async def compute_readiness(db: AsyncSession, target_date: date) -> dict:
     sleep_delta = (actual_sleep - 7.6) * 8
     deep_delta = (deep_pct - 0.43) * 20
     rhr_delta = (rhr_7day_avg - rhr_today) * 3
-    load_penalty = min(0.0, (1.3 - acwr) * 20)
+
+    # Two-sided load score: +5 at ACWR=1.0, fades to 0 at ~0.5 or ~1.5, negative beyond.
+    # No training history (chronic_load=0) → neutral 0 rather than a false +5.
+    if not chronic_load:
+        load_delta = 0.0
+    else:
+        load_delta = max(-10.0, min(8.0, 5.0 - abs(acwr - 1.0) * 10.0))
+
+    # Consecutive-day rest penalty: encourages a rest day after 4 straight training days.
     rest_penalty = max(0.0, (consecutive_days - 4)) * 5
 
-    raw_score = base + sleep_delta + deep_delta + rhr_delta + load_penalty - rest_penalty
+    raw_score = base + sleep_delta + deep_delta + rhr_delta + load_delta - rest_penalty
     score = round(_clamp(raw_score), 1)
 
     # Recommendation
@@ -137,7 +145,7 @@ async def compute_readiness(db: AsyncSession, target_date: date) -> dict:
             "sleep_delta": round(sleep_delta, 2),
             "deep_delta": round(deep_delta, 2),
             "rhr_delta": round(rhr_delta, 2),
-            "load_penalty": round(load_penalty, 2),
+            "load_delta": round(load_delta, 2),
             "rest_penalty": round(rest_penalty, 2),
             "inputs": {
                 "actual_sleep_hrs": actual_sleep,
