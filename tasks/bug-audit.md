@@ -250,6 +250,47 @@ Ordered by severity and dependency:
 
 ---
 
+### GOALS-001 [Medium] — Stale target range display after save in GoalsPage
+- **File:** `src/pages/GoalsPage.tsx:72–96` (SignalSection.handleSave)
+- **Layer:** Frontend — goals form
+- **Description:** `handleSave` writes to the backend and sets `saved=true`, but the "target range" header still shows the old value from the `goal` prop. Only a full page reload refreshes it.
+- **Repro:** Open any goal → Set New Target → change values → Save → header still shows old range.
+- **Risk:** Medium — misleading UX; user thinks save failed or UI is broken.
+
+---
+
+### GOALS-002 [Low] — GoalsPage silently swallows /api/goals fetch error
+- **File:** `src/pages/GoalsPage.tsx:344–353`
+- **Layer:** Frontend — error handling
+- **Description:** `.catch(() => {})` — goals endpoint failure leaves user with a blank page and no error or retry.
+- **Risk:** Low — endpoint is reliable; no user feedback on failure.
+
+---
+
+### TRENDS-001 [Medium] — TrendsPage `days` hardcoded at 30; TimeRangeSelector unused
+- **File:** `src/pages/TrendsPage.tsx:108`, `src/components/trends/TimeRangeSelector.tsx`
+- **Layer:** Frontend — time range
+- **Description:** `const [days] = useState<TimeRange>(30)` has no setter. `TimeRangeSelector.tsx` exists but is never imported. WorkoutVolumeChart and ExerciseProgressSection always get `days=30`. EnergyBalanceChart has its own internal toggle but it's disconnected from the page-level `days`.
+- **Risk:** Medium — range control is partially built but non-functional.
+
+---
+
+### TRENDS-002 [Low] — Sauna date extraction uses UTC split (fragile timezone)
+- **File:** `src/hooks/useTrendsData.ts:158–165`
+- **Layer:** Frontend — data transform
+- **Description:** `s.session_datetime.split("T")[0]` extracts date in UTC. Same fragile pattern flagged in MEMORY. Nil risk in practice for typical sauna session times.
+- **Risk:** Low — code quality.
+
+---
+
+### TRENDS-003 [Low] — EnergyBalanceChart has duplicate `dayLabel`/`shortLabel` functions
+- **File:** `src/components/trends/EnergyBalanceChart.tsx:32–39`
+- **Layer:** Frontend — dead code
+- **Description:** `dayLabel` and `shortLabel` are identical functions defined back-to-back. `shortLabel` is used for the axis, `dayLabel` for the tooltip — same output.
+- **Risk:** Low — harmless dead code.
+
+---
+
 ## Resolved
 
 ### ~~DASH-001~~ [Medium] — refetchAll missing progress.refetch() ✅ Fixed (2026-03-16)
@@ -308,6 +349,15 @@ Added exclusivity check (mirrors `confirm_strength_entry`). Manual link endpoint
 
 ### ~~BUG-004 (partial)~~ [Medium] — workout_split column missing from DB ✅ Fixed (other session, 2026-03-16)
 Column migration added to `main.py` startup. PATCH `/api/activity-logs/{id}` no longer errors on `workout_split`. The split label vs `activity_logs.workout_split` display mismatch (feed reads from `session_label` not column) remains as BUG-004 above.
+
+### ~~GOALS-001~~ [Medium] — Stale target range display after save ✅ Fixed (2026-03-16)
+`displayMin`/`displayMax` local state added to `SignalSection`. Updated immediately after successful save. Header reads from these instead of the prop.
+
+### ~~GOALS-002~~ [Low] — GoalsPage silently swallows fetch error ✅ Fixed (2026-03-16)
+`.catch(() => {})` replaced with `setLoadError(true)`. Error message + Retry button shown when `/api/goals` fails. `loadGoals` extracted to `useCallback` so Retry can call it.
+
+### ~~TRENDS-003~~ [Low] — EnergyBalanceChart duplicate shortLabel/dayLabel ✅ Fixed (2026-03-16)
+`shortLabel` removed. `tickFormatter` updated to use `dayLabel`.
 
 ### ~~(new fix)~~ — DayDetailSheet missing Edit/Link buttons for unlinked sessions ✅ Fixed (other session, 2026-03-16)
 Calendar day detail now shows "Edit session" (set split label) and "Link workout" for unlinked strength sessions.

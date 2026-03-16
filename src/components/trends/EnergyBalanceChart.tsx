@@ -34,10 +34,6 @@ function dayLabel(dateStr: string): string {
   return d.toLocaleDateString("en-AU", { month: "short", day: "numeric" });
 }
 
-function shortLabel(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-AU", { month: "short", day: "numeric" });
-}
 
 // ---------------------------------------------------------------------------
 // Tooltip
@@ -449,7 +445,7 @@ export default function EnergyBalanceChart({ proteinTarget = 180 }: { proteinTar
               <XAxis
                 dataKey="date"
                 tick={{ fill: "var(--text-muted)", fontSize: 10 }}
-                tickFormatter={shortLabel}
+                tickFormatter={dayLabel}
                 axisLine={false}
                 tickLine={false}
                 interval={range === 7 ? 0 : Math.floor(days.length / 6)}

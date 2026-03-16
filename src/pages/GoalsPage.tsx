@@ -48,6 +48,9 @@ function SignalSection({ goal, signals7d }: SignalSectionProps) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  // Local copies of the target so the header updates immediately after save
+  const [displayMin, setDisplayMin] = useState<number | null>(goal.target_min);
+  const [displayMax, setDisplayMax] = useState<number | null>(goal.target_max);
 
   const baseline = signals7d.data?.baselines?.[goal.signal] ?? null;
   const target = signals7d.data?.targets?.[goal.signal];
@@ -82,6 +85,10 @@ function SignalSection({ goal, signals7d }: SignalSectionProps) {
           notes: notes || null,
         }),
       });
+      const newMin = minVal !== "" ? parseFloat(minVal) : null;
+      const newMax = maxVal !== "" ? parseFloat(maxVal) : null;
+      setDisplayMin(newMin);
+      setDisplayMax(newMax);
       setSaved(true);
       setShowForm(false);
       setNotes("");
@@ -115,8 +122,8 @@ function SignalSection({ goal, signals7d }: SignalSectionProps) {
         </div>
         <div style={{ textAlign: "right" }}>
           <div className="small-number" style={{ color: "var(--ochre)" }}>
-            {goal.target_min !== null && goal.target_max !== null
-              ? `${goal.target_min} – ${goal.target_max}`
+            {displayMin !== null && displayMax !== null
+              ? `${displayMin} – ${displayMax}`
               : "Not set"}
           </div>
           <div className="label-text" style={{ color: "var(--text-muted)", marginTop: 2 }}>target range</div>
@@ -338,19 +345,25 @@ export default function GoalsPage() {
   const navigate = useNavigate();
   const [goals, setGoals] = useState<GoalRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const signals7d = useMomentumSignals(7);
 
-  useEffect(() => {
+  const loadGoals = useCallback(() => {
+    setLoading(true);
+    setLoadError(false);
     apiFetch<GoalRow[]>("/api/goals")
       .then((rows) => {
-        // Sort by canonical order
         const order = Object.fromEntries(SIGNALS.map((s, i) => [s, i]));
         rows.sort((a, b) => (order[a.signal] ?? 99) - (order[b.signal] ?? 99));
         setGoals(rows);
       })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    loadGoals();
+  }, [loadGoals]);
 
   return (
     <div
@@ -389,6 +402,25 @@ export default function GoalsPage() {
 
       {loading ? (
         <div className="body-text" style={{ color: "var(--text-muted)" }}>Loading...</div>
+      ) : loadError ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className="body-text" style={{ color: "var(--signal-poor)" }}>Failed to load goals.</div>
+          <button
+            onClick={loadGoals}
+            style={{
+              background: "none",
+              border: "1px solid var(--border-default)",
+              borderRadius: "var(--radius-sm)",
+              color: "var(--text-muted)",
+              fontSize: 13,
+              cursor: "pointer",
+              padding: "8px 12px",
+              alignSelf: "flex-start",
+            }}
+          >
+            Retry
+          </button>
+        </div>
       ) : (
         goals.map((g) => (
           <SignalSection key={g.signal} goal={g} signals7d={signals7d} />
