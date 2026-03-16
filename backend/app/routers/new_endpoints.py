@@ -410,7 +410,7 @@ async def save_strength_log(body: StrengthLogCreate, db: AsyncSession = Depends(
 async def last_strength_log(split: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         text("""
-            SELECT created_at::date AS date, exercises
+            SELECT (created_at AT TIME ZONE 'Australia/Brisbane')::date AS date, exercises
             FROM manual_strength_logs
             WHERE workout_split = :split
             ORDER BY created_at DESC
@@ -606,6 +606,14 @@ async def relink_strength(id: int, body: RelinkBody, db: AsyncSession = Depends(
     row = result.mappings().first()
     if not row:
         raise HTTPException(status_code=404, detail="Strength log not found")
+
+    # Also update the bridged strength_session so feed and trends reflect the new link
+    if row["bridged_session_id"]:
+        await db.execute(
+            text("UPDATE strength_sessions SET activity_log_id = :aid WHERE id = :sid"),
+            {"aid": body.activity_id, "sid": row["bridged_session_id"]},
+        )
+
     await db.commit()
     return dict(row)
 
@@ -672,11 +680,12 @@ async def unlink_strength(id: int, db: AsyncSession = Depends(get_db)):
 async def list_strength_sessions(days: int = Query(default=14), db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         text("""
-            SELECT id, created_at::date AS log_date, workout_split, duration_minutes,
+            SELECT id, (created_at AT TIME ZONE 'Australia/Brisbane')::date AS log_date,
+                   workout_split, duration_minutes,
                    jsonb_array_length(exercises) AS exercise_count,
                    matched_activity_id, match_confirmed, bridged_session_id
             FROM manual_strength_logs
-            WHERE created_at >= CURRENT_DATE - (:days * INTERVAL '1 day')
+            WHERE (created_at AT TIME ZONE 'Australia/Brisbane')::date >= CURRENT_DATE - (:days * INTERVAL '1 day')
             ORDER BY created_at DESC
         """),
         {"days": days},
@@ -1003,6 +1012,17 @@ async def update_strength_session(id: int, body: StrengthSessionUpdate, db: Asyn
     if body.duration_minutes is not None:
         await db.execute(
             text("UPDATE manual_strength_logs SET duration_minutes = :dur WHERE bridged_session_id = :id"),
+            {"dur": body.duration_minutes, "id": id},
+        )
+        # For NLP-confirmed sessions (no manual_strength_logs row), also update the linked activity_log
+        await db.execute(
+            text("""
+                UPDATE activity_logs SET duration_mins = :dur
+                WHERE id = (
+                    SELECT activity_log_id FROM strength_sessions
+                    WHERE id = :id AND activity_log_id IS NOT NULL
+                )
+            """),
             {"dur": body.duration_minutes, "id": id},
         )
 
@@ -1463,12 +1483,25 @@ async def update_activity_log(id: int, body: ActivityLogUpdate, db: AsyncSession
     row = result.mappings().first()
     if not row:
         raise HTTPException(status_code=404, detail="Activity not found")
+
+    # Propagate workout_split to linked strength_session.session_label so the feed reflects it
+    if "workout_split" in updates:
+        await db.execute(
+            text("UPDATE strength_sessions SET session_label = :label WHERE activity_log_id = :id"),
+            {"label": updates["workout_split"], "id": id},
+        )
+
     await db.commit()
     return dict(row)
 
 
 @router.delete("/activity-logs/{id}")
 async def delete_activity_log(id: int, db: AsyncSession = Depends(get_db)):
+    # NULL out any strength_sessions pointing to this activity before deleting
+    await db.execute(
+        text("UPDATE strength_sessions SET activity_log_id = NULL WHERE activity_log_id = :id"),
+        {"id": id},
+    )
     result = await db.execute(
         text("DELETE FROM activity_logs WHERE id = :id RETURNING id"),
         {"id": id},
