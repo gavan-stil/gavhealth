@@ -142,10 +142,10 @@ Ordered by severity and dependency:
 
 ## Resolved
 
-### ~~LOG-001~~ [High] — ActivityDetailSheet wrong edit type for workouts ✅ Fixed (2026-03-16, commit: TBD)
+### ~~LOG-001~~ [High] — ActivityDetailSheet wrong edit type for workouts ✅ Fixed (2026-03-16, commit: 7147ba7)
 Workout/strength items now open `type='workout'` with `WorkoutInit` (split picker, date/time, HR fields). Run/ride items continue to use `type='activity'`. `workout_split` sourced from `linkedSession.session_label`.
 
-### ~~LOG-002~~ [Medium] — ActivityDetailSheet deriveSplit vs session_label ✅ Fixed (2026-03-16, commit: TBD)
+### ~~LOG-002~~ [Medium] — ActivityDetailSheet deriveSplit vs session_label ✅ Fixed (2026-03-16, commit: 7147ba7)
 Split display now uses `session_label` (capitalised) first, falls back to `deriveSplit()`. Mirrors the CAL-001 fix already applied to `DayDetailSheet`.
 
 ### ~~BUG-003~~ [High] — Delete activity leaves dangling session link ✅ Fixed (2026-03-16, commit: e824f3e)
