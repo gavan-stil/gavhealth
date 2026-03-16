@@ -3,7 +3,6 @@ import { X, Dumbbell, Pencil } from 'lucide-react';
 import { EnergyIcon } from './MoodEnergyCard';
 import { apiFetch } from '@/lib/api';
 import ActivityEditSheet from '@/components/ActivityEditSheet';
-import type { EditableType } from '@/components/ActivityEditSheet';
 
 type EffortLevel = 'basic' | 'mid' | 'lets_go';
 
@@ -264,8 +263,12 @@ export default function ActivityDetailSheet({
         });
 
         if (!cancelled) {
+          const rawLabel = linkedSession.session_label;
+          const splitDisplay = rawLabel
+            ? rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1)
+            : deriveSplit(raw.exercises);
           setDetail({
-            split: deriveSplit(raw.exercises),
+            split: splitDisplay,
             bodyAreas: deriveBodyAreas(raw.exercises),
             totalSets: raw.total_sets,
             totalReps: raw.total_reps,
@@ -752,10 +755,21 @@ export default function ActivityDetailSheet({
       {/* Edit sheet for activity_logs */}
       {showEdit && (
         <ActivityEditSheet
-          type={'activity' as EditableType}
+          type={isWorkout ? 'workout' : 'activity'}
           id={item.id}
           label={TYPE_LABELS[item.type] || item.type}
-          init={{
+          init={isWorkout ? {
+            workout_split: (() => {
+              const lbl = linkedSession?.session_label;
+              return (lbl === 'push' || lbl === 'pull' || lbl === 'legs' || lbl === 'abs') ? lbl : null;
+            })(),
+            duration_mins: item.duration_minutes ?? undefined,
+            avg_hr: item.avg_bpm ?? undefined,
+            min_hr: item.min_hr ?? undefined,
+            max_hr: item.max_hr ?? undefined,
+            started_at: item.start_time ?? undefined,
+            activity_date: item.date,
+          } : {
             duration_mins: item.duration_minutes ?? undefined,
             avg_hr: item.avg_bpm ?? undefined,
             min_hr: item.min_hr ?? undefined,

@@ -18,7 +18,60 @@ None — all tasks complete. See backlog.
 
 ---
 
-## Recent Session (2026-03-15) — Momentum scoring model + schema bug fix
+## Recent Session (2026-03-16 session 3) — Log page bug audit + fixes
+
+**New bugs found (Log page audit, 5 total):**
+- **LOG-001** [High]: ActivityDetailSheet edit sheet always used `type='activity'` — workout items got run/ride form (distance/pace) instead of split picker. Fixed.
+- **LOG-002** [Medium]: ActivityDetailSheet split display used `deriveSplit()` instead of `session_label` — abs sessions showed "Session". Fixed (mirrors CAL-001).
+- **BUG-007** [Low]: OrphanCard + ActivityDetailSheet fetch `/api/strength/sessions` with unsupported `start_date/end_date` params — silently ignored. Open.
+- **BUG-008** [Low]: EffortBadge ignores `isUnreviewed` prop — no visual distinction. Open.
+- **BUG-009** [Low]: Fragile timezone pattern in `useIntradayHR`. Open.
+
+**Also shipped:** Abs option added to workout edit split picker (all 4 edit contexts). commit: `683fc3d`
+
+---
+
+## Recent Session (2026-03-16 session 2) — Bug audit fixes BUG-002 through BUG-006
+
+**5 backend bugs fixed (commit: e824f3e):**
+
+- **BUG-003**: `DELETE /api/activity-logs/{id}` now NULLs `strength_sessions.activity_log_id` before deleting — no more ghost links
+- **BUG-002**: `PATCH .../relink` now also updates `strength_sessions.activity_log_id` — relinking now visible in feed/trends
+- **BUG-004**: `PATCH /api/activity-logs/{id}` propagates `workout_split` → `strength_sessions.session_label` — split edit in ActivityEditSheet now reflected
+- **BUG-005**: Duration edit for NLP-confirmed sessions now also updates `activity_logs.duration_mins` — no more silent fail
+- **BUG-006**: Session list + last-split date endpoints now use Brisbane timezone — no more UTC midnight wrong-date
+
+**Pending in-app action**: Session 32 (Abs, March 16) — user to tap "Edit session" → set Abs → "Link workout" in calendar
+
+---
+
+## Previous Session (2026-03-16) — Calendar session linking bugs + Edit Workout 500 fix
+
+**3 bugs found and fixed:**
+
+**Bug 1 — Multiple sessions auto-linked to same workout** (`backend/app/routers/logging.py`):
+- Root cause: when a strength session is logged via NLP, auto-link query grabbed the first `activity_logs` workout on that date with no exclusivity check. Two sessions on the same day both linked to the same `activity_log_id`.
+- Fix: query now excludes any `activity_log` already claimed by another session (`NOT IN (SELECT activity_log_id FROM strength_sessions WHERE activity_log_id IS NOT NULL)`).
+- Also: manual link endpoint (`PATCH /api/strength/sessions/{id}/link`) now returns 409 if the workout is already linked to a different session. Commit: `f881c0d`
+
+**Bug 2 — Edit Workout returning 500 / browser showing "Failed to fetch"** (`backend/app/main.py`):
+- Root cause: `workout_split` column was defined in the Pydantic schema and PATCH endpoint, but never added to the `activity_logs` DB table. SQL `SET workout_split = :workout_split` crashed with 500.
+- Why browser showed "Failed to fetch" not "API 500": FastAPI CORS middleware strips `Access-Control-Allow-Origin` headers from 500 responses, so the browser can't read the error body.
+- Fix: added `ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS workout_split VARCHAR(20)` to startup migrations. Commit: `f881c0d`
+
+**Bug 3 — No way to edit/link unlinked strength sessions** (`src/components/calendar/DayDetailSheet.tsx`):
+- Unlinked sessions only showed "Delete session" — no way to set the split label or link to a Withings workout.
+- Fix: added "Edit session" button (opens `ActivityEditSheet` with `type="strength_session"`) and "Link workout" button (links to the first unmatched Withings workout on that date via `PATCH /api/strength/sessions/{id}/link`).
+- Added `refreshKey` state so sessions re-fetch after edit or link without closing the sheet.
+- Added `session_label` to `RawSession` type so the stored label pre-fills the edit form. Commit: `ebf4680`
+
+**Current DB state (March 16):**
+- Session 31 (Push, 23 sets) → linked to activity_log 43291 (71m Withings workout) ✅
+- Session 32 (Abs, 4 sets, "straight leg ab raisers") → unlinked. User needs to: (1) tap "Edit session" → set label to Abs, (2) tap "Link workout" → links to the 15m Withings workout. Both buttons now exist.
+
+---
+
+## Previous Session (2026-03-15) — Momentum scoring model + schema bug fix
 
 **Root cause found & fixed (commit `de3701e`):**
 - `MomentumDayResponse` Pydantic schema (backend `schemas/health.py`) still had the old fields (`training_load_mins`, missing all derived signals). Pydantic silently stripped `calorie_balance`, `sleep_deficit`, `calorie_deficit`, `non_exercise_hr`, `calories_out` from API responses. Chart had no data → looked blank/broken.
