@@ -23,6 +23,7 @@ import SyncButton from "@/components/SyncButton";
 import QuickStatsRow from "@/components/dashboard/QuickStatsRow";
 import ActivityChart from "@/components/dashboard/ActivityChart";
 import CalorieBalanceChart from "@/components/dashboard/CalorieBalanceChart";
+import ReadinessCard from "@/components/dashboard/ReadinessCard";
 import MoodEnergyChart from "@/components/dashboard/MoodEnergyChart";
 import WaterNutritionChart from "@/components/dashboard/WaterNutritionChart";
 import NutritionTargetChart from "@/components/dashboard/NutritionTargetChart";
@@ -251,6 +252,15 @@ export default function DashboardPage() {
           onClose={() => setSleepSheetOpen(false)}
         />
       )}
+
+      {/* Readiness */}
+      {readiness.loading ? (
+        <CardSkeleton variant="readiness" />
+      ) : readiness.error ? (
+        <CardError section="readiness" onRetry={readiness.refetch} />
+      ) : readiness.data ? (
+        <ReadinessCard data={readiness.data} />
+      ) : null}
 
       {/* Intraday HR */}
       <IntradayHRChart data={intradayHR.data} loading={intradayHR.loading} />
