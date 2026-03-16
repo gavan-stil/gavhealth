@@ -751,7 +751,7 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
 
           {/* ── Workout activities with no linked session ── */}
           {!loadingStrength && dots
-            .filter(d => d.category === "strength" && !sessions.some(s => s.activityLogId === d.recordId))
+            .filter(d => d.category === "strength" && !d.isOrphanSession && !sessions.some(s => s.activityLogId === d.recordId))
             .map(dot => (
               <UnmatchedWorkoutCard
                 key={`u-${dot.recordId}`}
