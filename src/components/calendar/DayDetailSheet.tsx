@@ -262,12 +262,16 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
               isPb,
             });
           });
+          const rawLabel = s.session_label;
+          const splitDisplay = rawLabel
+            ? rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1)
+            : deriveSplit(s.exercises);
           return {
             id: s.id,
             activityLogId: s.activity_log_id,
             sessionDatetime: s.session_datetime ?? null,
             sessionLabel: s.session_label ?? null,
-            split: deriveSplit(s.exercises),
+            split: splitDisplay,
             bodyAreas: deriveBodyAreas(s.exercises),
             totalSets: s.total_sets,
             totalReps: s.total_reps,
@@ -300,6 +304,7 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
       setSessions((prev) =>
         prev.map((s) => s.id === sessionId ? { ...s, activityLogId: null } : s)
       );
+      onSessionDeleted?.(); // refresh calendar grid so orphan block appears
     } catch (err) {
       console.error("[DayDetailSheet] unlink error:", err);
     } finally {
@@ -590,7 +595,7 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
                           Edit session
                         </button>
                       )}
-                      {s.activityLogId === null && unmatchedWorkoutIds.length > 0 && (
+                      {s.activityLogId === null && !loadingStrength && unmatchedWorkoutIds.length > 0 && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
