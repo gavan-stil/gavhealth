@@ -59,6 +59,7 @@ function calcTotals(entries: FoodLogEntry[]): MacroTotals {
 export function useFoodNutrition(date: string) {
   const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([]);
   const [todayLog, setTodayLog] = useState<FoodLogEntry[]>([]);
+  const [logLoading, setLogLoading] = useState(false);
   const [parseInput, setParseInput] = useState('');
   const [parsedItems, setParsedItems] = useState<ParsedItem[]>([]);
   const [parseState, setParseState] = useState<ParseState>('idle');
@@ -72,9 +73,15 @@ export function useFoodNutrition(date: string) {
 
   useEffect(() => {
     setTodayLog([]);
+    setLogLoading(true);
+    // Reset parse state when date changes to avoid stale results
+    setParsedItems([]);
+    setParseInput('');
+    setParseState('idle');
     apiFetch<{ data: FoodApiEntry[] }>(`/api/food?start_date=${date}&end_date=${date}`)
       .then(res => setTodayLog((res.data ?? []).map(toLogEntry)))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLogLoading(false));
   }, [date]);
 
   const totals: MacroTotals = calcTotals(todayLog);
@@ -188,6 +195,7 @@ export function useFoodNutrition(date: string) {
     saveMeal,
     deleteSavedMeal,
     todayLog,
+    logLoading,
     logItem,
     removeLogEntry,
     totals,

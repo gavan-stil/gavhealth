@@ -47,7 +47,7 @@ export default function FoodNutritionCard({
 }) {
   const {
     savedMeals, saveMeal, deleteSavedMeal,
-    todayLog, logItem, removeLogEntry,
+    todayLog, logLoading, logItem, removeLogEntry,
     totals,
     parseInput, setParseInput,
     parsedItems, parseState,
@@ -300,16 +300,20 @@ export default function FoodNutritionCard({
           <div style={{ height: 1, background: 'var(--border-subtle)', marginBottom: 12 }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <span style={{ font: '600 10px/1 Inter,sans-serif', letterSpacing: '1.5px', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-              Today's log
+              {date === new Date().toLocaleDateString('en-CA') ? "Today's log" : 'Log'}
             </span>
-            {todayLog.length > 0 && (
+            {!logLoading && todayLog.length > 0 && (
               <span style={{ font: '400 11px/1 Inter,sans-serif', color: 'var(--text-muted)' }}>
                 {todayLog.length} item{todayLog.length !== 1 ? 's' : ''}
               </span>
             )}
           </div>
 
-          {todayLog.length === 0 ? (
+          {logLoading ? (
+            <p style={{ font: '400 12px/1.4 Inter,sans-serif', color: 'var(--text-muted)', marginBottom: 16 }}>
+              Loading…
+            </p>
+          ) : todayLog.length === 0 ? (
             <p style={{ font: '400 12px/1.4 Inter,sans-serif', color: 'var(--text-muted)', marginBottom: 16 }}>
               Nothing logged yet
             </p>

@@ -54,6 +54,7 @@ export default function WaterCard({ open, onToggle, date }: Props) {
 
   const handleAdd = async (ml: number) => {
     setAdding(ml);
+    setError(null);
     try {
       // For past dates, log at noon of that day (Brisbane UTC+10 = 02:00 UTC)
       const body: { ml: number; logged_at?: string } = { ml };
@@ -66,7 +67,7 @@ export default function WaterCard({ open, onToggle, date }: Props) {
       });
       setEntries(prev => [entry, ...prev]);
     } catch {
-      // no-op, silent
+      setError('Failed to add — tap to retry');
     } finally {
       setAdding(null);
     }
@@ -76,6 +77,7 @@ export default function WaterCard({ open, onToggle, date }: Props) {
     const ml = parseInt(customMl, 10);
     if (!ml || ml <= 0 || ml > 5000) return;
     setAdding(-1);
+    setError(null);
     try {
       const body: { ml: number; logged_at?: string } = { ml };
       if (!isToday) {
@@ -88,7 +90,7 @@ export default function WaterCard({ open, onToggle, date }: Props) {
       setEntries(prev => [entry, ...prev]);
       setCustomMl('');
     } catch {
-      // no-op
+      setError('Failed to add — tap to retry');
     } finally {
       setAdding(null);
     }
@@ -96,11 +98,13 @@ export default function WaterCard({ open, onToggle, date }: Props) {
 
   const handleDelete = async (id: number) => {
     setDeletingId(id);
+    setError(null);
     try {
       await apiFetch(`/api/water/${id}`, { method: 'DELETE' });
       setEntries(prev => prev.filter(e => e.id !== id));
     } catch {
-      // no-op
+      setDeletingId(null);
+      setError('Failed to delete');
     } finally {
       setDeletingId(null);
     }

@@ -140,7 +140,73 @@ Ordered by severity and dependency:
 
 ---
 
+---
+
+### FOOD-001 [Medium] — Parse state persists across date changes
+- **File:** `src/hooks/useFoodNutrition.ts:73–78`
+- **Layer:** Frontend — hook state
+- **Description:** The date-change `useEffect` resets `todayLog` but not `parsedItems`, `parseInput`, or `parseState`. Navigating to a different date leaves the previous parse results visible as if they belong to the new date. Pressing "+ Add" on a stale parsed item logs it against the new date.
+- **Repro:** Parse some food on today → navigate to yesterday → parsed items still shown.
+- **Risk:** Medium — stale UI, accidental logging to wrong date.
+
+---
+
+### FOOD-002 [Low] — Food and water targets are hardcoded constants
+- **Files:** `src/types/food.ts:36–41`, `src/components/log/WaterCard.tsx:11`
+- **Layer:** Frontend — targets
+- **Description:** `FOOD_TARGETS` (kcal 2358, protein 180g, carbs 260g, fat 80g) and `DAILY_TARGET` (3000ml water) are module-level constants. User's actual targets (from health_goals DB via momentum signals) differ — protein 175–190g, water 2400–2800ml, etc. Editing goals in the app has no effect on these values.
+- **Risk:** Low — minor display inaccuracy. Defer until goals page exposes food targets via API.
+
+---
+
+### FOOD-003 [Low] — No loading state during food log fetch in useFoodNutrition
+- **File:** `src/hooks/useFoodNutrition.ts:73–78`
+- **Layer:** Frontend — hook state
+- **Description:** The date-change effect resets `todayLog` to `[]` synchronously before the fetch completes. `FoodNutritionCard` immediately shows "Nothing logged yet" while waiting for the API. On fast connections this is a brief flicker; on slow connections it's misleading.
+- **Risk:** Low — UX polish.
+
+---
+
+### FOOD-004 [Low] — Dead file: `src/components/log/NutritionCard.tsx`
+- **File:** `src/components/log/NutritionCard.tsx`
+- **Layer:** Frontend — dead code
+- **Description:** Replaced by `FoodNutritionCard.tsx`. No longer imported by `LogCards.tsx` or any other file. Consumes build analysis budget and adds noise to the codebase.
+- **Risk:** Low — no runtime impact.
+
+---
+
+### FOOD-005 [Low] — "Today's log" label hardcoded regardless of selected date
+- **File:** `src/components/log/FoodNutritionCard.tsx:303`
+- **Layer:** Frontend — UX
+- **Description:** The log section always shows "TODAY'S LOG" even when viewing a past date. Minor UX inconsistency.
+- **Risk:** Low — cosmetic only.
+
+---
+
+### WATER-001 [Low] — Add/delete errors in WaterCard are silently swallowed
+- **File:** `src/components/log/WaterCard.tsx:68–72, 90–93, 103–105`
+- **Layer:** Frontend — error handling
+- **Description:** `handleAdd`, `handleCustomAdd`, and `handleDelete` all have `catch { // no-op }`. Failed add: no feedback, no optimistic rollback. Failed delete: entry silently stays (already not removed optimistically), no error shown.
+- **Risk:** Low — user has no indication their action failed.
+
+---
+
 ## Resolved
+
+### ~~FOOD-001~~ [Medium] — Parse state persists across date changes ✅ Fixed (2026-03-16)
+Date-change `useEffect` in `useFoodNutrition.ts` now resets `parsedItems`, `parseInput`, and `parseState` to idle before fetching the new day's log.
+
+### ~~FOOD-003~~ [Low] — No loading state during food log fetch ✅ Fixed (2026-03-16)
+Added `logLoading` boolean to `useFoodNutrition` hook. `FoodNutritionCard` shows "Loading…" instead of "Nothing logged yet" while fetch is in flight.
+
+### ~~FOOD-004~~ [Low] — Dead file NutritionCard.tsx ✅ Fixed (2026-03-16)
+File deleted. No imports existed.
+
+### ~~FOOD-005~~ [Low] — "Today's log" label hardcoded for all dates ✅ Fixed (2026-03-16)
+`FoodNutritionCard` now shows "Today's log" for today and "Log" for past dates.
+
+### ~~WATER-001~~ [Low] — Add/delete errors silently swallowed in WaterCard ✅ Fixed (2026-03-16)
+`handleAdd`, `handleCustomAdd`, `handleDelete` now set `error` state on failure. Existing "Retry" UI in the card displays the message.
 
 ### ~~LOG-001~~ [High] — ActivityDetailSheet wrong edit type for workouts ✅ Fixed (2026-03-16, commit: 7147ba7)
 Workout/strength items now open `type='workout'` with `WorkoutInit` (split picker, date/time, HR fields). Run/ride items continue to use `type='activity'`. `workout_split` sourced from `linkedSession.session_label`.
