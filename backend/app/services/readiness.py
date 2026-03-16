@@ -67,14 +67,20 @@ async def compute_readiness(db: AsyncSession, target_date: date) -> dict:
     acute_load = (
         await db.execute(
             select(func.coalesce(func.sum(ActivityLog.duration_mins), 0.0))
-            .where(ActivityLog.activity_date.between(week_ago, target_date))
+            .where(
+                ActivityLog.activity_date.between(week_ago, target_date),
+                ActivityLog.activity_type != "daily_summary",
+            )
         )
     ).scalar_one()
 
     chronic_load = (
         await db.execute(
             select(func.coalesce(func.sum(ActivityLog.duration_mins), 0.0))
-            .where(ActivityLog.activity_date.between(four_weeks_ago, target_date))
+            .where(
+                ActivityLog.activity_date.between(four_weeks_ago, target_date),
+                ActivityLog.activity_type != "daily_summary",
+            )
         )
     ).scalar_one()
 
@@ -82,6 +88,8 @@ async def compute_readiness(db: AsyncSession, target_date: date) -> dict:
     acwr = float(acute_load) / chronic_weekly if chronic_weekly > 0 else 1.0
 
     # --- Consecutive training days ---
+    # Exclude daily_summary rows — they exist for every synced day and would
+    # make consecutive_days always 14, pinning rest_penalty to 50 permanently.
     consecutive_days = 0
     for offset in range(1, 15):
         check_date = target_date - timedelta(days=offset)
@@ -89,7 +97,10 @@ async def compute_readiness(db: AsyncSession, target_date: date) -> dict:
             await db.execute(
                 select(func.count())
                 .select_from(ActivityLog)
-                .where(ActivityLog.activity_date == check_date)
+                .where(
+                    ActivityLog.activity_date == check_date,
+                    ActivityLog.activity_type != "daily_summary",
+                )
             )
         ).scalar_one()
         if count > 0:

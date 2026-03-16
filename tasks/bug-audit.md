@@ -291,6 +291,32 @@ Ordered by severity and dependency:
 
 ---
 
+---
+
+### BE-001 [Critical] — `readiness.py` consecutive_days counts all activity types → rest_penalty always 50
+- **File:** `backend/app/services/readiness.py:84–98`
+- **Layer:** Backend — readiness scoring
+- **Description:** The consecutive-training-days loop queries `ActivityLog` with no `activity_type` filter. Every day has a `daily_summary` row synced from Withings. So `consecutive_days` always maxes out at 14 (the scan limit), giving `rest_penalty = (14-4)*5 = 50`. With base=70 and a typical sleep/RHR, readiness ≈ 14–20 every single day. This is the likely root cause of the user not trusting readiness scores.
+- **Formula impact:** `readiness ≈ 70 + ~(-5) + ~(-5) + 0 + 0 − 50 = ~10` always.
+- **Fix:** Add `ActivityLog.activity_type != 'daily_summary'` to the consecutive_days query.
+
+---
+
+### BE-002 [High] — `_has_training` streak counts daily_summary as training → training streak always maxed
+- **File:** `backend/app/routers/data.py:361–367`
+- **Layer:** Backend — streaks
+- **Description:** `_has_training` queries all `ActivityLog` rows with no activity_type filter. Withings daily_summary rows exist for every synced day, so the training streak always returns ~365 current + ~365 longest.
+- **Fix:** Add `.where(ActivityLog.activity_type != 'daily_summary')` to the `_has_training` count.
+
+---
+
+### BE-003 [High] — `/food/weekly` averages per meal row, not per day → nutrition trends 3× too low
+- **File:** `backend/app/routers/data.py:418–446`
+- **Layer:** Backend — nutrition trends
+- **Description:** The query uses `AVG(protein_g)` over all food_log rows for the week. With 3 meals/day × 7 days = 21 rows/week, `AVG(protein_g)` ≈ 60g — the per-meal average. But the chart is intended to show daily average protein (~180g). Target line is 180g, chart shows 60g — always looks way below target. Fix: nest a daily SUM first, then AVG those daily sums.
+
+---
+
 ## Resolved
 
 ### ~~DASH-001~~ [Medium] — refetchAll missing progress.refetch() ✅ Fixed (2026-03-16)
@@ -361,3 +387,12 @@ Column migration added to `main.py` startup. PATCH `/api/activity-logs/{id}` no 
 
 ### ~~(new fix)~~ — DayDetailSheet missing Edit/Link buttons for unlinked sessions ✅ Fixed (other session, 2026-03-16)
 Calendar day detail now shows "Edit session" (set split label) and "Link workout" for unlinked strength sessions.
+
+### ~~BE-001~~ [Critical] — readiness.py consecutive_days always 14 → rest_penalty always 50 ✅ Fixed (2026-03-16)
+Added `activity_type != 'daily_summary'` filter to the consecutive_days loop AND to the acute/chronic ACWR load queries. Readiness score should now reflect actual rest days. Also filters ACWR load to exclude daily_summary (which have NULL duration_mins — no-op fix but now explicit).
+
+### ~~BE-002~~ [High] — _has_training streak counts daily_summary as training ✅ Fixed (2026-03-16)
+Added `.where(ActivityLog.activity_type != "daily_summary")` to `_has_training` in `data.py`. Training streak now only counts actual workout rows.
+
+### ~~BE-003~~ [High] — /food/weekly averages per meal entry (3× too low) ✅ Fixed (2026-03-16)
+Restructured SQL to: inner query SUMs per day, outer query AVGs those daily sums per week. `avg_protein_g` now reflects daily average (~180g) not per-meal average (~60g). Nutrition trends target comparison now accurate.

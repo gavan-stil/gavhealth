@@ -359,9 +359,14 @@ async def get_streaks(
         return count > 0
 
     async def _has_training(d: date) -> bool:
+        # Exclude daily_summary — Withings syncs one per day and would make
+        # the streak always show 365 regardless of actual training.
         count = (await db.execute(
             select(func.count()).select_from(ActivityLog)
-            .where(ActivityLog.activity_date == d)
+            .where(
+                ActivityLog.activity_date == d,
+                ActivityLog.activity_type != "daily_summary",
+            )
         )).scalar_one()
         return count > 0
 
@@ -415,20 +420,34 @@ async def food_weekly(
     db: AsyncSession = Depends(get_db),
     _key: str = Depends(verify_api_key),
 ):
-    """Aggregate food by ISO week for the last N weeks."""
+    """Aggregate food by ISO week for the last N weeks.
+
+    Computes the average DAILY total per week (not average per meal entry).
+    e.g. 3 meals/day × 7 days → avg of 7 daily sums, not avg of 21 rows.
+    """
     result = await db.execute(
         text("""
             SELECT
-                DATE_TRUNC('week', log_date::timestamp)::date AS week_start,
-                AVG(calories_kcal)  AS avg_calories,
-                AVG(protein_g)      AS avg_protein_g,
-                AVG(carbs_g)        AS avg_carbs_g,
-                AVG(fat_g)          AS avg_fat_g,
-                COUNT(*)            AS total_meals
-            FROM food_logs
-            WHERE log_date >= CURRENT_DATE - (:weeks * INTERVAL '1 week')
-            GROUP BY 1
-            ORDER BY 1 DESC
+                week_start,
+                AVG(daily_calories)   AS avg_calories,
+                AVG(daily_protein_g)  AS avg_protein_g,
+                AVG(daily_carbs_g)    AS avg_carbs_g,
+                AVG(daily_fat_g)      AS avg_fat_g,
+                SUM(meal_count)       AS total_meals
+            FROM (
+                SELECT
+                    DATE_TRUNC('week', log_date::timestamp)::date AS week_start,
+                    SUM(COALESCE(calories_kcal, 0))               AS daily_calories,
+                    SUM(COALESCE(protein_g, 0))                   AS daily_protein_g,
+                    SUM(COALESCE(carbs_g, 0))                     AS daily_carbs_g,
+                    SUM(COALESCE(fat_g, 0))                       AS daily_fat_g,
+                    COUNT(*)                                       AS meal_count
+                FROM food_logs
+                WHERE log_date >= CURRENT_DATE - (:weeks * INTERVAL '1 week')
+                GROUP BY log_date, DATE_TRUNC('week', log_date::timestamp)::date
+            ) AS daily_agg
+            GROUP BY week_start
+            ORDER BY week_start DESC
         """),
         {"weeks": weeks},
     )
