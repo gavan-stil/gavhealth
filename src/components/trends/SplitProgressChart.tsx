@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ComposedChart,
   Line,
@@ -9,11 +9,18 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { AlertTriangle } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 import type { StrengthSession } from "@/types/trends";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type Split = "push" | "pull" | "legs" | "abs";
+
+interface ActivityLog {
+  id: number;
+  activity_type: string;
+  workout_split: string | null;
+}
 
 interface ChartPoint {
   sessionDate: string;
@@ -21,7 +28,7 @@ interface ChartPoint {
   sets: number;
   volume: number;
   intensity: number;
-  // normalised 0-100 for chart display
+  // normalised 0–100 for chart display
   setsN: number;
   volumeN: number;
   intensityN: number;
@@ -50,9 +57,28 @@ function sessionLabel(dateStr: string): string {
   });
 }
 
-function buildChartData(sessions: StrengthSession[], split: Split): ChartPoint[] {
+/**
+ * Resolve a strength session's split using activity_log workout_split first,
+ * falling back to the session's own category field.
+ */
+function resolveSessionSplit(
+  s: StrengthSession,
+  splitLookup: Map<number, string | null>
+): string | null {
+  if (s.activity_log_id != null) {
+    const ws = splitLookup.get(s.activity_log_id);
+    if (ws) return ws;
+  }
+  return s.category ?? null;
+}
+
+function buildChartData(
+  sessions: StrengthSession[],
+  split: Split,
+  splitLookup: Map<number, string | null>
+): ChartPoint[] {
   const filtered = sessions
-    .filter((s) => s.category === split)
+    .filter((s) => resolveSessionSplit(s, splitLookup) === split)
     .sort((a, b) => a.session_date.localeCompare(b.session_date));
 
   if (!filtered.length) return [];
@@ -199,6 +225,7 @@ interface Props {
   loading: boolean;
   error: string | null;
   refetch: () => void;
+  days?: number;
 }
 
 const cardStyle: React.CSSProperties = {
@@ -219,8 +246,31 @@ const pulseStyle: React.CSSProperties = {
   borderRadius: "var(--radius-sm)",
 };
 
-export default function SplitProgressChart({ sessions, loading, error, refetch }: Props) {
+export default function SplitProgressChart({ sessions, loading, error, refetch, days = 90 }: Props) {
   const [split, setSplit] = useState<Split>("push");
+  // Map from activity_log id → workout_split for resolving real split
+  const [splitLookup, setSplitLookup] = useState<Map<number, string | null>>(new Map());
+
+  useEffect(() => {
+    // Fetch activity logs to build workout_split lookup.
+    // The activity endpoint returns { data: [...] } or just [...].
+    apiFetch<unknown>(`/api/activity?days=${days}`)
+      .then((raw) => {
+        const list: ActivityLog[] = Array.isArray(raw)
+          ? (raw as ActivityLog[])
+          : ((raw as { data?: ActivityLog[] }).data ?? []);
+        const map = new Map<number, string | null>();
+        for (const a of list) {
+          if (a.activity_type === "workout") {
+            map.set(a.id, a.workout_split);
+          }
+        }
+        setSplitLookup(map);
+      })
+      .catch(() => {
+        // silently fail — will fall back to session category
+      });
+  }, [days]);
 
   if (loading) {
     return (
@@ -262,7 +312,7 @@ export default function SplitProgressChart({ sessions, loading, error, refetch }
     );
   }
 
-  const data = sessions ? buildChartData(sessions, split) : [];
+  const data = sessions ? buildChartData(sessions, split, splitLookup) : [];
 
   return (
     <div style={cardStyle}>
@@ -309,7 +359,14 @@ export default function SplitProgressChart({ sessions, loading, error, refetch }
             <span style={{ color: "var(--text-muted)" }}>{label}</span>
           </span>
         ))}
-        <span style={{ marginLeft: "auto", fontSize: 9, color: "var(--text-muted)", alignSelf: "center" }}>
+        <span
+          style={{
+            marginLeft: "auto",
+            fontSize: 9,
+            color: "var(--text-muted)",
+            alignSelf: "center",
+          }}
+        >
           normalised
         </span>
       </div>
@@ -327,7 +384,7 @@ export default function SplitProgressChart({ sessions, loading, error, refetch }
           }}
         >
           {data.length === 0
-            ? `No ${split} sessions logged yet`
+            ? `No ${split} sessions in range`
             : "Log another session to see trends"}
         </div>
       ) : (

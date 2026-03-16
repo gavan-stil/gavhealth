@@ -182,6 +182,7 @@ export default function TrendsPage() {
             loading={strengthTrends.loading}
             error={strengthTrends.error}
             refetch={strengthTrends.refetch}
+            days={90}
           />
           <StrengthQualityChart />
           <RunHRZonesChart />
