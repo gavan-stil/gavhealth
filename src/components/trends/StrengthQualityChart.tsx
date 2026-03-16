@@ -12,6 +12,25 @@ import { apiFetch } from "@/lib/api";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import type { StrengthSession } from "@/types/trends";
 
+// ── Split lookup (activity_log_id → workout_split) ──────────────────────────
+// session.category is derived from exercises (often "mixed" even for
+// labelled push/pull sessions). workout_split from activity_logs is
+// the authoritative user-facing split label.
+
+interface ActivityRecord {
+  id: number;
+  activity_type: string;
+  workout_split: string | null;
+}
+
+function resolveCategory(s: StrengthSession, lookup: Map<number, string | null>): string {
+  if (s.activity_log_id != null) {
+    const ws = lookup.get(s.activity_log_id);
+    if (ws) return ws;
+  }
+  return s.category ?? "mixed";
+}
+
 // ---------------------------------------------------------------------------
 // Category → colour mapping (tokens)
 // ---------------------------------------------------------------------------
@@ -66,7 +85,9 @@ function BubbleDot({ cx = 0, cy = 0, payload }: DotProps) {
   if (!payload) return null;
   const hasHR = payload.avg_hr != null;
   const r = dotRadius(payload.total_sets);
-  const fill = CAT_COLOUR[payload.category] ?? "var(--rust)";
+  // resolvedCategory is pre-baked into the data point
+  const cat = (payload as StrengthSession & { resolvedCategory?: string }).resolvedCategory ?? payload.category ?? "mixed";
+  const fill = CAT_COLOUR[cat] ?? "var(--rust)";
   return (
     <circle
       cx={cx}
@@ -113,13 +134,13 @@ function CustomTooltip({
       </div>
       <div
         style={{
-          color: CAT_COLOUR[s.category] ?? "var(--rust)",
+          color: CAT_COLOUR[(s as StrengthSession & { resolvedCategory?: string }).resolvedCategory ?? s.category] ?? "var(--rust)",
           fontWeight: 700,
           marginBottom: 4,
           textTransform: "capitalize",
         }}
       >
-        {CAT_LABEL[s.category] ?? s.category}
+        {CAT_LABEL[(s as StrengthSession & { resolvedCategory?: string }).resolvedCategory ?? s.category] ?? s.category}
       </div>
       <div style={{ color: "var(--text-primary)" }}>
         Load: {(s.total_load_kg / 1000).toFixed(2)}t
@@ -146,12 +167,26 @@ function CustomTooltip({
 
 export default function StrengthQualityChart() {
   const [sessions, setSessions] = useState<StrengthSession[] | null>(null);
+  const [splitLookup, setSplitLookup] = useState<Map<number, string | null>>(new Map());
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    apiFetch<StrengthSession[]>("/api/strength/sessions?days=90")
-      .then(setSessions)
-      .catch((e) => setError(e.message));
+    Promise.all([
+      apiFetch<StrengthSession[]>("/api/strength/sessions?days=90"),
+      apiFetch<unknown>("/api/activity?days=90&limit=500"),
+    ])
+      .then(([sessionData, activityRaw]) => {
+        setSessions(sessionData);
+        const list: ActivityRecord[] = Array.isArray(activityRaw)
+          ? (activityRaw as ActivityRecord[])
+          : ((activityRaw as { data?: ActivityRecord[] }).data ?? []);
+        const map = new Map<number, string | null>();
+        for (const a of list) {
+          if (a.activity_type === "workout") map.set(a.id, a.workout_split);
+        }
+        setSplitLookup(map);
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"));
   }, []);
 
   // ── Shell ──
@@ -194,7 +229,10 @@ export default function StrengthQualityChart() {
     );
   }
 
-  const all = sessions ?? [];
+  const all = (sessions ?? []).map((s) => ({
+    ...s,
+    resolvedCategory: resolveCategory(s, splitLookup),
+  }));
 
   // Sessions with HR data for the scatter
   const withHR = all.filter((s) => s.avg_hr != null);
@@ -235,7 +273,8 @@ export default function StrengthQualityChart() {
 
   // Combine: sessions with HR get real y; sessions without HR placed at avgHR - 20 (dimmed)
   const avgHR = Math.round(withHR.reduce((s, d) => s + (d.avg_hr ?? 0), 0) / withHR.length);
-  const scatterData: Array<StrengthSession & { y: number }> = [
+  type ScatterPoint = StrengthSession & { y: number; resolvedCategory: string };
+  const scatterData: ScatterPoint[] = [
     ...withHR.map((s) => ({ ...s, y: s.avg_hr as number })),
     ...noHR.map((s) => ({ ...s, y: Math.max(avgHR - 15, 60) })),
   ];
@@ -291,7 +330,7 @@ export default function StrengthQualityChart() {
         }}
       >
         {CATEGORIES.filter((c) =>
-          scatterData.some((s) => s.category === c)
+          scatterData.some((s) => s.resolvedCategory === c)
         ).map((c) => (
           <span key={c} style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <span

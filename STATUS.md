@@ -18,6 +18,36 @@ None — all tasks complete. See backlog.
 
 ---
 
+## Recent Session (2026-03-17) — SplitProgressChart + category bug audit
+
+**New feature: SplitProgressChart** (commit: `1ce4087`)
+- Added to Trends between ProteinWeightChart and StrengthQualityChart
+- 4 split tabs (Push/Pull/Legs/Abs), 3 normalised lines (Volume/Sets/Intensity) per session
+- Summary row: first→last delta + session count
+
+**Critical bug found & fixed: `session.category` vs `activity_log.workout_split`** (commit: `a090ad2`, then refactored self-contained: subsequent commit)
+- Root cause: `strength_sessions.category` is computed from exercise muscle groups. Sessions spanning multiple muscle groups (e.g. chest+legs) get `category="mixed"` even when explicitly labelled "push" by the user.
+- Authoritative split label lives in `activity_logs.workout_split` (set via edit UI).
+- Fix: join `strength_session.activity_log_id → activity_logs.id` to resolve workout_split. Fall back to session.category only for unlinked orphan sessions.
+- **Pagination bug also fixed**: `/api/activity` defaults to `limit=50` but returns 13,706 total. Added `limit=500` to activity fetches to capture all workouts within the date window.
+- **SplitProgressChart** now fully self-contained: fetches its own sessions (120 days) + activity logs (500 limit) independently of TrendsPage state.
+
+**StrengthQualityChart also fixed** (same session):
+- Was using `session.category` for dot colours → most dots showed as rust/Mixed
+- Now joins activity_log_id → workout_split, bakes `resolvedCategory` into scatter data
+- Dot colours + tooltip + legend now show Push/Pull/Abs/Legs correctly
+
+**Impact audit:**
+| Component | Split source used | Status |
+|-----------|------------------|--------|
+| SplitProgressChart | `activity_log.workout_split` (via join) | ✅ Fixed |
+| StrengthQualityChart | `resolvedCategory` (join, falls back to category) | ✅ Fixed |
+| Calendar (useCalendarData) | `activity_log.workout_split` directly | ✅ Always correct |
+| Log/StrengthCard | User-selected `selectedSplit` | ✅ Not affected |
+| ExerciseProgressSection | `exercise.category` (muscle group, not split) | ✅ Different concept |
+
+---
+
 ## Recent Session (2026-03-16 session 3) — Log page bug audit + fixes
 
 **New bugs found (Log page audit, 5 total):**

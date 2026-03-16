@@ -16,7 +16,7 @@ import type { StrengthSession } from "@/types/trends";
 
 type Split = "push" | "pull" | "legs" | "abs";
 
-interface ActivityLog {
+interface ActivityRecord {
   id: number;
   activity_type: string;
   workout_split: string | null;
@@ -28,13 +28,12 @@ interface ChartPoint {
   sets: number;
   volume: number;
   intensity: number;
-  // normalised 0–100 for chart display
   setsN: number;
   volumeN: number;
   intensityN: number;
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// ── Constants ──────────────────────────────────────────────────────────────
 
 const SPLITS: { key: Split; label: string }[] = [
   { key: "push", label: "Push" },
@@ -42,6 +41,13 @@ const SPLITS: { key: Split; label: string }[] = [
   { key: "legs", label: "Legs" },
   { key: "abs",  label: "Abs" },
 ];
+
+// Fetch sessions over a long window so historical trends are visible
+const SESSION_DAYS = 120;
+// High enough limit to cover all workouts in SESSION_DAYS
+const ACTIVITY_LIMIT = 500;
+
+// ── Helpers ────────────────────────────────────────────────────────────────
 
 function shortDate(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
@@ -57,28 +63,25 @@ function sessionLabel(dateStr: string): string {
   });
 }
 
-/**
- * Resolve a strength session's split using activity_log workout_split first,
- * falling back to the session's own category field.
- */
 function resolveSessionSplit(
   s: StrengthSession,
-  splitLookup: Map<number, string | null>
+  lookup: Map<number, string | null>
 ): string | null {
   if (s.activity_log_id != null) {
-    const ws = splitLookup.get(s.activity_log_id);
+    const ws = lookup.get(s.activity_log_id);
     if (ws) return ws;
   }
+  // fall back to the session's own computed category
   return s.category ?? null;
 }
 
 function buildChartData(
   sessions: StrengthSession[],
   split: Split,
-  splitLookup: Map<number, string | null>
+  lookup: Map<number, string | null>
 ): ChartPoint[] {
   const filtered = sessions
-    .filter((s) => resolveSessionSplit(s, splitLookup) === split)
+    .filter((s) => resolveSessionSplit(s, lookup) === split)
     .sort((a, b) => a.session_date.localeCompare(b.session_date));
 
   if (!filtered.length) return [];
@@ -90,11 +93,11 @@ function buildChartData(
   return filtered.map((s) => ({
     sessionDate: s.session_date,
     label: shortDate(s.session_date),
-    sets:      s.total_sets,
-    volume:    Math.round(s.total_load_kg),
-    intensity: Math.round(s.avg_load_per_set_kg),
-    setsN:     Math.round((s.total_sets / maxSets) * 100),
-    volumeN:   Math.round((s.total_load_kg / maxVol) * 100),
+    sets:       s.total_sets,
+    volume:     Math.round(s.total_load_kg),
+    intensity:  Math.round(s.avg_load_per_set_kg),
+    setsN:      Math.round((s.total_sets / maxSets) * 100),
+    volumeN:    Math.round((s.total_load_kg / maxVol) * 100),
     intensityN: Math.round((s.avg_load_per_set_kg / maxInt) * 100),
   }));
 }
@@ -156,6 +159,10 @@ function SummaryRow({ data }: { data: ChartPoint[] }) {
   const setsDelta = last.sets - first.sets;
   const intDelta = last.intensity - first.intensity;
 
+  const deltaColor = (v: number) =>
+    v > 0 ? "var(--signal-good)" : v < 0 ? "var(--ember)" : "var(--text-muted)";
+  const fmt = (v: number) => (v > 0 ? `+${v}` : `${v}`);
+
   const cellStyle: React.CSSProperties = {
     display: "flex",
     flexDirection: "column",
@@ -168,9 +175,6 @@ function SummaryRow({ data }: { data: ChartPoint[] }) {
     textTransform: "uppercase",
     letterSpacing: "0.06em",
   };
-  const deltaColor = (v: number) =>
-    v > 0 ? "var(--signal-good)" : v < 0 ? "var(--ember)" : "var(--text-muted)";
-  const fmt = (v: number) => (v > 0 ? `+${v}` : `${v}`);
 
   return (
     <div
@@ -218,15 +222,7 @@ function SummaryRow({ data }: { data: ChartPoint[] }) {
   );
 }
 
-// ── Component ──────────────────────────────────────────────────────────────
-
-interface Props {
-  sessions: StrengthSession[] | null;
-  loading: boolean;
-  error: string | null;
-  refetch: () => void;
-  days?: number;
-}
+// ── Styles ─────────────────────────────────────────────────────────────────
 
 const cardStyle: React.CSSProperties = {
   background: "var(--bg-card)",
@@ -246,31 +242,66 @@ const pulseStyle: React.CSSProperties = {
   borderRadius: "var(--radius-sm)",
 };
 
-export default function SplitProgressChart({ sessions, loading, error, refetch, days = 90 }: Props) {
+// ── Component ──────────────────────────────────────────────────────────────
+
+export default function SplitProgressChart() {
   const [split, setSplit] = useState<Split>("push");
-  // Map from activity_log id → workout_split for resolving real split
-  const [splitLookup, setSplitLookup] = useState<Map<number, string | null>>(new Map());
+  const [sessions, setSessions] = useState<StrengthSession[] | null>(null);
+  const [lookup, setLookup] = useState<Map<number, string | null>>(new Map());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Fetch activity logs to build workout_split lookup.
-    // The activity endpoint returns { data: [...] } or just [...].
-    apiFetch<unknown>(`/api/activity?days=${days}`)
-      .then((raw) => {
-        const list: ActivityLog[] = Array.isArray(raw)
-          ? (raw as ActivityLog[])
-          : ((raw as { data?: ActivityLog[] }).data ?? []);
+    setLoading(true);
+    setError(null);
+
+    Promise.all([
+      apiFetch<StrengthSession[]>(`/api/strength/sessions?days=${SESSION_DAYS}`),
+      apiFetch<unknown>(`/api/activity?days=${SESSION_DAYS}&limit=${ACTIVITY_LIMIT}`),
+    ])
+      .then(([sessionData, activityRaw]) => {
+        setSessions(sessionData);
+
+        // Activity endpoint returns { data: [...], total, limit, offset }
+        const activityList: ActivityRecord[] = Array.isArray(activityRaw)
+          ? (activityRaw as ActivityRecord[])
+          : ((activityRaw as { data?: ActivityRecord[] }).data ?? []);
+
         const map = new Map<number, string | null>();
-        for (const a of list) {
+        for (const a of activityList) {
           if (a.activity_type === "workout") {
             map.set(a.id, a.workout_split);
           }
         }
-        setSplitLookup(map);
+        setLookup(map);
       })
-      .catch(() => {
-        // silently fail — will fall back to session category
-      });
-  }, [days]);
+      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const refetch = () => {
+    setSessions(null);
+    setLookup(new Map());
+    setLoading(true);
+    setError(null);
+    Promise.all([
+      apiFetch<StrengthSession[]>(`/api/strength/sessions?days=${SESSION_DAYS}`),
+      apiFetch<unknown>(`/api/activity?days=${SESSION_DAYS}&limit=${ACTIVITY_LIMIT}`),
+    ])
+      .then(([sessionData, activityRaw]) => {
+        setSessions(sessionData);
+        const activityList: ActivityRecord[] = Array.isArray(activityRaw)
+          ? (activityRaw as ActivityRecord[])
+          : ((activityRaw as { data?: ActivityRecord[] }).data ?? []);
+        const map = new Map<number, string | null>();
+        for (const a of activityList) {
+          if (a.activity_type === "workout") map.set(a.id, a.workout_split);
+        }
+        setLookup(map);
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"))
+      .finally(() => setLoading(false));
+  };
 
   if (loading) {
     return (
@@ -312,7 +343,7 @@ export default function SplitProgressChart({ sessions, loading, error, refetch, 
     );
   }
 
-  const data = sessions ? buildChartData(sessions, split, splitLookup) : [];
+  const data = sessions ? buildChartData(sessions, split, lookup) : [];
 
   return (
     <div style={cardStyle}>
@@ -384,7 +415,7 @@ export default function SplitProgressChart({ sessions, loading, error, refetch, 
           }}
         >
           {data.length === 0
-            ? `No ${split} sessions in range`
+            ? `No ${split} sessions in last ${SESSION_DAYS} days`
             : "Log another session to see trends"}
         </div>
       ) : (
@@ -393,7 +424,7 @@ export default function SplitProgressChart({ sessions, loading, error, refetch, 
             <ResponsiveContainer width="100%" height={180}>
               <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -20 }}>
                 <defs>
-                  <linearGradient id="volGrad" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="splitVolGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%"  stopColor="#d4a04a" stopOpacity={0.3} />
                     <stop offset="95%" stopColor="#d4a04a" stopOpacity={0.02} />
                   </linearGradient>
@@ -415,18 +446,16 @@ export default function SplitProgressChart({ sessions, loading, error, refetch, 
                   width={36}
                 />
                 <Tooltip content={<SplitTooltip />} />
-                {/* Volume — filled area */}
                 <Area
                   dataKey="volumeN"
                   stroke="#d4a04a"
                   strokeWidth={2}
-                  fill="url(#volGrad)"
+                  fill="url(#splitVolGrad)"
                   dot={false}
                   connectNulls
                   type="monotone"
                   name="Volume"
                 />
-                {/* Sets */}
                 <Line
                   dataKey="setsN"
                   stroke="var(--dawn)"
@@ -436,7 +465,6 @@ export default function SplitProgressChart({ sessions, loading, error, refetch, 
                   type="monotone"
                   name="Sets"
                 />
-                {/* Intensity */}
                 <Line
                   dataKey="intensityN"
                   stroke="var(--clay)"

@@ -177,13 +177,7 @@ export default function TrendsPage() {
           )}
           <EnergyBalanceChart proteinTarget={proteinTarget} />
           <ProteinWeightChart proteinTarget={proteinTarget} />
-          <SplitProgressChart
-            sessions={strengthTrends.sessions}
-            loading={strengthTrends.loading}
-            error={strengthTrends.error}
-            refetch={strengthTrends.refetch}
-            days={90}
-          />
+          <SplitProgressChart />
           <StrengthQualityChart />
           <RunHRZonesChart />
           <NutritionTrendsChart nutrition={data.nutrition} proteinTarget={proteinTarget} />
