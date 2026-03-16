@@ -22,7 +22,7 @@ interface ActivityInit {
 }
 
 interface WorkoutInit {
-  workout_split?: "push" | "pull" | "legs" | null;
+  workout_split?: "push" | "pull" | "legs" | "abs" | null;
   duration_mins?: number | null;
   avg_hr?: number | null;
   min_hr?: number | null;
@@ -249,11 +249,11 @@ export default function ActivityEditSheet({ type, id, label, init, onSave, onClo
   });
 
   // Workout split picker (shared by "workout" and "strength_session")
-  const [workoutSplit, setWorkoutSplit] = useState<"push" | "pull" | "legs" | null>(() => {
+  const [workoutSplit, setWorkoutSplit] = useState<"push" | "pull" | "legs" | "abs" | null>(() => {
     if (type === "workout") return (init as WorkoutInit).workout_split ?? null;
     if (type === "strength_session") {
       const s = (init as StrengthSessionInit).session_label;
-      return (s === "push" || s === "pull" || s === "legs") ? s : null;
+      return (s === "push" || s === "pull" || s === "legs" || s === "abs") ? s : null;
     }
     return null;
   });
@@ -485,7 +485,7 @@ export default function ActivityEditSheet({ type, id, label, init, onSave, onClo
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <label style={labelStyle}>Split</label>
               <div style={{ display: "flex", gap: 8 }}>
-                {(["push", "pull", "legs"] as const).map((s) => (
+                {(["push", "pull", "legs", "abs"] as const).map((s) => (
                   <button
                     key={s}
                     onClick={() => setWorkoutSplit(workoutSplit === s ? null : s)}

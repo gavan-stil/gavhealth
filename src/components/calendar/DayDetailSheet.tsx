@@ -537,13 +537,14 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
                             const splitKey = s.split === "Push" ? "push"
                               : s.split === "Pull" ? "pull"
                               : s.split === "Legs" ? "legs"
+                              : s.split === "Abs" ? "abs"
                               : null;
                             setEditTarget({
                               type: "workout",
                               id: s.activityLogId!,
                               label: "Workout",
                               init: {
-                                workout_split: splitKey as "push" | "pull" | "legs" | null,
+                                workout_split: splitKey as "push" | "pull" | "legs" | "abs" | null,
                                 duration_mins: s.durationMins,
                                 started_at: s.sessionDatetime,
                                 activity_date: date,
