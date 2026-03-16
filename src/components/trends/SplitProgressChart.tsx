@@ -44,8 +44,8 @@ const SPLITS: { key: Split; label: string }[] = [
 
 // Fetch sessions over a long window so historical trends are visible
 const SESSION_DAYS = 120;
-// High enough limit to cover all workouts in SESSION_DAYS
-const ACTIVITY_LIMIT = 500;
+// Backend caps limit at 200; 200 records covers the full SESSION_DAYS window
+const ACTIVITY_LIMIT = 200;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 

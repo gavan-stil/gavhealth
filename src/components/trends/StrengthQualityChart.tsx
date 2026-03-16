@@ -173,7 +173,7 @@ export default function StrengthQualityChart() {
   useEffect(() => {
     Promise.all([
       apiFetch<StrengthSession[]>("/api/strength/sessions?days=90"),
-      apiFetch<unknown>("/api/activity?days=90&limit=500"),
+      apiFetch<unknown>("/api/activity?days=90&limit=200"),
     ])
       .then(([sessionData, activityRaw]) => {
         setSessions(sessionData);
