@@ -1,6 +1,9 @@
 """New endpoints: activity effort, activity feed, manual strength logging, food & nutrition."""
 
 from datetime import timedelta, datetime, date, timezone
+from zoneinfo import ZoneInfo
+
+BRISBANE_TZ = ZoneInfo("Australia/Brisbane")
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, field_validator
@@ -283,10 +286,15 @@ async def save_strength_log(body: StrengthLogCreate, db: AsyncSession = Depends(
 
     exercises_json = json.dumps(body.exercises) if not isinstance(body.exercises, str) else body.exercises
     start_ts = None
+    ref_date = None
     if body.start_time:
         dt = datetime.fromisoformat(body.start_time)
+        # Compute Brisbane local date BEFORE stripping tzinfo (used for activity_log matching).
+        if dt.tzinfo:
+            ref_date = dt.astimezone(BRISBANE_TZ).date()
+        else:
+            ref_date = dt.date()
         # asyncpg requires naive UTC for TIMESTAMPTZ params in text() queries.
-        # Convert tz-aware input to UTC then strip tzinfo.
         start_ts = dt.astimezone(timezone.utc).replace(tzinfo=None) if dt.tzinfo else dt
 
     result = await db.execute(
@@ -310,8 +318,6 @@ async def save_strength_log(body: StrengthLogCreate, db: AsyncSession = Depends(
     matched_activity_id = None
     match_confirmed = False
 
-    ref_date = start_ts.date() if start_ts else None
-
     match_row = None
     if ref_date:
         try:
@@ -320,6 +326,10 @@ async def save_strength_log(body: StrengthLogCreate, db: AsyncSession = Depends(
                     SELECT id FROM activity_logs
                     WHERE activity_type = 'workout'
                       AND activity_date = :ref_date
+                      AND id NOT IN (
+                          SELECT activity_log_id FROM strength_sessions
+                          WHERE activity_log_id IS NOT NULL
+                      )
                     ORDER BY id DESC
                     LIMIT 1
                 """),
@@ -353,7 +363,7 @@ async def save_strength_log(body: StrengthLogCreate, db: AsyncSession = Depends(
         await db.flush()  # get session.id
         bridged_session_id = session.id
 
-        session_date = start_ts.date() if start_ts else date.today()
+        session_date = ref_date if ref_date else date.today()
         bodyweight_kg = await _lookup_bodyweight(db, session_date)
 
         set_number_global = 0

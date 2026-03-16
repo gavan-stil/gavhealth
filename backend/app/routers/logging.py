@@ -1,6 +1,9 @@
 """Write endpoints: food, strength, sauna, habits, weight, sleep, activity, RHR."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
+from zoneinfo import ZoneInfo
+
+BRISBANE_TZ = ZoneInfo("Australia/Brisbane")
 from sqlalchemy import text as sa_text
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -129,7 +132,9 @@ async def confirm_strength_entry(
     await db.flush()
 
     # A1: Look up bodyweight for session date (exact match, else 7-day rolling avg)
-    session_date = body.session_datetime.date()
+    # Use Brisbane local date — body.session_datetime may be UTC-aware, so convert first.
+    _dt = body.session_datetime
+    session_date = _dt.astimezone(BRISBANE_TZ).date() if _dt.tzinfo else _dt.date()
     bw_result = await db.execute(
         sa_text("""
             SELECT weight_kg FROM weight_logs
