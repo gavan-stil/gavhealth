@@ -945,6 +945,17 @@ class LinkBody(BaseModel):
 
 @router.patch("/strength/sessions/{id}/link")
 async def link_strength_session(id: int, body: LinkBody, db: AsyncSession = Depends(get_db)):
+    # Prevent linking to a workout that already belongs to another session
+    conflict = await db.execute(
+        text("""
+            SELECT id FROM strength_sessions
+            WHERE activity_log_id = :aid AND id != :id
+        """),
+        {"aid": body.activity_id, "id": id},
+    )
+    if conflict.mappings().first():
+        raise HTTPException(status_code=409, detail="That workout is already linked to another session")
+
     result = await db.execute(
         text("""
             UPDATE strength_sessions

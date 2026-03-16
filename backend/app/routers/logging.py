@@ -157,12 +157,17 @@ async def confirm_strength_entry(
         rolling_row = rolling_result.mappings().first()
         bodyweight_kg = float(rolling_row["avg_weight"]) if rolling_row and rolling_row["avg_weight"] else None
 
-    # A2: Match an activity_log workout row on the same date
+    # A2: Match an activity_log workout row on the same date, only if not already
+    # claimed by another strength session (prevents two sessions sharing one workout).
     activity_match = await db.execute(
         sa_text("""
             SELECT id FROM activity_logs
             WHERE activity_type = 'workout'
               AND activity_date = :session_date
+              AND id NOT IN (
+                  SELECT activity_log_id FROM strength_sessions
+                  WHERE activity_log_id IS NOT NULL
+              )
             LIMIT 1
         """),
         {"session_date": session_date},

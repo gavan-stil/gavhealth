@@ -146,6 +146,8 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS intense_mins FLOAT",
             # Withings workout IDs exceed int32 on older history — must be BIGINT
             "ALTER TABLE sauna_logs ALTER COLUMN withings_activity_id TYPE BIGINT",
+            # activity_logs: workout split label (push/pull/legs)
+            "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS workout_split VARCHAR(20)",
             # manual_strength_logs: strength workouts logged via app
             """
             CREATE TABLE IF NOT EXISTS manual_strength_logs (
