@@ -191,7 +191,81 @@ Ordered by severity and dependency:
 
 ---
 
+---
+
+### DASH-001 [Medium] — `refetchAll` never calls `progress.refetch()`, and `momentum` missing from deps
+- **File:** `src/pages/DashboardPage.tsx:70–82`
+- **Layer:** Frontend — pull-to-refresh
+- **Description:** `refetchAll` calls `readiness.refetch()`, `momentum.refetch()`, `v2.refetch()`, etc. but never calls `progress.refetch()`. ProgressCard data (weight, RHR, cals) is stale after pull-to-refresh or sync. Additionally, `momentum` is used inside the callback but not listed in the `useCallback` dependency array — stale closure risk if `momentum.refetch` were ever unstable.
+- **Repro:** Pull to refresh → MomentumCard updates → ProgressCard stays at old weight/data.
+- **Risk:** Medium — stale data displayed without any indication.
+
+---
+
+### DASH-002 [Low] — `useDashboard.refetch` not memoized — unstable object refs in `refetchAll` deps
+- **File:** `src/hooks/useDashboard.ts:158–163`
+- **Layer:** Frontend — hook
+- **Description:** The `refetch` returned by `useDashboard` is a plain arrow function (not `useCallback`). The `readiness`, `vitals`, `streaks` objects returned are also new references on every render. Since `refetchAll` in DashboardPage lists these objects in its dependency array, `refetchAll` is recreated on every render, causing SyncButton to receive a new prop on every render.
+- **Risk:** Low — SyncButton re-renders unnecessarily on every state change. No functional bug.
+
+---
+
+### DASH-003 [Low] — Duplicate `useMomentumSignals(14)` API calls on every dashboard load
+- **Files:** `src/components/dashboard/MomentumCard.tsx:311`, `src/hooks/useProgress.ts:7`
+- **Layer:** Frontend — API efficiency
+- **Description:** Both `MomentumCard` and `ProgressCard` independently call `useMomentumSignals(14)`, firing 2 identical `GET /api/momentum/signals?days=14` requests on every dashboard render. `GoalDetailSheet` adds a third `useMomentumSignals(7)` when open.
+- **Risk:** Low — redundant network request. No correctness issue.
+
+---
+
+### DASH-004 [Low] — `SignalDeviationChart` has unused `signal?: MomentumSignal` prop
+- **File:** `src/components/dashboard/SignalDeviationChart.tsx:14`
+- **Layer:** Frontend — dead prop
+- **Description:** The `signal` field is declared in the `Props` interface but is never destructured or used in the component body. Dead interface field.
+- **Risk:** Low — code quality.
+
+---
+
+### DASH-005 [Low] — `ProgressCard.MiniSparkline` renders flat data at bottom edge instead of centre
+- **File:** `src/components/dashboard/ProgressCard.tsx:248–253`
+- **Layer:** Frontend — chart rendering
+- **Description:** When all 7 values are identical (e.g. weight unchanged for a week), `range = vMax - vMin = 0 || 1 = 1`. Then `(p.v - vMin) / range = 0`, so all points map to `y = pad + innerH` (bottom edge of the sparkline). `MomentumCard.MiniSparkline` (lines 282–286) handles this correctly by rendering at `centerY` when `range === 0`.
+- **Risk:** Low — visual glitch when progress metrics are stable.
+
+---
+
+### DASH-006 [Medium] — ProgressCard weight headline "At goal weight" triggers above target range
+- **File:** `src/components/dashboard/ProgressCard.tsx:289–293`
+- **Layer:** Frontend — display
+- **Description:** `const gap = targetMin - weightToday; if (gap <= 0)` marks "At goal weight" whenever `weightToday >= targetMin`, ignoring `targetMax`. Weight goal is 71–72 kg; if weight is 73 kg, `gap = 71 - 73 = -2 <= 0` → headline shows "At goal weight" despite being above the target ceiling.
+- **Risk:** Medium — misleading headline for overshoot case.
+
+---
+
+### DASH-007 [Low] — `ProgressCard.trendArrow` ignores signal direction for RHR
+- **File:** `src/components/dashboard/ProgressCard.tsx:44–49`
+- **Layer:** Frontend — UX
+- **Description:** `trendArrow` uses `_key` (unused) and returns ↑ when `today > baseline` for all signals. For `rhr_bpm` (direction: "lower"), ↑ means RHR is rising — bad — but the arrow shows ↑ without qualification. `trendColor` does correctly show blue for a rising RHR, so the colour communicates the sentiment, but the arrow is semantically inverted.
+- **Risk:** Low — colour already communicates direction correctly; arrow is supplementary.
+
+---
+
 ## Resolved
+
+### ~~DASH-001~~ [Medium] — refetchAll missing progress.refetch() ✅ Fixed (2026-03-16)
+`progress.refetch()` added to `refetchAll`. `momentum` and `progress` added to deps array.
+
+### ~~DASH-002~~ [Low] — useDashboard.refetch not memoized ✅ Fixed (2026-03-16)
+Wrapped in `useCallback` with `[readiness.refetch, vitals.refetch, streaks.refetch]` deps.
+
+### ~~DASH-004~~ [Low] — SignalDeviationChart unused `signal` prop ✅ Fixed (2026-03-16)
+Removed `signal?: MomentumSignal` from Props interface and its import.
+
+### ~~DASH-005~~ [Low] — ProgressCard MiniSparkline flat data at bottom edge ✅ Fixed (2026-03-16)
+Applied same `range === 0 ? centerY : ...` pattern already in MomentumCard.MiniSparkline.
+
+### ~~DASH-006~~ [Medium] — ProgressCard weight headline ignores targetMax ✅ Fixed (2026-03-16)
+"At goal weight" now requires `weightToday >= targetMin && weightToday <= targetMax`.
 
 ### ~~FOOD-001~~ [Medium] — Parse state persists across date changes ✅ Fixed (2026-03-16)
 Date-change `useEffect` in `useFoodNutrition.ts` now resets `parsedItems`, `parseInput`, and `parseState` to idle before fetching the new day's log.

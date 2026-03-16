@@ -1,5 +1,3 @@
-import type { MomentumSignal } from "@/hooks/useMomentum";
-
 interface DayValue {
   date: string;
   value: number | null;
@@ -11,7 +9,6 @@ interface Props {
   targetMin?: number | null;
   targetMax?: number | null;
   unit: string;
-  signal?: MomentumSignal;
 }
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];

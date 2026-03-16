@@ -246,11 +246,13 @@ function MiniSparkline({ data, color }: { data: (number | null)[]; color: string
   if (valid.length < 2) return <div style={{ width: 52, height: 24 }} />;
   const vMin = Math.min(...valid.map(p => p.v));
   const vMax = Math.max(...valid.map(p => p.v));
-  const range = vMax - vMin || 1;
+  const range = vMax - vMin;
   const W = 52, H = 24, pad = 2;
+  const innerH = H - pad * 2;
+  const centerY = pad + innerH / 2;
   const pts = valid.map(p => ({
     x: pad + ((p.i / (data.length - 1)) * (W - pad * 2)),
-    y: pad + (H - pad * 2) - ((p.v - vMin) / range) * (H - pad * 2),
+    y: range === 0 ? centerY : pad + innerH - ((p.v - vMin) / range) * innerH,
   }));
   const path = smoothPath(pts);
   const areaPath = `${path} L${pts[pts.length - 1].x},${H - pad} L${pts[0].x},${H - pad} Z`;
@@ -288,7 +290,8 @@ export default function ProgressCard({ data }: Props) {
   let arrowColor = "#7a7060";
   if (weightToday !== null && targetMin !== null) {
     const gap = targetMin - weightToday;
-    if (gap <= 0) {
+    const atGoal = gap <= 0 && (targetMax === null || weightToday <= targetMax);
+    if (atGoal) {
       headline = "At goal weight";
       headlineArrow = "✓";
       arrowColor = "#e8c47a";

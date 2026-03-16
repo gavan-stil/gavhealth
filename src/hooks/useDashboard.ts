@@ -155,11 +155,11 @@ export default function useDashboard() {
     transformStreaks,
   );
 
-  const refetch = () => {
+  const refetch = useCallback(() => {
     readiness.refetch();
     vitals.refetch();
     streaks.refetch();
-  };
+  }, [readiness.refetch, vitals.refetch, streaks.refetch]);
 
   return { readiness, vitals, streaks, refetch };
 }

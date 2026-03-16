@@ -71,6 +71,7 @@ export default function DashboardPage() {
     setSelectedDate(todayLocal());
     readiness.refetch();
     momentum.refetch();
+    progress.refetch();
     vitals.refetch();
     streaks.refetch();
     v2.refetch();
@@ -78,7 +79,7 @@ export default function DashboardPage() {
     sleepStages.refetch();
     sleepHistory.refetch();
     intradayHR.refetch();
-  }, [readiness, vitals, streaks, v2, goalRings, sleepStages, sleepHistory, intradayHR]);
+  }, [readiness, momentum, progress, vitals, streaks, v2, goalRings, sleepStages, sleepHistory, intradayHR]);
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     const el = containerRef.current;
