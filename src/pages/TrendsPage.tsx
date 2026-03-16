@@ -8,6 +8,7 @@ import StrengthQualityChart from "@/components/trends/StrengthQualityChart";
 import RunHRZonesChart from "@/components/trends/RunHRZonesChart";
 import WorkoutVolumeChart from "@/components/trends/WorkoutVolumeChart";
 import ExerciseProgressSection from "@/components/trends/ExerciseProgressSection";
+import SplitProgressChart from "@/components/trends/SplitProgressChart";
 import NutritionTrendsChart from "@/components/trends/NutritionTrendsChart";
 import WaterTrendsChart from "@/components/trends/WaterTrendsChart";
 import useGoals from "@/hooks/useGoals";
@@ -176,6 +177,12 @@ export default function TrendsPage() {
           )}
           <EnergyBalanceChart proteinTarget={proteinTarget} />
           <ProteinWeightChart proteinTarget={proteinTarget} />
+          <SplitProgressChart
+            sessions={strengthTrends.sessions}
+            loading={strengthTrends.loading}
+            error={strengthTrends.error}
+            refetch={strengthTrends.refetch}
+          />
           <StrengthQualityChart />
           <RunHRZonesChart />
           <NutritionTrendsChart nutrition={data.nutrition} proteinTarget={proteinTarget} />
