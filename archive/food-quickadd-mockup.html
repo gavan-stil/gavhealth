@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=375, initial-scale=1">
+<title>Food Quick-Add Mockup</title>
+<style>
+  /* ── tokens ── */
+  :root {
+    --bg-base:      #0e0e0f;
+    --bg-card:      #161618;
+    --bg-elevated:  #1e1e21;
+    --bg-hover:     #252528;
+    --border-default: rgba(255,255,255,0.08);
+    --border-subtle:  rgba(255,255,255,0.04);
+    --text-primary:   #f0ede8;
+    --text-secondary: #a09d98;
+    --text-muted:     #666360;
+    --ochre:    #c8963e;
+    --gold:     #d4a843;
+    --dawn:     #7fb3c8;
+    --signal-good: #5a9e6f;
+    --ember:    #c0522a;
+    --rust:     #9e4a2a;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-pill: 99px;
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 12px;
+    --space-lg: 16px;
+    --space-xl: 24px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0a0a0b;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px 80px;
+    font-family: Inter, -apple-system, sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── page label ── */
+  .page-label {
+    color: var(--text-muted);
+    font: 500 11px/1 Inter, sans-serif;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  /* ── phone frame ── */
+  .phone {
+    width: 375px;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* ── card ── */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+
+  /* ── card header ── */
+  .card-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-md) var(--space-lg);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+  }
+  .card-header-icon { color: var(--gold); font-size: 16px; }
+  .card-header-title {
+    font: 700 16px/1.2 Inter, sans-serif;
+    letter-spacing: -0.5px;
+    color: var(--text-primary);
+    flex: 1;
+    text-align: left;
+  }
+  .card-header-preview {
+    font: 600 13px/1 'JetBrains Mono', monospace;
+    letter-spacing: -0.5px;
+    color: var(--ochre);
+    margin-right: 8px;
+  }
+  .card-header-caret { color: var(--text-muted); font-size: 11px; transform: rotate(180deg); }
+
+  /* ── card body ── */
+  .card-body { padding: 0 var(--space-lg) var(--space-lg); }
+
+  /* ── section labels ── */
+  .section-label {
+    font: 600 10px/1 Inter, sans-serif;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  /* ── QUICK ADD tabs ── */
+  .quick-add-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .tab-strip {
+    display: flex;
+    gap: 2px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-pill);
+    padding: 3px;
+  }
+  .tab-btn {
+    padding: 5px 12px;
+    border: none;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--text-muted);
+    font: 600 11px/1 Inter, sans-serif;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+  .tab-btn.active {
+    background: var(--bg-card);
+    color: var(--text-primary);
+  }
+  .add-all-btn {
+    background: none;
+    border: none;
+    color: var(--ochre);
+    font: 600 11px/1 Inter, sans-serif;
+    cursor: pointer;
+    padding: 4px 0;
+    opacity: 0.9;
+  }
+  .add-all-btn:hover { opacity: 1; }
+  .add-all-btn.hidden { visibility: hidden; }
+
+  /* ── chip strip ── */
+  .chip-strip {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin-bottom: 12px;
+  }
+  .chip-strip::-webkit-scrollbar { display: none; }
+
+  .chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 7px 11px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-pill);
+    color: var(--text-secondary);
+    font: 500 12px/1 Inter, sans-serif;
+    cursor: pointer;
+    transition: opacity 0.2s, border-color 0.15s, background 0.15s;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .chip:hover { border-color: rgba(200,150,62,0.35); background: var(--bg-hover); }
+  .chip.staged {
+    opacity: 0.4;
+    cursor: default;
+    border-style: dashed;
+  }
+  .chip-kcal {
+    font: 600 11px/1 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+  }
+  .chip-count {
+    font: 700 10px/1 'JetBrains Mono', monospace;
+    color: var(--ochre);
+    background: rgba(200,150,62,0.12);
+    border-radius: 99px;
+    padding: 1px 5px;
+  }
+  .chip-delete {
+    font-size: 13px;
+    color: var(--text-muted);
+    opacity: 0.6;
+    margin-left: 2px;
+    line-height: 1;
+  }
+  .chip-delete:hover { color: var(--ember); opacity: 1; }
+
+  /* ── tab panel ── */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .empty-state {
+    font: 400 12px/1.4 Inter, sans-serif;
+    color: var(--text-muted);
+    padding: 4px 0 12px;
+  }
+
+  /* ── STAGED area ── */
+  .staged-area {
+    background: var(--bg-elevated);
+    border: 1px solid rgba(200,150,62,0.2);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .staged-area.hidden { display: none; }
+  .staged-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 12px 7px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .staged-title {
+    font: 600 10px/1 Inter, sans-serif;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ochre);
+  }
+  .staged-meta {
+    font: 400 11px/1 Inter, sans-serif;
+    color: var(--text-muted);
+  }
+  .staged-list { padding: 6px 0; }
+  .staged-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+  }
+  .staged-row-name {
+    flex: 1;
+    font: 400 13px/1 Inter, sans-serif;
+    color: var(--text-primary);
+  }
+  .staged-row-kcal {
+    font: 600 11px/1 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+  }
+  .staged-row-remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 4px;
+    color: var(--text-muted);
+    opacity: 0.5;
+    font-size: 14px;
+    line-height: 1;
+    transition: opacity 0.15s, color 0.15s;
+  }
+  .staged-row-remove:hover { opacity: 1; color: var(--ember); }
+  .staged-confirm {
+    width: 100%;
+    padding: 11px 16px;
+    background: var(--ochre);
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    color: #0e0e0f;
+    font: 700 13px/1 Inter, sans-serif;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: opacity 0.15s;
+  }
+  .staged-confirm:hover { opacity: 0.9; }
+
+  /* ── divider ── */
+  .divider { height: 1px; background: var(--border-subtle); margin-bottom: 14px; }
+
+  /* ── NEW FOOD section ── */
+  .new-food-area { margin-bottom: 10px; }
+  .food-textarea {
+    width: 100%;
+    resize: none;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    color: var(--text-primary);
+    font: 400 13px/1.5 Inter, sans-serif;
+    outline: none;
+    margin-bottom: 8px;
+  }
+  .food-textarea::placeholder { color: var(--text-muted); }
+  .parse-btn {
+    padding: 9px 16px;
+    background: var(--ochre);
+    color: var(--bg-base);
+    border: none;
+    border-radius: var(--radius-md);
+    font: 600 13px/1 Inter, sans-serif;
+    cursor: pointer;
+    opacity: 0.38;
+  }
+
+  /* ── TODAY'S LOG ── */
+  .log-section { margin-bottom: 16px; }
+  .log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .log-count { font: 400 11px/1 Inter, sans-serif; color: var(--text-muted); }
+  .log-list { display: flex; flex-direction: column; gap: 4px; }
+  .log-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+  }
+  .log-row-name { flex: 1; font: 400 13px/1 Inter, sans-serif; color: var(--text-primary); }
+  .log-row-macros {
+    font: 600 11px/1 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+  }
+  .log-row-remove {
+    background: none; border: none; cursor: pointer;
+    padding: 2px; color: var(--text-muted); opacity: 0.5; font-size: 14px;
+  }
+
+  /* ── TOTALS ── */
+  .total-kcal {
+    font: 800 28px/1 'JetBrains Mono', monospace;
+    letter-spacing: -1.5px;
+    color: var(--ochre);
+    margin-bottom: 2px;
+  }
+  .total-label { font: 400 13px/1 Inter, sans-serif; color: var(--text-muted); margin-bottom: 10px; }
+  .kcal-bar-track { height: 8px; background: var(--bg-elevated); border-radius: 99px; overflow: hidden; margin-bottom: 14px; }
+  .kcal-bar-fill { height: 100%; width: 74%; background: linear-gradient(90deg, var(--signal-good), var(--ochre)); border-radius: 99px; }
+
+  .macro-bars { display: flex; flex-direction: column; gap: 10px; }
+  .macro-row {}
+  .macro-meta { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .macro-name {
+    font: 600 10px/1 Inter, sans-serif;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .macro-val {
+    font: 600 12px/1 'JetBrains Mono', monospace;
+    letter-spacing: -0.3px;
+    color: var(--text-secondary);
+  }
+  .macro-track { height: 5px; background: var(--bg-elevated); border-radius: 99px; overflow: hidden; }
+  .macro-fill { height: 100%; border-radius: 99px; }
+
+  /* ── annotation callouts ── */
+  .annotation {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 10px 0;
+    padding: 10px 12px;
+    background: rgba(200,150,62,0.07);
+    border: 1px solid rgba(200,150,62,0.2);
+    border-radius: var(--radius-sm);
+  }
+  .annotation-num {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    border-radius: 50%;
+    background: var(--ochre);
+    color: #0e0e0f;
+    font: 700 11px/20px Inter, sans-serif;
+    text-align: center;
+  }
+  .annotation-text {
+    font: 400 12px/1.5 Inter, sans-serif;
+    color: var(--text-secondary);
+  }
+  .annotation-text strong { color: var(--text-primary); }
+
+  /* ── section title (outside card) ── */
+  .screen-title {
+    font: 700 18px/1 Inter, sans-serif;
+    letter-spacing: -0.5px;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+    padding-left: 2px;
+  }
+  .screen-sub {
+    font: 400 13px/1.4 Inter, sans-serif;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    padding-left: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-label">Food Quick-Add — Mockup v1 &nbsp;·&nbsp; 17 Mar 2026</div>
+
+<div class="phone">
+
+  <p class="screen-title">Log</p>
+  <p class="screen-sub">Tap chips to stage → review → confirm to log</p>
+
+  <!-- ══════════════════════════════════════════════════
+       FOOD & NUTRITION CARD (open)
+  ══════════════════════════════════════════════════ -->
+  <div class="card">
+
+    <!-- Header -->
+    <div class="card-header">
+      <span class="card-header-icon">🍴</span>
+      <span class="card-header-title">Food &amp; Nutrition</span>
+      <span class="card-header-preview">1,740 kcal</span>
+      <span class="card-header-caret">▼</span>
+    </div>
+
+    <div class="card-body">
+
+      <!-- ─── ① QUICK ADD ─────────────────────────────── -->
+      <div class="quick-add-header">
+        <div class="tab-strip">
+          <button class="tab-btn active" onclick="switchTab('yesterday', this)">Yesterday</button>
+          <button class="tab-btn"        onclick="switchTab('frequent', this)">Frequent</button>
+          <button class="tab-btn"        onclick="switchTab('saved', this)">Saved</button>
+        </div>
+        <button class="add-all-btn" id="add-all-btn" onclick="addAll()">Add all</button>
+      </div>
+
+      <!-- YESTERDAY tab -->
+      <div class="tab-panel active" id="panel-yesterday">
+        <div id="yesterday-chips" class="chip-strip">
+          <!-- chips rendered by JS -->
+        </div>
+      </div>
+
+      <!-- FREQUENT tab -->
+      <div class="tab-panel" id="panel-frequent">
+        <div id="frequent-chips" class="chip-strip">
+        </div>
+      </div>
+
+      <!-- SAVED tab -->
+      <div class="tab-panel" id="panel-saved">
+        <div class="chip-strip">
+          <div class="chip">
+            <span>Protein shake</span>
+            <span class="chip-kcal">185</span>
+            <span class="chip-delete">×</span>
+          </div>
+          <div class="chip">
+            <span>Flat white</span>
+            <span class="chip-kcal">120</span>
+            <span class="chip-delete">×</span>
+          </div>
+          <div class="chip">
+            <span>Greek yoghurt</span>
+            <span class="chip-kcal">130</span>
+            <span class="chip-delete">×</span>
+          </div>
+          <div class="chip">
+            <span>Mixed nuts</span>
+            <span class="chip-kcal">190</span>
+            <span class="chip-delete">×</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── ② STAGED AREA ─────────────────────────────
+           Appears here between quick-add and new food.
+           Items land here when tapped. User reviews,
+           removes unwanted, then confirms.
+      ──────────────────────────────────────────────── -->
+      <div class="staged-area hidden" id="staged-area">
+        <div class="staged-header">
+          <span class="staged-title">Staged</span>
+          <span class="staged-meta" id="staged-meta">0 items · 0 kcal</span>
+        </div>
+        <div class="staged-list" id="staged-list"></div>
+        <button class="staged-confirm" id="staged-confirm" onclick="confirmStaged()">
+          <span id="confirm-label">Add 0 items to today</span>
+          <span>→</span>
+        </button>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- ─── ③ NEW FOOD (NLP) ───────────────────────── -->
+      <div class="new-food-area">
+        <span class="section-label">New food</span>
+        <textarea class="food-textarea" rows="3"
+          placeholder="Anything new you ate… e.g. banana, flat white, handful of almonds"
+        ></textarea>
+        <button class="parse-btn">Process with AI</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- ─── ④ TODAY'S LOG ──────────────────────────── -->
+      <div class="log-section">
+        <div class="log-header">
+          <span class="section-label" style="margin:0">Today's log</span>
+          <span class="log-count" id="log-count">3 items</span>
+        </div>
+        <div class="log-list" id="log-list">
+          <div class="log-row">
+            <span class="log-row-name">Oats with banana</span>
+            <span class="log-row-macros">380 · P12 C68 F6</span>
+            <button class="log-row-remove">×</button>
+          </div>
+          <div class="log-row">
+            <span class="log-row-name">Chicken rice bowl</span>
+            <span class="log-row-macros">620 · P48 C72 F10</span>
+            <button class="log-row-remove">×</button>
+          </div>
+          <div class="log-row">
+            <span class="log-row-name">Protein shake</span>
+            <span class="log-row-macros">185 · P32 C8 F3</span>
+            <button class="log-row-remove">×</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- ─── ⑤ TOTALS ───────────────────────────────── -->
+      <div>
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+          <span class="total-kcal" id="total-kcal">1,740</span>
+          <span class="total-label">of 2,358 kcal</span>
+        </div>
+        <div class="kcal-bar-track">
+          <div class="kcal-bar-fill" id="kcal-bar" style="width:74%"></div>
+        </div>
+        <div class="macro-bars">
+          <div class="macro-row">
+            <div class="macro-meta">
+              <span class="macro-name">Protein</span>
+              <span class="macro-val">92g</span>
+            </div>
+            <div class="macro-track">
+              <div class="macro-fill" style="width:51%;background:linear-gradient(90deg,var(--dawn),#a0ccdc)"></div>
+            </div>
+          </div>
+          <div class="macro-row">
+            <div class="macro-meta">
+              <span class="macro-name">Carbs</span>
+              <span class="macro-val">148g</span>
+            </div>
+            <div class="macro-track">
+              <div class="macro-fill" style="width:57%;background:linear-gradient(90deg,var(--ochre),var(--gold))"></div>
+            </div>
+          </div>
+          <div class="macro-row">
+            <div class="macro-meta">
+              <span class="macro-name">Fat</span>
+              <span class="macro-val">19g</span>
+            </div>
+            <div class="macro-track">
+              <div class="macro-fill" style="width:24%;background:linear-gradient(90deg,var(--rust),var(--sand,#c8a87a))"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /card-body -->
+  </div><!-- /card -->
+
+  <!-- ── ANNOTATIONS ── -->
+  <div class="annotation">
+    <div class="annotation-num">1</div>
+    <div class="annotation-text">
+      <strong>Yesterday tab</strong> — shows everything from Sun 16 Mar in the order it was logged. Tap a chip to stage it. Tap "Add all" to stage everything at once.
+    </div>
+  </div>
+  <div class="annotation">
+    <div class="annotation-num">2</div>
+    <div class="annotation-text">
+      <strong>Frequent tab</strong> — items logged 3+ times in the past 7 rolling days. Badge shows count (e.g. ×6). Sorted highest first.
+    </div>
+  </div>
+  <div class="annotation">
+    <div class="annotation-num">3</div>
+    <div class="annotation-text">
+      <strong>Staged area</strong> — lands between quick-add and "New food". Items collect here. Remove anything you don't want, then tap <em>Add N items to today</em> to write them to today's log in one shot.
+    </div>
+  </div>
+  <div class="annotation">
+    <div class="annotation-num">4</div>
+    <div class="annotation-text">
+      <strong>Staged chips dim to 40%</strong> once staged. They stay visible so you can tap again for a second serving — it just stages a second copy.
+    </div>
+  </div>
+
+</div><!-- /phone -->
+
+<script>
+  // ── Data ─────────────────────────────────────────────────────────────────
+  const yesterdayItems = [
+    { id: 'y1', name: 'Oats with banana',    kcal: 380, protein_g: 12, carbs_g: 68, fat_g: 6 },
+    { id: 'y2', name: 'Flat white',          kcal: 120, protein_g: 4,  carbs_g: 10, fat_g: 6 },
+    { id: 'y3', name: 'Chicken rice bowl',   kcal: 620, protein_g: 48, carbs_g: 72, fat_g: 10 },
+    { id: 'y4', name: 'Protein shake',       kcal: 185, protein_g: 32, carbs_g: 8,  fat_g: 3 },
+    { id: 'y5', name: 'Greek yoghurt',       kcal: 130, protein_g: 18, carbs_g: 9,  fat_g: 2 },
+    { id: 'y6', name: 'Almonds handful',     kcal: 165, protein_g: 6,  carbs_g: 4,  fat_g: 14 },
+    { id: 'y7', name: 'Salmon fillet + veg', kcal: 420, protein_g: 42, carbs_g: 18, fat_g: 16 },
+  ];
+
+  const frequentItems = [
+    { id: 'f1', name: 'Protein shake',    kcal: 185, protein_g: 32, carbs_g: 8,  fat_g: 3,  count: 6 },
+    { id: 'f2', name: 'Flat white',       kcal: 120, protein_g: 4,  carbs_g: 10, fat_g: 6,  count: 5 },
+    { id: 'f3', name: 'Oats with banana', kcal: 380, protein_g: 12, carbs_g: 68, fat_g: 6,  count: 4 },
+    { id: 'f4', name: 'Greek yoghurt',    kcal: 130, protein_g: 18, carbs_g: 9,  fat_g: 2,  count: 3 },
+  ];
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  let staged = []; // { stageId, name, kcal, protein_g, carbs_g, fat_g }
+  let stagedSourceIds = new Set(); // tracks which chip ids have been staged
+  let nextStageId = 1;
+  let activeTab = 'yesterday';
+  let todayCount = 3;
+  let todayKcal = 1185; // oats + chicken + protein shake
+
+  // ── Render chips ──────────────────────────────────────────────────────────
+  function renderChips() {
+    renderYesterday();
+    renderFrequent();
+  }
+
+  function renderYesterday() {
+    const el = document.getElementById('yesterday-chips');
+    el.innerHTML = '';
+    yesterdayItems.forEach(item => {
+      const isStaged = stagedSourceIds.has(item.id);
+      const chip = document.createElement('div');
+      chip.className = 'chip' + (isStaged ? ' staged' : '');
+      chip.innerHTML = `<span>${item.name}</span><span class="chip-kcal">${item.kcal}</span>`;
+      if (!isStaged) {
+        chip.onclick = () => stageItem(item);
+      }
+      el.appendChild(chip);
+    });
+  }
+
+  function renderFrequent() {
+    const el = document.getElementById('frequent-chips');
+    el.innerHTML = '';
+    frequentItems.forEach(item => {
+      const isStaged = stagedSourceIds.has(item.id);
+      const chip = document.createElement('div');
+      chip.className = 'chip' + (isStaged ? ' staged' : '');
+      chip.innerHTML = `<span>${item.name}</span><span class="chip-kcal">${item.kcal}</span><span class="chip-count">×${item.count}</span>`;
+      if (!isStaged) {
+        chip.onclick = () => stageItem(item);
+      }
+      el.appendChild(chip);
+    });
+  }
+
+  // ── Stage an item ─────────────────────────────────────────────────────────
+  function stageItem(item) {
+    const entry = { stageId: nextStageId++, ...item };
+    staged.push(entry);
+    stagedSourceIds.add(item.id);
+    renderChips();
+    renderStaged();
+  }
+
+  function addAll() {
+    const source = activeTab === 'yesterday' ? yesterdayItems : frequentItems;
+    source.forEach(item => {
+      if (!stagedSourceIds.has(item.id)) {
+        staged.push({ stageId: nextStageId++, ...item });
+        stagedSourceIds.add(item.id);
+      }
+    });
+    renderChips();
+    renderStaged();
+  }
+
+  // ── Render staged area ────────────────────────────────────────────────────
+  function renderStaged() {
+    const area = document.getElementById('staged-area');
+    const list = document.getElementById('staged-list');
+    const meta = document.getElementById('staged-meta');
+    const confirmLabel = document.getElementById('confirm-label');
+
+    if (staged.length === 0) {
+      area.classList.add('hidden');
+      return;
+    }
+    area.classList.remove('hidden');
+
+    const totalKcal = staged.reduce((s, e) => s + e.kcal, 0);
+    meta.textContent = `${staged.length} item${staged.length !== 1 ? 's' : ''} · ${totalKcal} kcal`;
+    confirmLabel.textContent = `Add ${staged.length} item${staged.length !== 1 ? 's' : ''} to today`;
+
+    list.innerHTML = '';
+    staged.forEach(entry => {
+      const row = document.createElement('div');
+      row.className = 'staged-row';
+      row.innerHTML = `
+        <span class="staged-row-name">${entry.name}</span>
+        <span class="staged-row-kcal">${entry.kcal} kcal</span>
+        <button class="staged-row-remove" onclick="removeStaged(${entry.stageId})">×</button>
+      `;
+      list.appendChild(row);
+    });
+  }
+
+  function removeStaged(stageId) {
+    const entry = staged.find(e => e.stageId === stageId);
+    if (entry) stagedSourceIds.delete(entry.id);
+    staged = staged.filter(e => e.stageId !== stageId);
+    renderChips();
+    renderStaged();
+  }
+
+  // ── Confirm staged → add to today's log ───────────────────────────────────
+  function confirmStaged() {
+    if (staged.length === 0) return;
+    const list = document.getElementById('log-list');
+    staged.forEach(entry => {
+      todayKcal += entry.kcal;
+      todayCount++;
+      const row = document.createElement('div');
+      row.className = 'log-row';
+      row.innerHTML = `
+        <span class="log-row-name">${entry.name}</span>
+        <span class="log-row-macros">${entry.kcal} · P${entry.protein_g} C${entry.carbs_g} F${entry.fat_g}</span>
+        <button class="log-row-remove">×</button>
+      `;
+      list.appendChild(row);
+    });
+    staged = [];
+    stagedSourceIds.clear();
+    renderChips();
+    renderStaged();
+    updateTotals();
+  }
+
+  function updateTotals() {
+    document.getElementById('total-kcal').textContent = todayKcal.toLocaleString();
+    document.getElementById('log-count').textContent = `${todayCount} items`;
+    const pct = Math.min(100, Math.round(todayKcal / 2358 * 100));
+    document.getElementById('kcal-bar').style.width = pct + '%';
+  }
+
+  // ── Tab switching ─────────────────────────────────────────────────────────
+  function switchTab(tab, btn) {
+    activeTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + tab).classList.add('active');
+
+    // "Add all" only shown for Yesterday and Frequent
+    const addAllBtn = document.getElementById('add-all-btn');
+    addAllBtn.classList.toggle('hidden', tab === 'saved');
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  renderChips();
+</script>
+</body>
+</html>
