@@ -18,7 +18,47 @@ None — all tasks complete. See backlog.
 
 ---
 
-## Recent Session (2026-03-17) — SplitProgressChart + category bug audit
+## Recent Session (2026-03-18) — DuneGoalsCard
+
+**New feature: Goals Dune Card** — animated dune landscape visualising goal alignment on Dashboard.
+
+- New card `DuneGoalsCard` placed above MomentumCard on Dashboard
+- Canvas (340×320): 3-layer dune ridgeline with breathing animation, particles born at crest falling downward, 4 crosshair markers at vertical positions driven by gap-from-target
+- Continuous yFactor mapping: `gapPct +0.25 → 0.02` (near crest, warm), `gapPct -0.50 → 0.85` (deep shadow, dim) — no discrete bands
+- Crosshair colour + glow driven by proximity to crest (warm=on track, cool=off track)
+- Labels float beside each crosshair (left or right based on x position): signal name, today value, gap from target mid
+- Header: "Goals" + "N of 4 on track" + chevron — tap to expand/collapse summary rows
+- Summary rows: one per signal, dot colour, value, gap (+ochre / −rust)
+- Animation pauses when card off-screen (IntersectionObserver)
+- Loading skeleton (pulsing gradient) + error state with retry
+- Data: `/api/momentum/signals?days=7` + `/api/goals` fetched in parallel via `useDuneData` hook
+
+**Files added:**
+- `src/components/dashboard/DuneGoals/` (7 files: signals.ts, duneUtils.ts, particleSystem.ts, DuneCanvas.tsx, DuneSummaryRows.tsx, DuneGoalsCard.tsx, index.ts)
+- `src/hooks/useDuneData.ts`
+
+**Files modified:** `src/pages/DashboardPage.tsx` (+import + `<DuneGoalsCard />` above MomentumCard)
+
+**Mockups:** `archive/goals-dune-mockup.html`, `archive/goals-orbit-mockup.html` (earlier direction, superseded)
+
+---
+
+## Recent Session (2026-03-17) — Food Quick-Add (Yesterday / Frequent / Staged)
+
+**New feature: Food quick-add tabbed widget** (commit: `47799b5`)
+- Replaced flat "Saved meals" chip section in `FoodNutritionCard` with a three-tab quick-add widget: **Yesterday | Frequent | Saved**
+- **Yesterday tab**: chips for everything logged the prior day (Brisbane local date), in log order. "Add all" button stages everything at once.
+- **Frequent tab**: items appearing 3+ times in the past rolling 7 days. Case-insensitive grouping by `description_raw`, macros averaged, sorted by count desc. Count badge `×N` on each chip.
+- **Saved tab**: existing saved-meals library (unchanged behaviour).
+- **Staged area**: tapping a chip lands items in a staging list between quick-add and "New food". User reviews (can × remove), then confirms with one tap → sequential POSTs to `/api/log/food/item`.
+- ✓ indicator on chips already present in today's log.
+- Auto-tab default: Yesterday (if items) → Frequent → Saved. Resets on date change.
+- 14 pre-build bugs documented in `archive/specs/food-quickadd-bugs.md` — all mitigated.
+- New hook: `src/hooks/useQuickAdd.ts` — 8-day fetch, Brisbane-safe date offsets.
+- Mockup: `archive/food-quickadd-mockup.html`
+- Confirmed working on live site: chips, staging, confirm, ✓ indicator, Frequent frequency badges.
+
+## Previous Session (2026-03-17) — SplitProgressChart + category bug audit
 
 **New feature: SplitProgressChart** (commit: `1ce4087`)
 - Added to Trends between ProteinWeightChart and StrengthQualityChart

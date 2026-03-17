@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GOE — Goals Orbit Mockup</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0d0d0a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    padding: 40px 16px 80px;
+    font-family: 'Inter', sans-serif;
+  }
+  .phone {
+    width: 375px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .page-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 2px;
+    text-transform: uppercase; color: #7a7060;
+    margin-bottom: 4px;
+  }
+
+  /* ── Card shell ─────────────────────────────── */
+  .card {
+    background: #14130f;
+    border: 1px solid #222018;
+    border-radius: 20px;
+    overflow: hidden;
+  }
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .card-header:active { opacity: 0.8; }
+
+  .card-title {
+    font-size: 10px; font-weight: 600; letter-spacing: 1.5px;
+    text-transform: uppercase; color: #7a7060;
+  }
+  .card-header-right {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .on-track-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.5px;
+    text-transform: uppercase; color: #d4a04a;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .chevron {
+    width: 14px; height: 14px;
+    color: #7a7060;
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+  }
+  .chevron.open { transform: rotate(180deg); }
+
+  /* ── Card body (collapsible) ────────────────── */
+  .card-body {
+    overflow: hidden;
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.25s ease;
+    max-height: 800px;
+    opacity: 1;
+  }
+  .card-body.collapsed {
+    max-height: 0;
+    opacity: 0;
+  }
+  .card-body-inner {
+    padding: 0 20px 20px;
+  }
+
+  /* ── Canvas wrap ────────────────────────────── */
+  .canvas-wrap {
+    border-radius: 12px;
+    overflow: hidden;
+    line-height: 0;
+    width: 100%;
+  }
+  canvas {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  /* ── Legend ─────────────────────────────────── */
+  .legend {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 9px; font-weight: 600; letter-spacing: 0.8px;
+    text-transform: uppercase; color: #7a7060;
+  }
+  .ldot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── Summary rows ───────────────────────────── */
+  .summary-rows {
+    margin-top: 12px;
+    border-top: 1px solid #222018;
+  }
+  .summary-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 0;
+    border-bottom: 1px solid #1a1914;
+  }
+  .summary-row:last-child { border-bottom: none; }
+  .row-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .row-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 1px;
+    text-transform: uppercase; color: #7a7060;
+    flex: 1;
+    white-space: nowrap;
+  }
+  .row-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px; font-weight: 600;
+    color: #f0ece4;
+    text-align: right;
+  }
+  .row-gap {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 400;
+    min-width: 64px;
+    text-align: right;
+  }
+  .row-gap.positive { color: #e8c47a; }
+  .row-gap.negative { color: #c47a6a; }
+  .row-gap.neutral  { color: #7a7060; }
+
+  /* ── Fake sibling card (for context) ────────── */
+  .fake-card {
+    background: #14130f;
+    border: 1px solid #222018;
+    border-radius: 20px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .fake-card-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 1.5px;
+    text-transform: uppercase; color: #7a7060;
+  }
+  .fake-card-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px; font-weight: 600; color: #d4a04a;
+  }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="page-label">Goals Orbit — Mockup · 17 Mar 2026</div>
+
+  <!-- Fake card above for context -->
+  <div class="fake-card">
+    <span class="fake-card-label">Readiness</span>
+    <span class="fake-card-value">72</span>
+  </div>
+
+  <!-- Goals Orbit Card -->
+  <div class="card" id="orbitCard">
+    <div class="card-header" id="cardHeader">
+      <span class="card-title">Goals Orbit</span>
+      <div class="card-header-right">
+        <span class="on-track-label" id="onTrackLabel">1 of 4 on track</span>
+        <svg class="chevron open" id="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </div>
+    </div>
+
+    <div class="card-body" id="cardBody">
+      <div class="card-body-inner">
+
+        <div class="canvas-wrap">
+          <canvas id="orbitCanvas" width="308" height="308"></canvas>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend" id="legend"></div>
+
+        <!-- Summary rows -->
+        <div class="summary-rows" id="summaryRows"></div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Fake Momentum card below for context -->
+  <div class="fake-card">
+    <span class="fake-card-label">Momentum</span>
+    <span class="fake-card-value">84</span>
+  </div>
+</div>
+
+<script>
+// ── Real today data (2026-03-17) ──────────────────────────────────────
+const TODAY = {
+  protein_g:   198.0,
+  sleep_hrs:   6.45,
+  water_ml:    2250.0,
+  calories_in: 1544.0,
+};
+
+const GOALS = {
+  protein_g:   { min: 175.0, max: 190.0, label: 'Protein',  unit: 'g',  unitDisplay: 'g' },
+  sleep_hrs:   { min: 6.75,  max: 8.0,   label: 'Sleep',    unit: 'hrs',unitDisplay: 'hr' },
+  water_ml:    { min: 2400,  max: 2800,   label: 'Water',    unit: 'ml', unitDisplay: 'L' },
+  calories_in: { min: 2000,  max: 2400,   label: 'Calories', unit: 'kcal',unitDisplay: 'cal' },
+};
+
+// ── Config ────────────────────────────────────────────────────────────
+const MAX_R = 150;
+const STOPS = [
+  { t:0.00, r:255, g:238, b:160 },
+  { t:0.07, r:255, g:218, b:125 },
+  { t:0.15, r:242, g:192, b: 88 },
+  { t:0.25, r:228, g:165, b: 60 },
+  { t:0.36, r:212, g:138, b: 50 },
+  { t:0.48, r:192, g:108, b: 58 },
+  { t:0.59, r:168, g: 82, b: 46 },
+  { t:0.70, r:140, g: 62, b: 36 },
+  { t:0.79, r:108, g: 44, b: 26 },
+  { t:0.87, r: 76, g: 30, b: 18 },
+  { t:0.93, r: 50, g: 19, b: 11 },
+  { t:1.00, r: 28, g: 10, b:  5 },
+];
+
+const SIGNAL_DEFS = [
+  { key: 'protein_g',   speed: 0.048, phase: 0              },
+  { key: 'sleep_hrs',   speed: 0.031, phase: Math.PI * 0.65 },
+  { key: 'water_ml',    speed: 0.020, phase: Math.PI * 1.25 },
+  { key: 'calories_in', speed: 0.013, phase: Math.PI * 1.82 },
+];
+
+// ── Continuous orbit radius from gap ─────────────────────────────────
+// gap = (today - targetMid) / targetMid
+// +0.25 (well above target) → rx = RX_MIN (innermost, warmest)
+// -0.50 (well below target) → rx = RX_MAX (outermost, darkest)
+const RX_MIN = 22;
+const RX_MAX = 142;
+const RY_RATIO = 0.704;   // maintains ellipse aspect from original ring defs
+const GAP_MAX  =  0.25;   // clamp ceiling
+const GAP_MIN  = -0.50;   // clamp floor
+
+function gapToRx(gap) {
+  const clamped = Math.max(GAP_MIN, Math.min(GAP_MAX, gap));
+  const t = (clamped - GAP_MAX) / (GAP_MIN - GAP_MAX); // 0=inner, 1=outer
+  return RX_MIN + t * (RX_MAX - RX_MIN);
+}
+
+function computeSignalData() {
+  return SIGNAL_DEFS.map(def => {
+    const g   = GOALS[def.key];
+    const val = TODAY[def.key];
+    const mid = (g.min + g.max) / 2;
+    const gap = (val - mid) / mid;
+    const rx  = gapToRx(gap);
+    const ry  = rx * RY_RATIO;
+    const rMid = (rx + ry) / 2;
+    return { ...def, ...g, val, gap, rx, ry, rMid };
+  });
+}
+
+const signals = computeSignalData();
+
+// On-track: within 8% of target midpoint (either direction)
+const onTrackCount = signals.filter(s => s.gap >= -0.08 && s.gap <= 0.15).length;
+document.getElementById('onTrackLabel').textContent = `${onTrackCount} of 4 on track`;
+
+// ── Colour helpers ────────────────────────────────────────────────────
+function gradColorRaw(r) {
+  const t = Math.min(Math.max(r / MAX_R, 0), 1);
+  for (let i = 0; i < STOPS.length - 1; i++) {
+    const a = STOPS[i], b = STOPS[i+1];
+    if (t >= a.t && t <= b.t) {
+      const f = (t - a.t) / (b.t - a.t);
+      return [~~(a.r+(b.r-a.r)*f), ~~(a.g+(b.g-a.g)*f), ~~(a.b+(b.b-a.b)*f)];
+    }
+  }
+  const s = STOPS[STOPS.length-1]; return [s.r, s.g, s.b];
+}
+
+function gradColor(r, alpha) {
+  const [rv, gv, bv] = gradColorRaw(r);
+  return `rgba(${rv},${gv},${bv},${alpha})`;
+}
+
+function rgbStr(col, alpha) {
+  return `rgba(${col[0]},${col[1]},${col[2]},${alpha})`;
+}
+
+function hexFromRaw(col) {
+  return `#${col.map(c => c.toString(16).padStart(2,'0')).join('')}`;
+}
+
+// ── Canvas drawing ────────────────────────────────────────────────────
+const canvas = document.getElementById('orbitCanvas');
+const ctx    = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const cx = W / 2, cy = H / 2;
+
+function drawBG() {
+  ctx.fillStyle = '#040302';
+  ctx.fillRect(0, 0, W, H);
+
+  // 3-pass radial gradient
+  [MAX_R*0.98, MAX_R*0.60, MAX_R*0.28].forEach((r, pass) => {
+    const boosts = [1.0, 1.4, 2.0];
+    const boost  = boosts[pass];
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    STOPS.forEach(s => {
+      const base = s.t < 0.12 ? 0.55 : s.t < 0.35 ? 0.32 : s.t < 0.60 ? 0.16 : s.t < 0.80 ? 0.08 : 0.02;
+      g.addColorStop(s.t, `rgba(${s.r},${s.g},${s.b},${Math.min(base*boost,0.75)})`);
+    });
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
+    ctx.fillStyle = g; ctx.fill();
+  });
+
+  // Stars
+  [[.07,.11],[.88,.17],[.73,.05],[.13,.82],[.94,.63],[.44,.03],
+   [.03,.54],[.61,.95],[.97,.39],[.28,.08],[.79,.88],[.50,.16],
+   [.18,.43],[.85,.55],[.38,.78],[.55,.70],[.22,.60],[.66,.33]
+  ].forEach(([sx,sy], i) => {
+    ctx.beginPath();
+    ctx.arc(sx*W, sy*H, 0.3+(i%3)*0.28, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(240,225,200,${0.05+(i%4)*0.05})`;
+    ctx.fill();
+  });
+}
+
+function drawTrail(sig, time) {
+  const TRAIL_ARC = Math.PI * 1.6;
+  const N = 150;
+  const currentAngle = time * sig.speed + sig.phase;
+  ctx.save(); ctx.lineCap = 'round';
+  for (let i = 0; i < N; i++) {
+    const a0 = currentAngle - ((N-i)   / N) * TRAIL_ARC;
+    const a1 = currentAngle - ((N-i-1) / N) * TRAIL_ARC;
+    const p0 = { x: cx + Math.cos(a0)*sig.rx, y: cy + Math.sin(a0)*sig.ry };
+    const p1 = { x: cx + Math.cos(a1)*sig.rx, y: cy + Math.sin(a1)*sig.ry };
+    const alpha = Math.pow((i+1)/N, 1.1) * 0.85;
+    ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y);
+    ctx.strokeStyle = gradColor(sig.rMid, alpha);
+    ctx.lineWidth = 2; ctx.stroke();
+  }
+  ctx.restore();
+  return currentAngle;
+}
+
+function drawCrosshair(sig, angle) {
+  const x = cx + Math.cos(angle) * sig.rx;
+  const y = cy + Math.sin(angle) * sig.ry;
+  const col     = gradColorRaw(sig.rMid);
+  const lighter = col.map(c => Math.min(255, c + 70));
+
+  // Glow
+  const glow = ctx.createRadialGradient(x, y, 0, x, y, 14);
+  glow.addColorStop(0, rgbStr(col, 0.20));
+  glow.addColorStop(1, 'transparent');
+  ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI*2);
+  ctx.fillStyle = glow; ctx.fill();
+
+  // Outer ring
+  ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI*2);
+  ctx.strokeStyle = rgbStr(col, 0.70);
+  ctx.lineWidth = 1.2; ctx.stroke();
+
+  // Inner ring
+  ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI*2);
+  ctx.strokeStyle = rgbStr(lighter, 0.45);
+  ctx.lineWidth = 0.75; ctx.stroke();
+
+  // Centre pinpoint
+  ctx.beginPath(); ctx.arc(x, y, 1.8, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(255,248,220,0.95)';
+  ctx.fill();
+}
+
+function drawCentre() {
+  [[65,0.05],[44,0.10],[28,0.22],[14,0.45],[7,0.80]].forEach(([r,a]) => {
+    const g = ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+    g.addColorStop(0,`rgba(255,232,152,${a})`);
+    g.addColorStop(0.5,`rgba(252,200,100,${a*0.4})`);
+    g.addColorStop(1,'transparent');
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fillStyle=g; ctx.fill();
+  });
+  ctx.beginPath(); ctx.arc(cx,cy,4.5,0,Math.PI*2);
+  const cg = ctx.createRadialGradient(cx,cy,0,cx,cy,4.5);
+  cg.addColorStop(0,'#ffffff'); cg.addColorStop(0.5,'#fff8d0'); cg.addColorStop(1,'#ffd878');
+  ctx.fillStyle=cg; ctx.fill();
+  ctx.font = "600 5.5px 'JetBrains Mono',monospace";
+  ctx.fillStyle = 'rgba(255,222,140,0.52)';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('GOE', cx, cy+0.5);
+}
+
+let animTime = 0;
+let animFrame = null;
+let isVisible = true;
+
+function frame() {
+  if (!isVisible) { animFrame = null; return; }
+  animTime += 1;
+  ctx.clearRect(0, 0, W, H);
+  drawBG();
+  signals.forEach(sig => {
+    drawTrail(sig, animTime);
+  });
+  signals.forEach(sig => {
+    const angle = animTime * sig.speed + sig.phase;
+    drawCrosshair(sig, angle);
+  });
+  drawCentre();
+  animFrame = requestAnimationFrame(frame);
+}
+
+// IntersectionObserver — pause when not visible
+const observer = new IntersectionObserver(entries => {
+  isVisible = entries[0].isIntersecting;
+  if (isVisible && !animFrame) {
+    animFrame = requestAnimationFrame(frame);
+  }
+}, { threshold: 0.1 });
+observer.observe(canvas);
+
+animFrame = requestAnimationFrame(frame);
+
+// ── Legend ─────────────────────────────────────────────────────────────
+const legendEl = document.getElementById('legend');
+signals.forEach(sig => {
+  const col = gradColorRaw(sig.rMid);
+  const hex = hexFromRaw(col);
+  legendEl.innerHTML += `
+    <div class="legend-item">
+      <div class="ldot" style="background:${hex}"></div>
+      ${sig.label}
+    </div>`;
+});
+
+// ── Summary rows ──────────────────────────────────────────────────────
+function formatValue(val, key) {
+  if (key === 'water_ml') return (val / 1000).toFixed(2) + 'L';
+  if (key === 'sleep_hrs') return val.toFixed(1) + 'hr';
+  if (key === 'protein_g') return Math.round(val) + 'g';
+  if (key === 'calories_in') return Math.round(val).toLocaleString() + ' cal';
+  return val;
+}
+
+function formatGap(gap, val, mid, key) {
+  const diff = val - mid;
+  const abs  = Math.abs(diff);
+  let str;
+  if (key === 'water_ml') str = (abs / 1000).toFixed(2) + 'L';
+  else if (key === 'sleep_hrs') str = abs.toFixed(1) + 'hr';
+  else if (key === 'protein_g') str = Math.round(abs) + 'g';
+  else if (key === 'calories_in') str = Math.round(abs).toLocaleString() + ' cal';
+  else str = abs;
+  return (diff >= 0 ? '+' : '−') + str;
+}
+
+function gapClass(gap) {
+  if (Math.abs(gap) <= 0.05) return 'neutral';
+  return gap >= 0 ? 'positive' : 'negative';
+}
+
+const rowsEl = document.getElementById('summaryRows');
+signals.forEach(sig => {
+  const col  = gradColorRaw(sig.rMid);
+  const hex  = hexFromRaw(col);
+  const mid  = (sig.min + sig.max) / 2;
+  const gapL = formatGap(sig.gap, sig.val, mid, sig.key);
+  const cls  = gapClass(sig.gap);
+  rowsEl.innerHTML += `
+    <div class="summary-row">
+      <div class="row-dot" style="background:${hex}"></div>
+      <span class="row-label">${sig.label}</span>
+      <span class="row-value">${formatValue(sig.val, sig.key)}</span>
+      <span class="row-gap ${cls}">${gapL}</span>
+    </div>`;
+});
+
+// ── Collapse / expand ─────────────────────────────────────────────────
+const header  = document.getElementById('cardHeader');
+const body    = document.getElementById('cardBody');
+const chevron = document.getElementById('chevron');
+
+header.addEventListener('click', () => {
+  const collapsed = body.classList.toggle('collapsed');
+  chevron.classList.toggle('open', !collapsed);
+});
+</script>
+</body>
+</html>

@@ -24,6 +24,7 @@ import QuickStatsRow from "@/components/dashboard/QuickStatsRow";
 import ActivityChart from "@/components/dashboard/ActivityChart";
 import CalorieBalanceChart from "@/components/dashboard/CalorieBalanceChart";
 import ReadinessCard from "@/components/dashboard/ReadinessCard";
+import DuneGoalsCard from "@/components/dashboard/DuneGoals";
 import MoodEnergyChart from "@/components/dashboard/MoodEnergyChart";
 import WaterNutritionChart from "@/components/dashboard/WaterNutritionChart";
 import NutritionTargetChart from "@/components/dashboard/NutritionTargetChart";
@@ -211,6 +212,9 @@ export default function DashboardPage() {
           />
         );
       })()}
+
+      {/* Goals dune */}
+      <DuneGoalsCard />
 
       {/* Momentum */}
       {momentum.loading ? (

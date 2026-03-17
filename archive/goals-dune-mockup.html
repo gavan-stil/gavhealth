@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GOE — Goals Dune</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0d0d0a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 40px 16px 80px;
+    font-family: 'Inter', sans-serif;
+    gap: 14px;
+  }
+  .page-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 2px;
+    text-transform: uppercase; color: #7a7060;
+    align-self: flex-start;
+    margin-left: calc(50% - 187px);
+  }
+  .phone { width: 375px; display: flex; flex-direction: column; gap: 14px; }
+
+  /* ── Fake neighbour cards ────────────────────── */
+  .fake-card {
+    background: #14130f; border: 1px solid #222018; border-radius: 20px;
+    padding: 16px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .fake-label { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: #7a7060; }
+  .fake-value { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 600; color: #d4a04a; }
+
+  /* ── Goals card ─────────────────────────────── */
+  .card { background: #14130f; border: 1px solid #222018; border-radius: 20px; overflow: hidden; }
+
+  .card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px;
+    cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  .card-header:active { opacity: 0.75; }
+  .card-title { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: #7a7060; }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .on-track { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; color: #d4a04a; }
+  .chevron {
+    width: 14px; height: 14px; color: #7a7060;
+    transition: transform 0.25s ease; flex-shrink: 0;
+  }
+  .chevron.open { transform: rotate(180deg); }
+
+  /* ── Collapsible body ───────────────────────── */
+  .card-body {
+    overflow: hidden;
+    transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease;
+    max-height: 600px; opacity: 1;
+  }
+  .card-body.collapsed { max-height: 0; opacity: 0; }
+
+  /* ── Canvas ─────────────────────────────────── */
+  .canvas-wrap { line-height: 0; }
+  canvas { display: block; width: 100%; height: auto; }
+
+  /* ── Summary rows ───────────────────────────── */
+  .summary-rows { border-top: 1px solid #1a1914; }
+  .summary-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 18px;
+    border-bottom: 1px solid #161510;
+  }
+  .summary-row:last-child { border-bottom: none; }
+  .row-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .row-label { font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #7a7060; flex: 1; }
+  .row-value { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; color: #f0ece4; }
+  .row-gap   { font-family: 'JetBrains Mono', monospace; font-size: 11px; min-width: 60px; text-align: right; }
+  .row-gap.pos { color: #e8c47a; }
+  .row-gap.neg { color: #c47a6a; }
+  .row-gap.neu { color: #7a7060; }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="page-label">Goals Dune — Mockup · 17 Mar 2026</div>
+
+  <div class="fake-card">
+    <span class="fake-label">Readiness</span>
+    <span class="fake-value">72</span>
+  </div>
+
+  <!-- Goals card -->
+  <div class="card" id="card">
+    <div class="card-header" id="header">
+      <span class="card-title">Goals</span>
+      <div class="header-right">
+        <span class="on-track" id="onTrack">1 of 4 on track</span>
+        <svg class="chevron open" id="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </div>
+    </div>
+
+    <div class="card-body" id="body">
+      <div class="canvas-wrap">
+        <canvas id="c" width="335" height="260"></canvas>
+      </div>
+      <div class="summary-rows" id="rows"></div>
+    </div>
+  </div>
+
+  <div class="fake-card">
+    <span class="fake-label">Momentum</span>
+    <span class="fake-value">84</span>
+  </div>
+</div>
+
+<script>
+// ── Real today data (2026-03-17) ──────────────────────────────────────
+const TODAY_VALS = {
+  protein_g:   198.0,
+  sleep_hrs:   6.45,
+  water_ml:    2250.0,
+  calories_in: 1544.0,
+};
+
+const GOALS = {
+  protein_g:   { min: 175.0, max: 190.0 },
+  sleep_hrs:   { min: 6.75,  max: 8.0   },
+  water_ml:    { min: 2400,  max: 2800  },
+  calories_in: { min: 2000,  max: 2400  },
+};
+
+// ── Signal definitions ────────────────────────────────────────────────
+// x = horizontal position on canvas (0–1)
+// shimmerPhase = each dot oscillates independently
+const SIGNAL_DEFS = [
+  { key: 'protein_g',   label: 'Protein',  unitDisplay: 'g',   x: 0.20, shimmerPhase: 0.0 },
+  { key: 'calories_in', label: 'Calories', unitDisplay: 'cal', x: 0.42, shimmerPhase: 1.8 },
+  { key: 'sleep_hrs',   label: 'Sleep',    unitDisplay: 'hr',  x: 0.63, shimmerPhase: 0.9 },
+  { key: 'water_ml',    label: 'Water',    unitDisplay: 'L',   x: 0.82, shimmerPhase: 2.6 },
+];
+
+// gap → yFactor: 0 = right at crest (on/exceeding), 1 = far down dune face (off track)
+// gap clamp: +0.25 (exceeding) → 0.02, -0.50 (far off) → 0.85
+function gapToYFactor(gap) {
+  const clamped = Math.max(-0.50, Math.min(0.25, gap));
+  const t = (clamped - 0.25) / (-0.75); // 0=exceeding, 1=far off
+  return 0.02 + t * 0.83;
+}
+
+function computeSignals() {
+  return SIGNAL_DEFS.map(def => {
+    const g    = GOALS[def.key];
+    const val  = TODAY_VALS[def.key];
+    const mid  = (g.min + g.max) / 2;
+    const gap  = (val - mid) / mid;
+    const yF   = gapToYFactor(gap);
+    return { ...def, val, gap, mid, yFactor: yF };
+  });
+}
+
+const signals = computeSignals();
+const onTrackCount = signals.filter(s => s.gap >= -0.08 && s.gap <= 0.15).length;
+document.getElementById('onTrack').textContent = `${onTrackCount} of 4 on track`;
+
+// ── Canvas setup ──────────────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// ── Dune crest curves ─────────────────────────────────────────────────
+// The "crest zone" sits in the top ~20% of the canvas.
+// Below it is the dune face where signals live.
+function getCrestY(x, phase) {
+  const t = x / W;
+  return H * (
+    0.18
+    + 0.09 * Math.sin(t * Math.PI * 1.0 + 0.3)
+    - 0.05 * Math.sin(t * Math.PI * 2.2 + 0.8)
+    + 0.025 * Math.sin(t * Math.PI * 4.0 + 1.2)
+    + 0.012 * Math.sin(phase * 0.25 + t * 6.0)
+  );
+}
+function getCrestY2(x, phase) {
+  const t = x / W;
+  return H * (
+    0.06
+    + 0.065 * Math.sin(t * Math.PI * 1.0 - 0.4)
+    - 0.035 * Math.sin(t * Math.PI * 2.0 + 1.2)
+    + 0.018 * Math.sin(t * Math.PI * 3.5 + 0.5)
+    + 0.008 * Math.sin(phase * 0.18 + t * 5.0 + 1.0)
+  );
+}
+function getCrestY3(x, phase) {
+  const t = x / W;
+  return H * (
+    0.02
+    + 0.028 * Math.sin(t * Math.PI * 1.2 - 0.8)
+    + 0.006 * Math.sin(phase * 0.12 + t * 4.0 + 2.0)
+  );
+}
+
+// ── Particles (stream UPWARD toward crest) ────────────────────────────
+const PARTICLE_COUNT = 300;
+const particles = [];
+
+function makeParticle(scattered) {
+  return {
+    x:          Math.random() * W,
+    yOffset:    scattered ? 15 + Math.random() * H * 0.80 : H * 0.45 + Math.random() * H * 0.35,
+    vy:         -(0.35 + Math.random() * 1.5),   // negative = upward toward crest
+    vx:          0.08 + Math.random() * 0.35,    // slight rightward drift (wind)
+    size:        0.3 + Math.random() * 1.3,
+    alpha:       0.12 + Math.random() * 0.70,
+    life:        scattered ? Math.random() : 0,
+    lifeSpeed:   0.003 + Math.random() * 0.006,
+  };
+}
+
+function initParticles() {
+  for (let i = 0; i < PARTICLE_COUNT; i++) particles.push(makeParticle(true));
+}
+
+function updateParticle(p) {
+  p.life     += p.lifeSpeed;
+  p.yOffset  += p.vy;    // moves upward (decreases, approaching 0 = crest)
+  p.x        += p.vx;
+
+  // Respawn when reaching crest, going off-screen, or life ends
+  const tooHigh  = p.yOffset <= -8;
+  const tooRight = p.x > W + 10;
+  if (tooHigh || tooRight || p.life > 1) {
+    Object.assign(p, makeParticle(false));
+    p.x = Math.random() * W;
+  }
+}
+
+function drawParticles(phase) {
+  particles.forEach(p => {
+    const crestY = getCrestY(p.x, phase);
+    const py = crestY + p.yOffset;
+    if (py < 0 || py > H || p.x < 0 || p.x > W) return;
+
+    // Warmth grows as particle rises toward crest (yOffset → 0)
+    const distFade = Math.max(0, 1 - p.yOffset / (H * 0.60));
+    const lifeFade = Math.sin(Math.min(p.life, 1) * Math.PI);
+    const alpha    = p.alpha * lifeFade * (0.15 + distFade * 0.85);
+
+    const warmth = distFade;
+    const r = Math.round(75 + warmth * 180);
+    const g = Math.round(28 + warmth * 115);
+    const b = Math.round(5  + warmth * 30);
+
+    ctx.beginPath();
+    ctx.arc(p.x, py, p.size, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+    ctx.fill();
+  });
+}
+
+// ── Draw dune landscape ───────────────────────────────────────────────
+function drawDunes(phase) {
+  // Sky / background
+  const sky = ctx.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0,   '#100a05');
+  sky.addColorStop(0.3, '#1c1008');
+  sky.addColorStop(1,   '#090503');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, H);
+
+  // Ridge 3 — faintest, highest
+  ctx.beginPath();
+  for (let x = 0; x <= W; x += 2) {
+    const y = getCrestY3(x, phase);
+    x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.lineTo(W, 0); ctx.lineTo(0, 0); ctx.closePath();
+  ctx.fillStyle = 'rgba(50,18,6,0.4)'; ctx.fill();
+  ctx.beginPath();
+  for (let x = 0; x <= W; x += 2) {
+    const y = getCrestY3(x, phase);
+    x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = 'rgba(140,55,15,0.18)'; ctx.lineWidth = 0.8; ctx.stroke();
+
+  // Ridge 2
+  ctx.beginPath();
+  for (let x = 0; x <= W; x += 2) {
+    const y = getCrestY2(x, phase);
+    x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+  const g2 = ctx.createLinearGradient(0, 0, 0, H * 0.5);
+  g2.addColorStop(0,   'rgba(110,42,10,0.0)');
+  g2.addColorStop(0.3, 'rgba(100,38,8,0.55)');
+  g2.addColorStop(1,   'rgba(32,10,2,0.90)');
+  ctx.fillStyle = g2; ctx.fill();
+  ctx.beginPath();
+  for (let x = 0; x <= W; x += 2) {
+    const y = getCrestY2(x, phase);
+    x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = 'rgba(185,78,22,0.28)'; ctx.lineWidth = 1.0; ctx.stroke();
+
+  // Main dune face
+  ctx.beginPath();
+  for (let x = 0; x <= W; x++) {
+    const y = getCrestY(x, phase);
+    x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+  const gFace = ctx.createLinearGradient(0, H * 0.1, 0, H);
+  gFace.addColorStop(0.00, '#c85e18');
+  gFace.addColorStop(0.10, '#a84010');
+  gFace.addColorStop(0.28, '#7a2a08');
+  gFace.addColorStop(0.52, '#4a1404');
+  gFace.addColorStop(0.78, '#2c0c02');
+  gFace.addColorStop(1.00, '#160601');
+  ctx.fillStyle = gFace; ctx.fill();
+
+  // Crest glow — outer bloom
+  ctx.beginPath();
+  for (let x = 0; x <= W; x++) {
+    const y = getCrestY(x, phase);
+    x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = 'rgba(255,148,42,0.10)'; ctx.lineWidth = 12; ctx.stroke();
+
+  // Crest glow — mid
+  ctx.beginPath();
+  for (let x = 0; x <= W; x++) {
+    const y = getCrestY(x, phase);
+    x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = 'rgba(255,132,35,0.28)'; ctx.lineWidth = 4; ctx.stroke();
+
+  // Crest hot line
+  ctx.beginPath();
+  for (let x = 0; x <= W; x++) {
+    const y = getCrestY(x, phase);
+    x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = 'rgba(255,200,88,0.62)'; ctx.lineWidth = 1.2; ctx.stroke();
+
+  // Wind striations on dune face
+  for (let i = 0; i < 14; i++) {
+    const yFrac = 0.12 + i * 0.06;
+    ctx.beginPath();
+    let started = false;
+    for (let x = 0; x <= W; x += 3) {
+      const cY = getCrestY(x, phase);
+      const y = cY + yFrac * (H - cY) + Math.sin(x * 0.06 + i * 1.5) * 2;
+      if (y < H - 8) {
+        if (!started) { ctx.moveTo(x, y); started = true; }
+        else ctx.lineTo(x, y);
+      } else started = false;
+    }
+    const a = 0.025 + (i / 14) * 0.045;
+    ctx.strokeStyle = `rgba(55,18,4,${a})`; ctx.lineWidth = 0.5; ctx.stroke();
+  }
+}
+
+// ── Crosshair dot with label ──────────────────────────────────────────
+function warmthFromYFactor(yF) {
+  return Math.max(0, 1 - yF * 1.1); // 1=at crest (warm), 0=far below (cool)
+}
+
+function signalColor(yF) {
+  const w = warmthFromYFactor(yF);
+  return [
+    Math.round(85  + w * 168),
+    Math.round(30  + w * 108),
+    Math.round(8   + w * 28),
+  ];
+}
+
+function drawCrosshair(px, py, yF) {
+  const col     = signalColor(yF);
+  const lighter = col.map(c => Math.min(255, c + 60));
+  const alpha   = 0.5 + warmthFromYFactor(yF) * 0.5;
+
+  // Glow behind
+  const glowR = 14 + warmthFromYFactor(yF) * 10;
+  const glow  = ctx.createRadialGradient(px, py, 0, px, py, glowR);
+  glow.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${0.30 * alpha})`);
+  glow.addColorStop(1, 'transparent');
+  ctx.beginPath(); ctx.arc(px, py, glowR, 0, Math.PI * 2);
+  ctx.fillStyle = glow; ctx.fill();
+
+  // Outer ring
+  ctx.beginPath(); ctx.arc(px, py, 9, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},${0.65 * alpha + 0.15})`;
+  ctx.lineWidth = 1.2; ctx.stroke();
+
+  // Inner ring
+  ctx.beginPath(); ctx.arc(px, py, 5.5, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(${lighter[0]},${lighter[1]},${lighter[2]},${0.4 * alpha + 0.1})`;
+  ctx.lineWidth = 0.75; ctx.stroke();
+
+  // Pinpoint
+  ctx.beginPath(); ctx.arc(px, py, 1.8, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(255,245,210,${0.55 + warmthFromYFactor(yF) * 0.45})`;
+  ctx.fill();
+}
+
+function formatVal(val, key) {
+  if (key === 'water_ml')    return (val / 1000).toFixed(2) + 'L';
+  if (key === 'sleep_hrs')   return val.toFixed(1) + 'hr';
+  if (key === 'protein_g')   return Math.round(val) + 'g';
+  if (key === 'calories_in') return Math.round(val) + ' cal';
+  return val;
+}
+
+function formatGap(gap, val, mid, key) {
+  const diff = val - mid;
+  const abs  = Math.abs(diff);
+  let str;
+  if (key === 'water_ml')    str = (abs / 1000).toFixed(2) + 'L';
+  else if (key === 'sleep_hrs')   str = abs.toFixed(1) + 'hr';
+  else if (key === 'protein_g')   str = Math.round(abs) + 'g';
+  else if (key === 'calories_in') str = Math.round(abs) + ' cal';
+  else str = abs;
+  return (diff >= 0 ? '+' : '−') + str;
+}
+
+function drawSignalLabel(px, py, sig) {
+  const col   = signalColor(sig.yFactor);
+  const alpha = 0.45 + warmthFromYFactor(sig.yFactor) * 0.55;
+
+  // Label to right if x < 58% of canvas, else to left
+  const goLeft = sig.x > 0.58;
+  const labelX = goLeft ? px - 14 : px + 14;
+  ctx.textAlign = goLeft ? 'right' : 'left';
+
+  // Signal name
+  ctx.font = `600 8px 'Inter', sans-serif`;
+  ctx.fillStyle = `rgba(${col[0]+30},${col[1]+24},${col[2]+8},${alpha * 0.80})`;
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(sig.label.toUpperCase(), labelX, py - 1);
+
+  // Value
+  ctx.font = `600 11px 'JetBrains Mono', monospace`;
+  ctx.fillStyle = `rgba(255,232,175,${alpha})`;
+  ctx.textBaseline = 'top';
+  ctx.fillText(formatVal(sig.val, sig.key), labelX, py + 2);
+
+  // Gap
+  const gapStr = formatGap(sig.gap, sig.val, sig.mid, sig.key);
+  const isPos  = sig.gap >= 0;
+  ctx.font = `400 9px 'JetBrains Mono', monospace`;
+  ctx.fillStyle = isPos
+    ? `rgba(232,196,120,${alpha * 0.85})`
+    : `rgba(180,95,55,${alpha * 0.85})`;
+  ctx.textBaseline = 'top';
+  ctx.fillText(gapStr, labelX, py + 14);
+}
+
+// ── Main render loop ──────────────────────────────────────────────────
+initParticles();
+let phase = 0;
+let time  = 0;
+let animFrame = null;
+let isVisible = true;
+
+function frame() {
+  if (!isVisible) { animFrame = null; return; }
+  phase += 0.007;
+  time  += 1;
+
+  ctx.clearRect(0, 0, W, H);
+  drawDunes(phase);
+
+  particles.forEach(p => updateParticle(p));
+  drawParticles(phase);
+
+  // Draw crosshairs (all dots first, then all labels, so labels render on top)
+  signals.forEach(sig => {
+    const px      = sig.x * W;
+    const crestY  = getCrestY(px, phase);
+    const availH  = H - crestY - 16;
+    const shimmer = Math.sin(time * 0.035 + sig.shimmerPhase) * 1.8;
+    const py      = crestY + 14 + sig.yFactor * availH * 0.88 + shimmer;
+    sig._px = px; sig._py = py; // store for label pass
+    drawCrosshair(px, py, sig.yFactor);
+  });
+
+  signals.forEach(sig => {
+    drawSignalLabel(sig._px, sig._py, sig);
+  });
+
+  animFrame = requestAnimationFrame(frame);
+}
+
+// IntersectionObserver — pause when off-screen
+const observer = new IntersectionObserver(entries => {
+  isVisible = entries[0].isIntersecting;
+  if (isVisible && !animFrame) animFrame = requestAnimationFrame(frame);
+}, { threshold: 0.1 });
+observer.observe(canvas);
+
+animFrame = requestAnimationFrame(frame);
+
+// ── Summary rows ──────────────────────────────────────────────────────
+const rowsEl = document.getElementById('rows');
+signals.forEach(sig => {
+  const col     = signalColor(sig.yFactor);
+  const hex     = '#' + col.map(c => c.toString(16).padStart(2,'0')).join('');
+  const gapStr  = formatGap(sig.gap, sig.val, sig.mid, sig.key);
+  const isPos   = sig.gap >= 0;
+  const cls     = Math.abs(sig.gap) <= 0.05 ? 'neu' : isPos ? 'pos' : 'neg';
+  rowsEl.innerHTML += `
+    <div class="summary-row">
+      <div class="row-dot" style="background:${hex}"></div>
+      <span class="row-label">${sig.label}</span>
+      <span class="row-value">${formatVal(sig.val, sig.key)}</span>
+      <span class="row-gap ${cls}">${gapStr}</span>
+    </div>`;
+});
+
+// ── Collapse / expand ─────────────────────────────────────────────────
+const hdr     = document.getElementById('header');
+const body    = document.getElementById('body');
+const chevron = document.getElementById('chevron');
+
+hdr.addEventListener('click', () => {
+  const isCollapsed = body.classList.toggle('collapsed');
+  chevron.classList.toggle('open', !isCollapsed);
+});
+</script>
+</body>
+</html>
