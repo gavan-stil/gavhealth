@@ -225,8 +225,22 @@ export default function DuneCanvas({ signals }: Props) {
       ctx.fill();
     }
 
+    // ── Stem line from dot to label when nudged ──────────────────────
+    function drawStem(px: number, dotPy: number, labelPy: number, yFactor: number) {
+      if (Math.abs(dotPy - labelPy) < 5) return;
+      const [r, g, b] = signalColour(yFactor);
+      const warmth = Math.max(0, 1 - yFactor * 1.1);
+      ctx.beginPath();
+      ctx.moveTo(px, dotPy + (labelPy > dotPy ? 11 : -11));
+      ctx.lineTo(px, labelPy + (labelPy > dotPy ? -4 : 4));
+      ctx.strokeStyle = `rgba(${r},${g},${b},${0.20 + warmth * 0.20})`;
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    }
+
     // ── Label (beside crosshair, left or right based on x) ───────────
-    function drawLabel(px: number, py: number, sig: RenderSignal) {
+    // labelPy is the collision-resolved anchor; dotPy is the true dot position
+    function drawLabel(px: number, dotPy: number, labelPy: number, sig: RenderSignal) {
       const [r, g, b] = signalColour(sig.yFactor);
       const warmth     = Math.max(0, 1 - sig.yFactor * 1.1);
       const labelAlpha = 0.45 + warmth * 0.45;
@@ -234,24 +248,60 @@ export default function DuneCanvas({ signals }: Props) {
       const lx         = goLeft ? px - 14 : px + 14;
       ctx.textAlign    = goLeft ? 'right' : 'left';
 
+      drawStem(px, dotPy, labelPy, sig.yFactor);
+
       ctx.font      = "600 8px 'Inter', sans-serif";
       ctx.fillStyle = `rgba(${Math.min(255, r + 40)},${Math.min(255, g + 30)},${Math.min(255, b + 10)},${labelAlpha * 0.80})`;
       ctx.textBaseline = 'bottom';
-      ctx.fillText(sig.label.toUpperCase(), lx, py - 1);
+      ctx.fillText(sig.label.toUpperCase(), lx, labelPy - 1);
 
       if (sig.data?.value != null) {
         ctx.font      = "600 11px 'JetBrains Mono', monospace";
         ctx.fillStyle = `rgba(255,232,175,${labelAlpha})`;
         ctx.textBaseline = 'top';
-        ctx.fillText(formatValue(sig.data.value, sig.key), lx, py + 2);
+        ctx.fillText(formatValue(sig.data.value, sig.key), lx, labelPy + 2);
 
         ctx.font      = "400 9px 'JetBrains Mono', monospace";
         ctx.fillStyle = sig.data.gap >= 0
           ? `rgba(232,196,122,${labelAlpha * 0.85})`
           : `rgba(180,100,60,${labelAlpha * 0.85})`;
         ctx.textBaseline = 'top';
-        ctx.fillText(formatGap(sig.data.gap, sig.key), lx, py + 14);
+        ctx.fillText(formatGap(sig.data.gap, sig.key), lx, labelPy + 14);
       }
+    }
+
+    // ── Resolve label y-positions to prevent overlap ──────────────────
+    // Dots stay at true py; labels are nudged apart with MIN_GAP spacing.
+    const MIN_LABEL_GAP = 36; // px between label anchors (covers name + value + gap)
+
+    function resolveLabels(
+      items: { px: number; py: number; sig: RenderSignal }[],
+    ): { px: number; py: number; labelPy: number; sig: RenderSignal }[] {
+      // Start with labelPy = true py, sorted by py
+      const sorted = items
+        .map(p => ({ ...p, labelPy: p.py }))
+        .sort((a, b) => a.py - b.py);
+
+      // Push apart — multiple passes for stability
+      for (let pass = 0; pass < 8; pass++) {
+        for (let i = 1; i < sorted.length; i++) {
+          const prev = sorted[i - 1];
+          const curr = sorted[i];
+          const gap  = curr.labelPy - prev.labelPy;
+          if (gap < MIN_LABEL_GAP) {
+            const push = (MIN_LABEL_GAP - gap) / 2;
+            prev.labelPy -= push;
+            curr.labelPy += push;
+          }
+        }
+      }
+
+      // Clamp within canvas (leave room for text above/below)
+      sorted.forEach(p => {
+        p.labelPy = Math.max(28, Math.min(H - 28, p.labelPy));
+      });
+
+      return sorted;
     }
 
     // ── Main render ──────────────────────────────────────────────────
@@ -263,6 +313,7 @@ export default function DuneCanvas({ signals }: Props) {
       drawMainDune();
       drawParticles();
 
+      // Compute true dot positions
       const positions: { px: number; py: number; sig: RenderSignal }[] = [];
       renderSignals.forEach(sig => {
         const px     = sig.x * W;
@@ -270,9 +321,14 @@ export default function DuneCanvas({ signals }: Props) {
         const availH = H - crestY - 24;
         const py     = crestY + 20 + sig.yFactor * availH * 0.82;
         positions.push({ px, py, sig });
-        drawCrosshair(px, py, sig.yFactor);
       });
-      positions.forEach(({ px, py, sig }) => drawLabel(px, py, sig));
+
+      // Draw dots at true positions
+      positions.forEach(({ px, py, sig }) => drawCrosshair(px, py, sig.yFactor));
+
+      // Resolve label positions and draw labels
+      const resolved = resolveLabels(positions);
+      resolved.forEach(({ px, py, labelPy, sig }) => drawLabel(px, py, labelPy, sig));
     }
 
     // ── Animation loop ───────────────────────────────────────────────
