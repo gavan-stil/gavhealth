@@ -897,12 +897,12 @@ async def strength_sessions(days: int = Query(default=90), db: AsyncSession = De
                 COUNT(st.id)                           AS total_sets,
                 COALESCE(SUM(st.reps), 0)              AS total_reps,
                 COALESCE(SUM(
-                    (COALESCE(st.bodyweight_at_session, 0) + COALESCE(st.weight_kg, 0))
+                    (CASE WHEN st.is_bodyweight THEN COALESCE(st.bodyweight_at_session, 0) ELSE 0 END + COALESCE(st.weight_kg, 0))
                     * st.reps
                 ), 0)                                  AS total_load_kg,
                 CASE WHEN COUNT(st.id) > 0 THEN
                     COALESCE(SUM(
-                        (COALESCE(st.bodyweight_at_session, 0) + COALESCE(st.weight_kg, 0))
+                        (CASE WHEN st.is_bodyweight THEN COALESCE(st.bodyweight_at_session, 0) ELSE 0 END + COALESCE(st.weight_kg, 0))
                         * st.reps
                     ), 0) / COUNT(st.id)
                 ELSE 0 END                             AS avg_load_per_set_kg,
@@ -1099,7 +1099,7 @@ async def exercise_history(
                 COUNT(st.id)                           AS sets,
                 SUM(st.reps)                           AS total_reps,
                 MAX(COALESCE(st.weight_kg, 0))         AS top_weight_kg,
-                SUM(st.reps * (COALESCE(st.bodyweight_at_session, 0) + COALESCE(st.weight_kg, 0))) AS session_volume_kg,
+                SUM(st.reps * (CASE WHEN st.is_bodyweight THEN COALESCE(st.bodyweight_at_session, 0) ELSE 0 END + COALESCE(st.weight_kg, 0))) AS session_volume_kg,
                 MAX(COALESCE(st.weight_kg, 0) * (1.0 + st.reps / 30.0)) AS estimated_1rm
             FROM strength_sessions ss
             JOIN strength_sets st ON st.session_id = ss.id
@@ -1141,7 +1141,7 @@ async def last_session_by_split(split: str, db: AsyncSession = Depends(get_db)):
                 (ss.session_datetime AT TIME ZONE 'Australia/Brisbane')::date AS session_date,
                 COALESCE(SUM(st.reps), 0)                                        AS total_reps,
                 COALESCE(SUM(
-                    st.reps * (COALESCE(st.bodyweight_at_session, 0) + COALESCE(st.weight_kg, 0))
+                    st.reps * (CASE WHEN st.is_bodyweight THEN COALESCE(st.bodyweight_at_session, 0) ELSE 0 END + COALESCE(st.weight_kg, 0))
                 ), 0)                                                             AS total_volume_kg
             FROM strength_sessions ss
             LEFT JOIN strength_sets st ON st.session_id = ss.id
