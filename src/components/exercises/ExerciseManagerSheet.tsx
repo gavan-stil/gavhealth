@@ -1,7 +1,7 @@
 /**
- * ExerciseManagerSheet — full list of all exercises, grouped by macro group.
+ * ExerciseManagerSheet — full-screen overlay showing all exercises grouped by macro group.
  * Tap an exercise to open ExerciseEditSheet.
- * zIndex 120 (same level as DayDetailSheet).
+ * zIndex 200 (above everything including TabBar).
  */
 
 import { useState, useEffect } from "react";
@@ -71,32 +71,29 @@ export default function ExerciseManagerSheet({ onClose, onExerciseUpdated }: Pro
     (grouped[macro] ??= []).push(ex);
   }
 
-  return (
-    <>
-      {/* Backdrop */}
-      {!editingExercise && (
-        <div
-          onClick={onClose}
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 119 }}
-        />
-      )}
+  // If editing, show only the edit sheet
+  if (editingExercise) {
+    return (
+      <ExerciseEditSheet
+        exercise={editingExercise}
+        onSave={handleSave}
+        onClose={() => setEditingExercise(null)}
+      />
+    );
+  }
 
-      {/* Sheet — hidden while editing an exercise */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background: "var(--bg-primary)",
-          borderRadius: "var(--radius-lg) var(--radius-lg) 0 0",
-          zIndex: 120,
-          maxHeight: "85vh",
-          overflowY: "auto",
-          padding: "var(--space-lg)",
-          display: editingExercise ? "none" : undefined,
-        }}
-      >
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "var(--bg-primary)",
+        zIndex: 200,
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch",
+      }}
+    >
+      <div style={{ padding: "var(--space-lg)", paddingTop: "env(safe-area-inset-top, var(--space-lg))" }}>
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-lg)" }}>
           <h3 style={{ font: "600 16px/1.2 'Inter',sans-serif", color: "var(--text-primary)", margin: 0 }}>
@@ -190,17 +187,8 @@ export default function ExerciseManagerSheet({ onClose, onExerciseUpdated }: Pro
         )}
 
         {/* Bottom safe area */}
-        <div style={{ height: "env(safe-area-inset-bottom, 16px)" }} />
+        <div style={{ height: "env(safe-area-inset-bottom, 24px)" }} />
       </div>
-
-      {/* Edit sheet (overlays on top) */}
-      {editingExercise && (
-        <ExerciseEditSheet
-          exercise={editingExercise}
-          onSave={handleSave}
-          onClose={() => setEditingExercise(null)}
-        />
-      )}
-    </>
+    </div>
   );
 }

@@ -1,11 +1,11 @@
 /**
- * ExerciseEditSheet — bottom sheet for editing an exercise's muscle group tags.
+ * ExerciseEditSheet — full-screen overlay for editing an exercise's muscle group tags.
  * Each tag is major (primary) or minor. User can add/remove groups.
- * zIndex 130 (above DayDetailSheet 120, above TabBar 100).
+ * zIndex 200 (above everything).
  */
 
 import { useState, useEffect } from "react";
-import { X, Plus } from "lucide-react";
+import { X, Plus, ArrowLeft } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import type { Exercise, ExerciseMuscle, MuscleGroupDef } from "@/types/trends";
 
@@ -108,41 +108,28 @@ export default function ExerciseEditSheet({ exercise, onSave, onClose }: Props) 
   );
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
-        style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,0.5)",
-          zIndex: 129,
-        }}
-      />
-
-      {/* Sheet */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background: "var(--bg-primary)",
-          borderRadius: "var(--radius-lg) var(--radius-lg) 0 0",
-          zIndex: 130,
-          maxHeight: "85vh",
-          overflowY: "auto",
-          padding: "var(--space-lg)",
-        }}
-      >
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "var(--bg-primary)",
+        zIndex: 200,
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch",
+      }}
+    >
+      <div style={{ padding: "var(--space-lg)", paddingTop: "env(safe-area-inset-top, var(--space-lg))" }}>
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-md)" }}>
-          <h3 style={{ font: "600 16px/1.2 'Inter',sans-serif", color: "var(--text-primary)", margin: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)", marginBottom: "var(--space-lg)" }}>
+          <button
+            onClick={onClose}
+            style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 4 }}
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <h3 style={{ font: "600 16px/1.2 'Inter',sans-serif", color: "var(--text-primary)", margin: 0, flex: 1 }}>
             Edit Muscle Tags
           </h3>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 4 }}>
-            <X size={20} />
-          </button>
         </div>
 
         {/* Exercise name */}
@@ -406,12 +393,14 @@ export default function ExerciseEditSheet({ exercise, onSave, onClose }: Props) 
             font: "600 14px/1 'Inter',sans-serif",
             cursor: saving ? "not-allowed" : "pointer",
             opacity: saving ? 0.6 : 1,
-            marginBottom: "env(safe-area-inset-bottom, 16px)",
           }}
         >
           {saving ? "Saving..." : "Save"}
         </button>
+
+        {/* Bottom safe area */}
+        <div style={{ height: "env(safe-area-inset-bottom, 24px)" }} />
       </div>
-    </>
+    </div>
   );
 }
