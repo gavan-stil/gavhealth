@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Settings } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import type { Exercise } from "@/types/trends";
 import ExerciseProgressCard from "./ExerciseProgressCard";
-import ExerciseManagerSheet from "@/components/exercises/ExerciseManagerSheet";
 
 type Filter = "all" | "push" | "pull" | "legs" | "abs";
 
@@ -44,9 +44,9 @@ interface Props {
 }
 
 export default function ExerciseProgressSection({ days }: Props) {
+  const navigate = useNavigate();
   const [exercises, setExercises] = useState<Exercise[] | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
-  const [showManager, setShowManager] = useState(false);
 
   const fetchExercises = () => {
     apiFetch<Exercise[]>("/api/exercises")
@@ -86,7 +86,7 @@ export default function ExerciseProgressSection({ days }: Props) {
             EXERCISE PROGRESS
           </span>
           <button
-            onClick={() => setShowManager(true)}
+            onClick={() => navigate("/exercises")}
             style={{
               background: "none",
               border: "none",
@@ -165,13 +165,6 @@ export default function ExerciseProgressSection({ days }: Props) {
           <ExerciseProgressCard key={ex.id} exercise={ex} days={days} />
         ))}
 
-      {/* Manage exercises sheet */}
-      {showManager && (
-        <ExerciseManagerSheet
-          onClose={() => setShowManager(false)}
-          onExerciseUpdated={fetchExercises}
-        />
-      )}
     </div>
   );
 }

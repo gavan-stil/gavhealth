@@ -7,6 +7,7 @@ import CalendarPage from '@/pages/CalendarPage';
 import LogPage from '@/pages/LogPage';
 import TrendsPage from '@/pages/TrendsPage';
 import GoalsPage from '@/pages/GoalsPage';
+import ExercisesPage from '@/pages/ExercisesPage';
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -19,6 +20,7 @@ function AnimatedRoutes() {
         <Route path="/log" element={<LogPage />} />
         <Route path="/trends" element={<TrendsPage />} />
         <Route path="/goals" element={<GoalsPage />} />
+        <Route path="/exercises" element={<ExercisesPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
