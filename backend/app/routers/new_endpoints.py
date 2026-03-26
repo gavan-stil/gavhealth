@@ -1676,11 +1676,13 @@ async def update_exercise(exercise_id: int, body: ExerciseUpdateRequest, db: Asy
             em = ExerciseMuscle(exercise_id=exercise_id, muscle_group_id=mg.id, is_primary=is_primary)
             db.add(em)
 
-            # Track primary macro for backwards compat category
+            # Track primary muscle name for backwards compat category
             if is_primary and primary_macro is None:
-                primary_macro = mg.macro_group
+                primary_macro = mg.name
 
-        # Update exercises.category with the primary macro group for backwards compat
+        # Update exercises.category with the primary muscle name for backwards compat
+        # Must be the muscle name (e.g. "back"), not macro_group (e.g. "pull"),
+        # because _session_category() maps muscle names → macro groups.
         if primary_macro:
             exercise.category = primary_macro
 

@@ -224,12 +224,6 @@ class FoodLog(Base):
 # ---------------------------------------------------------------------------
 class Exercise(Base):
     __tablename__ = "exercises"
-    __table_args__ = (
-        CheckConstraint(
-            "category IN ('chest','back','shoulders','arms','legs','core','other')",
-            name="ck_exercise_category",
-        ),
-    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
