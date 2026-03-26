@@ -238,6 +238,38 @@ class Exercise(Base):
     notes: Mapped[str | None] = mapped_column(Text)
 
     sets: Mapped[list["StrengthSet"]] = relationship(back_populates="exercise")
+    muscles: Mapped[list["ExerciseMuscle"]] = relationship(back_populates="exercise", cascade="all, delete-orphan")
+
+
+# ---------------------------------------------------------------------------
+# muscle_groups
+# ---------------------------------------------------------------------------
+class MuscleGroup(Base):
+    __tablename__ = "muscle_groups"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(30), nullable=False, unique=True)
+    macro_group: Mapped[str] = mapped_column(String(10), nullable=False)  # push|pull|legs|abs|other
+
+    exercise_links: Mapped[list["ExerciseMuscle"]] = relationship(back_populates="muscle_group_rel")
+
+
+# ---------------------------------------------------------------------------
+# exercise_muscles  (junction: exercise ↔ muscle_group with major/minor)
+# ---------------------------------------------------------------------------
+class ExerciseMuscle(Base):
+    __tablename__ = "exercise_muscles"
+    __table_args__ = (
+        UniqueConstraint("exercise_id", "muscle_group_id", name="uq_exercise_muscle"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    exercise_id: Mapped[int] = mapped_column(ForeignKey("exercises.id", ondelete="CASCADE"), nullable=False)
+    muscle_group_id: Mapped[int] = mapped_column(ForeignKey("muscle_groups.id"), nullable=False)
+    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    exercise: Mapped["Exercise"] = relationship(back_populates="muscles")
+    muscle_group_rel: Mapped["MuscleGroup"] = relationship(back_populates="exercise_links")
 
 
 # ---------------------------------------------------------------------------

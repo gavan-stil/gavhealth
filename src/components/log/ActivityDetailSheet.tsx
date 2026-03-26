@@ -3,6 +3,8 @@ import { X, Dumbbell, Pencil } from 'lucide-react';
 import { EnergyIcon } from './MoodEnergyCard';
 import { apiFetch } from '@/lib/api';
 import ActivityEditSheet from '@/components/ActivityEditSheet';
+import ExerciseEditSheet from '@/components/exercises/ExerciseEditSheet';
+import type { Exercise as FullExercise } from '@/types/trends';
 
 type EffortLevel = 'basic' | 'mid' | 'lets_go';
 
@@ -42,7 +44,7 @@ type RawSession = {
   total_load_kg: number;
 };
 
-type RawExercise = { id: number; name: string; uses_bodyweight: boolean };
+type RawExercise = { id: number; name: string; category: string; uses_bodyweight: boolean; muscles?: { muscle_group: string; macro_group: string; is_primary: boolean }[] };
 
 type HistoryEntry = {
   session_date: string;
@@ -53,6 +55,7 @@ type HistoryEntry = {
 
 type ExRow = {
   name: string;
+  exerciseId: number;
   sets: number;
   totalReps: number;
   topWeightKg: number;
@@ -184,6 +187,8 @@ export default function ActivityDetailSheet({
   const [detail, setDetail] = useState<SessionDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [editingExercise, setEditingExercise] = useState<FullExercise | null>(null);
+  const [exerciseLookup, setExerciseLookup] = useState<Map<number, RawExercise>>(new Map());
 
   const isWorkout = item.type === 'workout' || item.type === 'strength';
   const typeColor = TYPE_COLOURS[item.type] || 'var(--text-muted)';
@@ -218,7 +223,9 @@ export default function ActivityDetailSheet({
         if (cancelled) return;
 
         const exMap = new Map<string, RawExercise>();
-        allEx.forEach(e => exMap.set(e.name.toLowerCase(), e));
+        const exById = new Map<number, RawExercise>();
+        allEx.forEach(e => { exMap.set(e.name.toLowerCase(), e); exById.set(e.id, e); });
+        setExerciseLookup(exById);
 
         const withEx = rawSessions.filter(s => s.exercises.length > 0);
         const raw = withEx.find(s => s.id === linkedSession.id);
@@ -255,6 +262,7 @@ export default function ActivityDetailSheet({
           const isPb = !ex.uses_bodyweight && entry.top_weight_kg > 0 && entry.top_weight_kg >= allTimeMax;
           rows.push({
             name,
+            exerciseId: ex.id,
             sets: entry.sets,
             totalReps: entry.total_reps,
             topWeightKg: entry.top_weight_kg,
@@ -616,6 +624,22 @@ export default function ActivityDetailSheet({
                                     }}>
                                       {row.name}
                                     </span>
+                                    <button
+                                      onClick={() => {
+                                        const raw = exerciseLookup.get(row.exerciseId);
+                                        if (raw) {
+                                          setEditingExercise({
+                                            id: raw.id,
+                                            name: raw.name,
+                                            category: raw.category,
+                                            muscles: raw.muscles ?? [],
+                                          });
+                                        }
+                                      }}
+                                      style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: 'var(--text-muted)', flexShrink: 0 }}
+                                    >
+                                      <Pencil size={11} />
+                                    </button>
                                   </div>
                                 </td>
                                 <td style={{
@@ -799,6 +823,23 @@ export default function ActivityDetailSheet({
           }}
           onSave={() => { setShowEdit(false); onClose(); }}
           onClose={() => setShowEdit(false)}
+        />
+      )}
+
+      {/* Exercise muscle tag editor */}
+      {editingExercise && (
+        <ExerciseEditSheet
+          exercise={editingExercise}
+          onSave={(updated) => {
+            // Update the lookup so the pencil shows fresh data next tap
+            setExerciseLookup(prev => {
+              const next = new Map(prev);
+              next.set(updated.id, { id: updated.id, name: updated.name, category: updated.category, uses_bodyweight: updated.muscles ? prev.get(updated.id)?.uses_bodyweight ?? false : false, muscles: updated.muscles });
+              return next;
+            });
+            setEditingExercise(null);
+          }}
+          onClose={() => setEditingExercise(null)}
         />
       )}
     </>

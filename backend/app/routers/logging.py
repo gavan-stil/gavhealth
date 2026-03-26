@@ -16,7 +16,9 @@ from app.models.health import (
     ActivityLog,
     DailyHabit,
     Exercise,
+    ExerciseMuscle,
     FoodLog,
+    MuscleGroup,
     RhrLog,
     SaunaLog,
     SleepLog,
@@ -24,6 +26,7 @@ from app.models.health import (
     StrengthSet,
     WeightLog,
 )
+from sqlalchemy import func as sa_func
 from app.schemas.health import (
     ActivityCreate,
     ActivityResponse,
@@ -192,6 +195,12 @@ async def confirm_strength_entry(
             exercise = Exercise(name=s.exercise_name, category="other")
             db.add(exercise)
             await db.flush()
+            # Create default exercise_muscles link
+            mg = (await db.execute(
+                select(MuscleGroup).where(sa_func.lower(MuscleGroup.name) == "other")
+            )).scalar_one_or_none()
+            if mg:
+                db.add(ExerciseMuscle(exercise_id=exercise.id, muscle_group_id=mg.id, is_primary=True))
 
         strength_set = StrengthSet(
             session_id=session.id,

@@ -436,16 +436,45 @@ class SettingsResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Muscle Groups
+# ---------------------------------------------------------------------------
+class MuscleGroupCreate(BaseModel):
+    name: str
+    macro_group: str  # push | pull | legs | abs | other
+
+
+class MuscleGroupResponse(BaseModel):
+    id: int
+    name: str
+    macro_group: str
+
+    model_config = {"from_attributes": True}
+
+
+# ---------------------------------------------------------------------------
 # Exercises
 # ---------------------------------------------------------------------------
+class ExerciseMuscleEntry(BaseModel):
+    muscle_group: str
+    macro_group: str
+    is_primary: bool
+
+
 class ExerciseResponse(BaseModel):
     id: int
     name: str
     category: str
     uses_bodyweight: bool
     notes: str | None = None
+    muscles: list[ExerciseMuscleEntry] = []
 
     model_config = {"from_attributes": True}
+
+
+class ExerciseUpdateRequest(BaseModel):
+    muscles: list[dict]  # [{"muscle_group": "back", "is_primary": true}]
+    uses_bodyweight: bool | None = None
+    notes: str | None = None
 
 
 # ---------------------------------------------------------------------------

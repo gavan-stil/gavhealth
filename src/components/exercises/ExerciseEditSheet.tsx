@@ -1,0 +1,417 @@
+/**
+ * ExerciseEditSheet — bottom sheet for editing an exercise's muscle group tags.
+ * Each tag is major (primary) or minor. User can add/remove groups.
+ * zIndex 130 (above DayDetailSheet 120, above TabBar 100).
+ */
+
+import { useState, useEffect } from "react";
+import { X, Plus } from "lucide-react";
+import { apiFetch } from "@/lib/api";
+import type { Exercise, ExerciseMuscle, MuscleGroupDef } from "@/types/trends";
+
+const MACRO_COLOURS: Record<string, string> = {
+  push: "#c45a4a",
+  pull: "#7FAABC",
+  legs: "#d4a04a",
+  abs: "#8a7a6a",
+  other: "#6a6a6a",
+};
+
+const MACRO_OPTIONS = ["push", "pull", "legs", "abs", "other"] as const;
+
+interface Props {
+  exercise: Exercise;
+  onSave: (updated: Exercise) => void;
+  onClose: () => void;
+}
+
+export default function ExerciseEditSheet({ exercise, onSave, onClose }: Props) {
+  const [muscles, setMuscles] = useState<ExerciseMuscle[]>(exercise.muscles ?? []);
+  const [allGroups, setAllGroups] = useState<MuscleGroupDef[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [showNewGroup, setShowNewGroup] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupMacro, setNewGroupMacro] = useState("other");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiFetch<MuscleGroupDef[]>("/api/muscle-groups").then(setAllGroups).catch(() => {});
+  }, []);
+
+  const togglePrimary = (idx: number) => {
+    setMuscles((prev) =>
+      prev.map((m, i) => (i === idx ? { ...m, is_primary: !m.is_primary } : m))
+    );
+  };
+
+  const removeTag = (idx: number) => {
+    setMuscles((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const addGroup = (group: MuscleGroupDef) => {
+    if (muscles.some((m) => m.muscle_group === group.name)) return;
+    setMuscles((prev) => [
+      ...prev,
+      { muscle_group: group.name, macro_group: group.macro_group, is_primary: true },
+    ]);
+    setShowAdd(false);
+  };
+
+  const createAndAddGroup = async () => {
+    const name = newGroupName.trim().toLowerCase();
+    if (!name) return;
+    try {
+      const created = await apiFetch<MuscleGroupDef>("/api/muscle-groups", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, macro_group: newGroupMacro }),
+      });
+      setAllGroups((prev) => [...prev, created]);
+      addGroup(created);
+      setShowNewGroup(false);
+      setNewGroupName("");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to create group");
+    }
+  };
+
+  const handleSave = async () => {
+    if (muscles.length === 0) {
+      setError("At least one muscle group is required");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const body = {
+        muscles: muscles.map((m) => ({
+          muscle_group: m.muscle_group,
+          is_primary: m.is_primary,
+        })),
+      };
+      const updated = await apiFetch<Exercise>(`/api/exercises/${exercise.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      onSave(updated);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const availableGroups = allGroups.filter(
+    (g) => !muscles.some((m) => m.muscle_group === g.name)
+  );
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.5)",
+          zIndex: 129,
+        }}
+      />
+
+      {/* Sheet */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: "var(--bg-primary)",
+          borderRadius: "var(--radius-lg) var(--radius-lg) 0 0",
+          zIndex: 130,
+          maxHeight: "85vh",
+          overflowY: "auto",
+          padding: "var(--space-lg)",
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-md)" }}>
+          <h3 style={{ font: "600 16px/1.2 'Inter',sans-serif", color: "var(--text-primary)", margin: 0 }}>
+            Edit Muscle Tags
+          </h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 4 }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Exercise name */}
+        <div style={{ font: "500 14px/1 'JetBrains Mono',monospace", color: "var(--ochre)", marginBottom: "var(--space-lg)" }}>
+          {exercise.name}
+        </div>
+
+        {/* Current muscle tags */}
+        <div style={{ font: "500 10px/1 'Inter',sans-serif", letterSpacing: "0.5px", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "var(--space-xs)" }}>
+          Muscle Groups
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)", marginBottom: "var(--space-md)" }}>
+          {muscles.map((m, idx) => (
+            <div
+              key={m.muscle_group}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "var(--space-sm)",
+                padding: "10px 12px",
+                background: "var(--bg-card)",
+                border: `1px solid ${MACRO_COLOURS[m.macro_group] ?? "#666"}44`,
+                borderRadius: "var(--radius-sm)",
+              }}
+            >
+              {/* Colour dot */}
+              <div
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  background: MACRO_COLOURS[m.macro_group] ?? "#666",
+                  flexShrink: 0,
+                }}
+              />
+
+              {/* Name */}
+              <span style={{ font: "500 13px/1 'Inter',sans-serif", color: "var(--text-primary)", flex: 1 }}>
+                {m.muscle_group}
+              </span>
+
+              {/* Macro badge */}
+              <span style={{ font: "500 10px/1 'Inter',sans-serif", color: MACRO_COLOURS[m.macro_group] ?? "#666", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                {m.macro_group}
+              </span>
+
+              {/* Major/Minor toggle */}
+              <button
+                onClick={() => togglePrimary(idx)}
+                style={{
+                  background: m.is_primary ? (MACRO_COLOURS[m.macro_group] ?? "#666") : "transparent",
+                  border: `1px solid ${MACRO_COLOURS[m.macro_group] ?? "#666"}`,
+                  borderRadius: "var(--radius-sm)",
+                  padding: "4px 8px",
+                  font: "600 10px/1 'Inter',sans-serif",
+                  color: m.is_primary ? "#fff" : (MACRO_COLOURS[m.macro_group] ?? "#666"),
+                  cursor: "pointer",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                  minWidth: 52,
+                }}
+              >
+                {m.is_primary ? "Major" : "Minor"}
+              </button>
+
+              {/* Remove */}
+              <button
+                onClick={() => removeTag(idx)}
+                style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 2 }}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+
+          {muscles.length === 0 && (
+            <div style={{ font: "400 13px/1.4 'Inter',sans-serif", color: "var(--text-muted)", padding: "12px 0" }}>
+              No muscle groups assigned. Add one below.
+            </div>
+          )}
+        </div>
+
+        {/* Add group button/dropdown */}
+        {!showAdd ? (
+          <button
+            onClick={() => setShowAdd(true)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "var(--space-xs)",
+              background: "none",
+              border: "1px dashed var(--border-default)",
+              borderRadius: "var(--radius-sm)",
+              padding: "10px 12px",
+              color: "var(--text-muted)",
+              font: "500 13px/1 'Inter',sans-serif",
+              cursor: "pointer",
+              width: "100%",
+            }}
+          >
+            <Plus size={14} /> Add muscle group
+          </button>
+        ) : (
+          <div
+            style={{
+              background: "var(--bg-card)",
+              border: "1px solid var(--border-default)",
+              borderRadius: "var(--radius-sm)",
+              overflow: "hidden",
+              marginBottom: "var(--space-sm)",
+            }}
+          >
+            {availableGroups.map((g) => (
+              <button
+                key={g.id}
+                onClick={() => addGroup(g)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "var(--space-sm)",
+                  width: "100%",
+                  padding: "10px 12px",
+                  background: "none",
+                  border: "none",
+                  borderBottom: "1px solid var(--border-default)",
+                  color: "var(--text-primary)",
+                  font: "500 13px/1 'Inter',sans-serif",
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
+                <div
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    background: MACRO_COLOURS[g.macro_group] ?? "#666",
+                  }}
+                />
+                {g.name}
+                <span style={{ marginLeft: "auto", font: "400 10px/1 'Inter',sans-serif", color: "var(--text-muted)", textTransform: "uppercase" }}>
+                  {g.macro_group}
+                </span>
+              </button>
+            ))}
+
+            {/* Create new group option */}
+            {!showNewGroup ? (
+              <button
+                onClick={() => setShowNewGroup(true)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "var(--space-xs)",
+                  width: "100%",
+                  padding: "10px 12px",
+                  background: "none",
+                  border: "none",
+                  color: "var(--ochre)",
+                  font: "500 13px/1 'Inter',sans-serif",
+                  cursor: "pointer",
+                }}
+              >
+                <Plus size={14} /> Create new group
+              </button>
+            ) : (
+              <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+                <input
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  placeholder="e.g. glutes, forearms..."
+                  style={{
+                    background: "var(--bg-primary)",
+                    border: "1px solid var(--border-default)",
+                    borderRadius: "var(--radius-sm)",
+                    color: "var(--text-primary)",
+                    font: "500 13px/1 'Inter',sans-serif",
+                    padding: "8px 10px",
+                    width: "100%",
+                    boxSizing: "border-box",
+                  }}
+                />
+                <div style={{ display: "flex", gap: "var(--space-xs)", flexWrap: "wrap" }}>
+                  {MACRO_OPTIONS.map((macro) => (
+                    <button
+                      key={macro}
+                      onClick={() => setNewGroupMacro(macro)}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: "var(--radius-sm)",
+                        border: `1px solid ${MACRO_COLOURS[macro]}`,
+                        background: newGroupMacro === macro ? MACRO_COLOURS[macro] : "transparent",
+                        color: newGroupMacro === macro ? "#fff" : MACRO_COLOURS[macro],
+                        font: "600 10px/1 'Inter',sans-serif",
+                        cursor: "pointer",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                      }}
+                    >
+                      {macro}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={createAndAddGroup}
+                  disabled={!newGroupName.trim()}
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: "var(--radius-sm)",
+                    border: "none",
+                    background: "var(--ochre)",
+                    color: "#fff",
+                    font: "600 12px/1 'Inter',sans-serif",
+                    cursor: newGroupName.trim() ? "pointer" : "not-allowed",
+                    opacity: newGroupName.trim() ? 1 : 0.5,
+                  }}
+                >
+                  Create & Add
+                </button>
+              </div>
+            )}
+
+            {/* Close dropdown */}
+            <button
+              onClick={() => { setShowAdd(false); setShowNewGroup(false); }}
+              style={{
+                width: "100%",
+                padding: "8px",
+                background: "none",
+                border: "none",
+                color: "var(--text-muted)",
+                font: "400 11px/1 'Inter',sans-serif",
+                cursor: "pointer",
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div style={{ font: "400 12px/1.3 'Inter',sans-serif", color: "var(--signal-bad)", marginTop: "var(--space-sm)" }}>
+            {error}
+          </div>
+        )}
+
+        {/* Save button */}
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          style={{
+            width: "100%",
+            marginTop: "var(--space-lg)",
+            padding: "14px",
+            borderRadius: "var(--radius-sm)",
+            border: "none",
+            background: "var(--ochre)",
+            color: "#fff",
+            font: "600 14px/1 'Inter',sans-serif",
+            cursor: saving ? "not-allowed" : "pointer",
+            opacity: saving ? 0.6 : 1,
+            marginBottom: "env(safe-area-inset-bottom, 16px)",
+          }}
+        >
+          {saving ? "Saving..." : "Save"}
+        </button>
+      </div>
+    </>
+  );
+}

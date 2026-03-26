@@ -20,8 +20,10 @@ from app.models.health import (
     DailyHabit,
     DexaScan,
     Exercise,
+    ExerciseMuscle,
     FoodLog,
     HrIntraday,
+    MuscleGroup,
     RhrLog,
     SaunaLog,
     SleepLog,
@@ -495,15 +497,41 @@ async def list_sauna(
 # ---------------------------------------------------------------------------
 # Exercises
 # ---------------------------------------------------------------------------
-@router.get("/exercises", response_model=list[ExerciseResponse])
+@router.get("/exercises")
 async def list_exercises(
     db: AsyncSession = Depends(get_db),
     _key: str = Depends(verify_api_key),
 ):
-    rows = (
+    exercises = (
         await db.execute(select(Exercise).order_by(Exercise.category, Exercise.name))
     ).scalars().all()
-    return rows
+
+    # Fetch all exercise_muscles with their muscle_group in one query
+    muscle_rows = (await db.execute(
+        select(ExerciseMuscle, MuscleGroup)
+        .join(MuscleGroup, ExerciseMuscle.muscle_group_id == MuscleGroup.id)
+    )).all()
+
+    # Build lookup: exercise_id → list of muscle entries
+    muscles_by_exercise: dict[int, list[dict]] = {}
+    for em, mg in muscle_rows:
+        muscles_by_exercise.setdefault(em.exercise_id, []).append({
+            "muscle_group": mg.name,
+            "macro_group": mg.macro_group,
+            "is_primary": em.is_primary,
+        })
+
+    return [
+        {
+            "id": ex.id,
+            "name": ex.name,
+            "category": ex.category,
+            "uses_bodyweight": ex.uses_bodyweight,
+            "notes": ex.notes,
+            "muscles": muscles_by_exercise.get(ex.id, []),
+        }
+        for ex in exercises
+    ]
 
 
 # ---------------------------------------------------------------------------

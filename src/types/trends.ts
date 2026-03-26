@@ -25,8 +25,21 @@ export interface ExerciseSession {
   estimated_1rm: number;
 }
 
+export interface ExerciseMuscle {
+  muscle_group: string;
+  macro_group: string;  // push | pull | legs | abs | other
+  is_primary: boolean;
+}
+
 export interface Exercise {
   id: number;
   name: string;
-  category: string;
+  category: string;          // primary macro group, backwards compat
+  muscles: ExerciseMuscle[];
+}
+
+export interface MuscleGroupDef {
+  id: number;
+  name: string;
+  macro_group: string;
 }

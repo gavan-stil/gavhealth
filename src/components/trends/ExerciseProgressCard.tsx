@@ -148,9 +148,10 @@ export default function ExerciseProgressCard({ exercise, days }: Props) {
       .finally(() => setLoading(false));
   }, [exercise.id, days]);
 
-  const category: Category = BACKEND_TO_CATEGORY[exercise.category] ?? "other";
-  const catColor = CATEGORY_COLORS[category];
-
+  // Use muscles array for chips, fall back to single category
+  const muscleChips = exercise.muscles?.length
+    ? exercise.muscles
+    : [{ muscle_group: exercise.category, macro_group: BACKEND_TO_CATEGORY[exercise.category] ?? "other", is_primary: true }];
   const cardStyle: React.CSSProperties = {
     background: "var(--bg-card)",
     border: "1px solid var(--border-default)",
@@ -200,21 +201,28 @@ export default function ExerciseProgressCard({ exercise, days }: Props) {
     <div style={cardStyle}>
       {/* Header row */}
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)" }}>
-          <span
-            style={{
-              padding: "2px 8px",
-              borderRadius: "var(--radius-pill)",
-              background: `${catColor}22`,
-              color: catColor,
-              fontSize: 9,
-              fontWeight: 700,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-            }}
-          >
-            {category}
-          </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-xs)", flexWrap: "wrap" }}>
+          {muscleChips.map((m) => {
+            const color = CATEGORY_COLORS[m.macro_group as Category] ?? CATEGORY_COLORS.other;
+            return (
+              <span
+                key={m.muscle_group}
+                style={{
+                  padding: "2px 6px",
+                  borderRadius: "var(--radius-pill)",
+                  background: `${color}22`,
+                  color: color,
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  opacity: m.is_primary ? 1 : 0.6,
+                }}
+              >
+                {m.muscle_group}
+              </span>
+            );
+          })}
           <span className="body-text" style={{ fontWeight: 600 }}>
             {exercise.name}
           </span>

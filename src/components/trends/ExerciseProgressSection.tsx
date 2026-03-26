@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
+import { Settings } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import type { Exercise } from "@/types/trends";
 import ExerciseProgressCard from "./ExerciseProgressCard";
+import ExerciseManagerSheet from "@/components/exercises/ExerciseManagerSheet";
 
 type Filter = "all" | "push" | "pull" | "legs" | "abs";
 
-// Maps backend category values → frontend filter tabs
-// "other" is intentionally absent — those exercises only appear under "all"
+// Maps backend category values → frontend filter tabs (backwards compat)
 const CATEGORY_TO_FILTER: Record<string, Filter> = {
   chest:     "push",
   shoulders: "push",
@@ -25,6 +26,19 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: "abs", label: "Abs" },
 ];
 
+/** Check if an exercise matches a filter, using muscles array with fallback to category */
+function exerciseMatchesFilter(ex: Exercise, filter: Filter): boolean {
+  if (filter === "all") return true;
+
+  // Multi-category: check if ANY muscle group maps to this filter's macro group
+  if (ex.muscles?.length) {
+    return ex.muscles.some((m) => m.macro_group === filter);
+  }
+
+  // Fallback to single category for exercises without muscles data
+  return CATEGORY_TO_FILTER[ex.category] === filter;
+}
+
 interface Props {
   days: number;
 }
@@ -32,21 +46,20 @@ interface Props {
 export default function ExerciseProgressSection({ days }: Props) {
   const [exercises, setExercises] = useState<Exercise[] | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
+  const [showManager, setShowManager] = useState(false);
 
-  useEffect(() => {
+  const fetchExercises = () => {
     apiFetch<Exercise[]>("/api/exercises")
       .then(setExercises)
       .catch(() => setExercises([]));
-  }, []);
+  };
+
+  useEffect(fetchExercises, []);
 
   const filtered =
     exercises == null
       ? null
-      : filter === "all"
-      ? exercises
-      : exercises.filter(
-          (ex) => CATEGORY_TO_FILTER[ex.category] === filter
-        );
+      : exercises.filter((ex) => exerciseMatchesFilter(ex, filter));
 
   return (
     <div
@@ -68,9 +81,24 @@ export default function ExerciseProgressSection({ days }: Props) {
           gap: "var(--space-md)",
         }}
       >
-        <span className="label-text" style={{ color: "var(--text-muted)" }}>
-          EXERCISE PROGRESS
-        </span>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span className="label-text" style={{ color: "var(--text-muted)" }}>
+            EXERCISE PROGRESS
+          </span>
+          <button
+            onClick={() => setShowManager(true)}
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--text-muted)",
+              cursor: "pointer",
+              padding: 4,
+            }}
+            title="Manage exercises"
+          >
+            <Settings size={16} />
+          </button>
+        </div>
         <div style={{ display: "flex", gap: "var(--space-xs)", flexWrap: "wrap" }}>
           {FILTERS.map((f) => (
             <button
@@ -136,6 +164,14 @@ export default function ExerciseProgressSection({ days }: Props) {
         filtered.map((ex) => (
           <ExerciseProgressCard key={ex.id} exercise={ex} days={days} />
         ))}
+
+      {/* Manage exercises sheet */}
+      {showManager && (
+        <ExerciseManagerSheet
+          onClose={() => setShowManager(false)}
+          onExerciseUpdated={fetchExercises}
+        />
+      )}
     </div>
   );
 }

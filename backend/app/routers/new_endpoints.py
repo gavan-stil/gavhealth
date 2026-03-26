@@ -12,7 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import verify_api_key
 from app.database import get_db
-from app.models.health import StrengthSession, StrengthSet, Exercise
+from app.models.health import StrengthSession, StrengthSet, Exercise, MuscleGroup, ExerciseMuscle
+from app.schemas.health import (
+    MuscleGroupCreate, MuscleGroupResponse,
+    ExerciseUpdateRequest, ExerciseMuscleEntry,
+)
 
 router = APIRouter(prefix="/api", tags=["activities"], dependencies=[Depends(verify_api_key)])
 
@@ -380,9 +384,16 @@ async def save_strength_log(body: StrengthLogCreate, db: AsyncSession = Depends(
                 )
             ).scalar_one_or_none()
             if not exercise:
-                exercise = Exercise(name=ex_name, category=_infer_category(ex_name))
+                inferred_cat = _infer_category(ex_name)
+                exercise = Exercise(name=ex_name, category=inferred_cat)
                 db.add(exercise)
                 await db.flush()
+                # Create default exercise_muscles link from inferred category
+                mg = (await db.execute(
+                    select(MuscleGroup).where(func.lower(MuscleGroup.name) == inferred_cat.lower())
+                )).scalar_one_or_none()
+                if mg:
+                    db.add(ExerciseMuscle(exercise_id=exercise.id, muscle_group_id=mg.id, is_primary=True))
 
             for set_data in ex_data.get("sets", []):
                 set_number_global += 1
@@ -1585,3 +1596,111 @@ async def update_sauna_log(id: int, body: SaunaLogUpdate, db: AsyncSession = Dep
         raise HTTPException(status_code=404, detail="Sauna record not found")
     await db.commit()
     return dict(row)
+
+
+# ---------------------------------------------------------------------------
+# Muscle Groups — CRUD
+# ---------------------------------------------------------------------------
+MACRO_GROUPS = {"push", "pull", "legs", "abs", "other"}
+
+# Maps muscle_group name → macro_group for category derivation
+MUSCLE_TO_MACRO: dict[str, str] = {
+    "chest": "push", "shoulders": "push", "arms": "push",
+    "back": "pull",
+    "legs": "legs",
+    "core": "abs",
+    "other": "other",
+}
+
+
+@router.get("/muscle-groups", response_model=list[MuscleGroupResponse])
+async def list_muscle_groups(db: AsyncSession = Depends(get_db)):
+    rows = (await db.execute(
+        select(MuscleGroup).order_by(MuscleGroup.macro_group, MuscleGroup.name)
+    )).scalars().all()
+    return rows
+
+
+@router.post("/muscle-groups", response_model=MuscleGroupResponse, status_code=201)
+async def create_muscle_group(body: MuscleGroupCreate, db: AsyncSession = Depends(get_db)):
+    if body.macro_group not in MACRO_GROUPS:
+        raise HTTPException(400, f"macro_group must be one of {MACRO_GROUPS}")
+    existing = (await db.execute(
+        select(MuscleGroup).where(func.lower(MuscleGroup.name) == body.name.lower())
+    )).scalar_one_or_none()
+    if existing:
+        raise HTTPException(409, f"Muscle group '{body.name}' already exists")
+    mg = MuscleGroup(name=body.name.lower(), macro_group=body.macro_group)
+    db.add(mg)
+    await db.flush()
+    return mg
+
+
+# ---------------------------------------------------------------------------
+# Exercise update — PATCH /api/exercises/{id}
+# ---------------------------------------------------------------------------
+@router.patch("/exercises/{exercise_id}")
+async def update_exercise(exercise_id: int, body: ExerciseUpdateRequest, db: AsyncSession = Depends(get_db)):
+    exercise = (await db.execute(
+        select(Exercise).where(Exercise.id == exercise_id)
+    )).scalar_one_or_none()
+    if not exercise:
+        raise HTTPException(404, "Exercise not found")
+
+    # Update optional fields
+    if body.uses_bodyweight is not None:
+        exercise.uses_bodyweight = body.uses_bodyweight
+    if body.notes is not None:
+        exercise.notes = body.notes
+
+    # Replace muscle tags
+    if body.muscles:
+        # Delete existing links
+        await db.execute(
+            text("DELETE FROM exercise_muscles WHERE exercise_id = :eid"),
+            {"eid": exercise_id},
+        )
+
+        primary_macro = None
+        for m in body.muscles:
+            mg_name = m.get("muscle_group", "").lower().strip()
+            is_primary = m.get("is_primary", True)
+
+            # Look up muscle group
+            mg = (await db.execute(
+                select(MuscleGroup).where(func.lower(MuscleGroup.name) == mg_name)
+            )).scalar_one_or_none()
+            if not mg:
+                raise HTTPException(400, f"Unknown muscle group '{mg_name}'. Create it first via POST /api/muscle-groups.")
+
+            em = ExerciseMuscle(exercise_id=exercise_id, muscle_group_id=mg.id, is_primary=is_primary)
+            db.add(em)
+
+            # Track primary macro for backwards compat category
+            if is_primary and primary_macro is None:
+                primary_macro = mg.macro_group
+
+        # Update exercises.category with the primary macro group for backwards compat
+        if primary_macro:
+            exercise.category = primary_macro
+
+    await db.flush()
+
+    # Return updated exercise with muscles
+    muscles = (await db.execute(
+        select(ExerciseMuscle, MuscleGroup)
+        .join(MuscleGroup, ExerciseMuscle.muscle_group_id == MuscleGroup.id)
+        .where(ExerciseMuscle.exercise_id == exercise_id)
+    )).all()
+
+    return {
+        "id": exercise.id,
+        "name": exercise.name,
+        "category": exercise.category,
+        "uses_bodyweight": exercise.uses_bodyweight,
+        "notes": exercise.notes,
+        "muscles": [
+            {"muscle_group": mg.name, "macro_group": mg.macro_group, "is_primary": em.is_primary}
+            for em, mg in muscles
+        ],
+    }
