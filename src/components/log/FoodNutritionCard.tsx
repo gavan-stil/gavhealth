@@ -130,12 +130,18 @@ export default function FoodNutritionCard({
   const [activeTab, setActiveTab] = useState<QuickTab>('yesterday');
   const [userPickedTab, setUserPickedTab] = useState(false);
 
-  // Clear staged + reset tab on date change (bug #7)
+  // ── Parse-result tracking ─────────────────────────────────────────────────
+  const [addedIndexes, setAddedIndexes] = useState<Set<number>>(new Set());
+  const [savedIndexes, setSavedIndexes] = useState<Set<number>>(new Set());
+
+  // Clear staged + reset tab + parse indexes on date change (bug #7)
   useEffect(() => {
     setStaged([]);
     setStageError([]);
     setActiveTab('yesterday');
     setUserPickedTab(false);
+    setAddedIndexes(new Set());
+    setSavedIndexes(new Set());
   }, [date]);
 
   // Auto-switch tab once data loads, if user hasn't manually picked (bug #12)
@@ -204,8 +210,18 @@ export default function FoodNutritionCard({
   };
 
   // ── Parse-result actions ──────────────────────────────────────────────────
-  const [addedIndexes, setAddedIndexes] = useState<Set<number>>(new Set());
-  const [savedIndexes, setSavedIndexes] = useState<Set<number>>(new Set());
+  // Reset added/saved indexes when new parse results arrive
+  const handleTriggerParse = () => {
+    setAddedIndexes(new Set());
+    setSavedIndexes(new Set());
+    triggerParse();
+  };
+  const handleClearParse = () => {
+    setAddedIndexes(new Set());
+    setSavedIndexes(new Set());
+    clearParse();
+  };
+
   const handleLogItem = async (item: ParsedItem | Omit<SavedMeal, 'id'>, idx?: number) => {
     try {
       await logItem(item);
@@ -468,7 +484,7 @@ export default function FoodNutritionCard({
 
           <div style={{ display: 'flex', gap: 8, marginBottom: 14, alignItems: 'center' }}>
             <button
-              onClick={triggerParse}
+              onClick={handleTriggerParse}
               disabled={parseState === 'parsing' || !parseInput.trim()}
               style={{
                 padding: '9px 16px',
@@ -484,7 +500,7 @@ export default function FoodNutritionCard({
             </button>
             {(parseInput || parsedItems.length > 0) && (
               <button
-                onClick={clearParse}
+                onClick={handleClearParse}
                 style={{
                   padding: '8px 12px',
                   background: 'transparent', color: 'var(--text-secondary)',
