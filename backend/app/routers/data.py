@@ -240,10 +240,10 @@ async def list_activities(
 
     rows = await db.execute(
         text(f"""
-            SELECT a.id, a.activity_date, a.activity_type, a.duration_mins,
-                   a.distance_km, a.avg_pace_secs, a.avg_hr, a.max_hr,
+            SELECT a.id, a.activity_date, a.activity_type, a.started_at, a.duration_mins,
+                   a.distance_km, a.avg_pace_secs, a.avg_hr, a.min_hr, a.max_hr,
                    a.calories_burned, a.elevation_m, a.source, a.external_id, a.notes,
-                   ss.session_label AS workout_split
+                   COALESCE(a.workout_split, ss.session_label) AS workout_split
             FROM activity_logs a
             LEFT JOIN strength_sessions ss ON ss.activity_log_id = a.id
             {where}

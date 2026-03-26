@@ -17,6 +17,7 @@ export interface FeedItemForSheet {
   max_hr: number | null;
   distance_km: number | null;
   avg_pace_secs: number | null;
+  calories_burned: number | null;
   effort: EffortLevel;
   effort_manually_set: boolean;
 }
@@ -429,6 +430,25 @@ export default function ActivityDetailSheet({
                 }}>{stat.lbl}</span>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Calories */}
+        {item.calories_burned != null && (
+          <div style={{
+            display: 'flex', alignItems: 'baseline', gap: 6,
+            marginBottom: 20,
+            paddingLeft: 2,
+          }}>
+            <span style={{
+              font: '700 15px/1 JetBrains Mono, monospace',
+              letterSpacing: '-0.5px', color: 'var(--text-primary)',
+            }}>{item.calories_burned}</span>
+            <span style={{
+              font: '600 9px/1 Inter, sans-serif',
+              letterSpacing: '1px', textTransform: 'uppercase',
+              color: 'var(--text-muted)',
+            }}>cal</span>
           </div>
         )}
 

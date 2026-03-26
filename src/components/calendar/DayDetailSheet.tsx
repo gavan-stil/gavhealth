@@ -786,6 +786,7 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
 
             // Stat block groups for running/ride (horizontal bordered layout)
             const isRunRide = dot.category === "running" || dot.category === "ride";
+            const isStrength = dot.category === "strength";
             const statGroups: Array<Array<{ val: string; lbl: string }>> = isRunRide
               ? (dot.category === "running"
                 ? [
@@ -796,15 +797,22 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
                     [
                       ...(dot.subMetrics?.time ? [{ val: dot.subMetrics.time, lbl: "time" }] : []),
                       ...(dot.subMetrics?.bpm ? [{ val: dot.subMetrics.bpm, lbl: "bpm" }] : []),
+                      ...(dot.subMetrics?.cal && dot.subMetrics.cal !== "—" ? [{ val: dot.subMetrics.cal, lbl: "cal" }] : []),
                     ],
                   ].filter(g => g.length > 0)
                 : [
                     [
                       ...(dot.subMetrics?.dist  ? [{ val: dot.subMetrics.dist,  lbl: "dist"  }] : []),
-                      ...(dot.subMetrics?.speed ? [{ val: dot.subMetrics.speed, lbl: "speed" }] : []),
+                      ...(dot.subMetrics?.speed && dot.subMetrics.speed !== "—" ? [{ val: dot.subMetrics.speed, lbl: "speed" }] : []),
+                    ],
+                    [
+                      ...(dot.subMetrics?.bpm ? [{ val: dot.subMetrics.bpm, lbl: "bpm" }] : []),
+                      ...(dot.subMetrics?.cal && dot.subMetrics.cal !== "—" ? [{ val: dot.subMetrics.cal, lbl: "cal" }] : []),
                     ],
                   ].filter(g => g.length > 0))
-              : [];
+              : isStrength
+                ? [] // strength uses session cards, not stat blocks
+                : [];
 
             return (
               <div key={key} style={CARD}>

@@ -29,14 +29,18 @@ export const SUB_TOGGLE_DEFS: Record<CategoryName, { id: string; label: string }
     { id: "dist", label: "Dist" },
     { id: "pace", label: "Pace" },
     { id: "bpm", label: "BPM" },
+    { id: "cal", label: "Cal" },
   ],
   strength: [
     { id: "sets", label: "Sets" },
     { id: "bpm", label: "BPM" },
+    { id: "cal", label: "Cal" },
   ],
   ride: [
     { id: "dist", label: "Dist" },
     { id: "speed", label: "Speed" },
+    { id: "bpm", label: "BPM" },
+    { id: "cal", label: "Cal" },
   ],
   sleep: [
     { id: "deep", label: "Deep%" },

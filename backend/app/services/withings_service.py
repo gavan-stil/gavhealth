@@ -861,6 +861,90 @@ async def sync_workouts(db: AsyncSession, access_token: str, since_ts: int) -> i
     return count
 
 
+async def derive_hr_from_intraday(db: AsyncSession) -> int:
+    """Fill in avg_hr/min_hr/max_hr for workouts that have started_at but missing HR.
+
+    Uses hr_intraday hourly buckets to compute approximate HR stats for the
+    workout window.  Withings getworkouts sometimes omits hr_average even though
+    the watch recorded HR — this catches those cases using the intraday data
+    that IS reliably available.
+
+    Only updates rows where avg_hr IS NULL and started_at IS NOT NULL.
+    Returns the number of rows updated.
+    """
+    # Find workouts missing HR that have a start time we can match against
+    rows = (await db.execute(
+        text("""
+            SELECT a.id, a.started_at, a.duration_mins, a.activity_date
+            FROM activity_logs a
+            WHERE a.activity_type != 'daily_summary'
+              AND a.avg_hr IS NULL
+              AND a.started_at IS NOT NULL
+              AND a.activity_date >= CURRENT_DATE - INTERVAL '90 days'
+        """)
+    )).mappings().all()
+
+    if not rows:
+        logger.info("derive_hr_from_intraday: no incomplete rows")
+        return 0
+
+    updated = 0
+    for r in rows:
+        started = r["started_at"]
+        dur_mins = r["duration_mins"] or 30  # fallback 30 min
+        activity_date = r["activity_date"]
+
+        # Convert started_at to Brisbane hour
+        if started.tzinfo:
+            start_brisbane = started.astimezone(BRISBANE_TZ)
+        else:
+            start_brisbane = started.replace(tzinfo=timezone.utc).astimezone(BRISBANE_TZ)
+
+        start_hour = start_brisbane.hour
+        end_hour = min(23, start_hour + int(dur_mins / 60) + 1)
+
+        # Query hr_intraday buckets that overlap the workout window
+        hr_result = (await db.execute(
+            text("""
+                SELECT hr_avg, hr_min, hr_max, readings_count
+                FROM hr_intraday
+                WHERE log_date = :log_date
+                  AND hour >= :start_hour
+                  AND hour <= :end_hour
+                  AND readings_count > 5
+            """),
+            {"log_date": activity_date, "start_hour": start_hour, "end_hour": end_hour},
+        )).mappings().all()
+
+        if not hr_result:
+            continue
+
+        # Weighted average by readings_count
+        total_readings = sum(b["readings_count"] for b in hr_result)
+        if total_readings == 0:
+            continue
+
+        avg_hr = round(sum(b["hr_avg"] * b["readings_count"] for b in hr_result) / total_readings)
+        min_hr = min(b["hr_min"] for b in hr_result)
+        max_hr = max(b["hr_max"] for b in hr_result)
+
+        await db.execute(
+            text("""
+                UPDATE activity_logs
+                SET avg_hr = :avg_hr, min_hr = :min_hr, max_hr = :max_hr
+                WHERE id = :id AND avg_hr IS NULL
+            """),
+            {"avg_hr": avg_hr, "min_hr": min_hr, "max_hr": max_hr, "id": r["id"]},
+        )
+        updated += 1
+        logger.info("derive_hr_from_intraday: id=%d date=%s → avg_hr=%d", r["id"], activity_date, avg_hr)
+
+    if updated:
+        await db.flush()
+    logger.info("derive_hr_from_intraday: updated %d/%d rows", updated, len(rows))
+    return updated
+
+
 async def backfill_incomplete_workouts(db: AsyncSession, access_token: str) -> int:
     """Re-fetch workouts that have any critical field NULL within the last 60 days.
 
@@ -1123,6 +1207,15 @@ async def run_full_sync(db: AsyncSession) -> dict:
                 logger.warning("sync_intraday_hr error for %s: %s", day, e)
         results["sleep_stages"] = stages_count
         results["hr_intraday"] = hr_intraday_count
+
+        # Derive avg_hr from intraday buckets for workouts where Withings
+        # getworkouts didn't return hr_average (common for weight sessions)
+        try:
+            hr_derived = await derive_hr_from_intraday(db)
+            results["hr_from_intraday"] = hr_derived
+        except Exception as e:
+            logger.warning("derive_hr_from_intraday error: %s", e)
+            results["hr_from_intraday"] = f"error: {str(e)}"
 
         # Update sync state and log
         total = sum(v for v in results.values() if isinstance(v, int))

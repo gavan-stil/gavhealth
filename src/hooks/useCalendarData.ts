@@ -14,6 +14,7 @@ type RawActivity = {
   distance_km: number | null;
   avg_pace_secs: number | null;
   avg_hr: number | null;
+  calories_burned: number | null;
   notes: string | null;
   effort?: string;
   workout_split?: string;
@@ -232,6 +233,7 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
         time: a.duration_mins ? fmtInt(a.duration_mins, "m") : "—",
         pace: a.avg_pace_secs != null ? fmt(a.avg_pace_secs / 60, "'/km") : "—",
         bpm: a.avg_hr != null ? fmtInt(a.avg_hr, "bpm") : "—",
+        cal: a.calories_burned != null ? fmtInt(a.calories_burned, "cal") : "—",
       },
       isLetsGo: a.effort === "lets_go",
       isInterval,
@@ -260,6 +262,7 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
       subMetrics: {
         sets: session ? `${session.total_sets}` : "—",
         bpm: a.avg_hr != null ? fmtInt(a.avg_hr, "bpm") : "—",
+        cal: a.calories_burned != null ? fmtInt(a.calories_burned, "cal") : "—",
       },
       isLetsGo: a.effort === "lets_go",
       workoutSplit,
@@ -307,6 +310,8 @@ async function fetchMonthData(year: number, month: number): Promise<CalendarData
       subMetrics: {
         dist: r.distance_km != null ? fmt(r.distance_km, "km") : "—",
         speed: "—",
+        bpm: r.avg_hr != null ? fmtInt(r.avg_hr, "bpm") : "—",
+        cal: r.calories_burned != null ? fmtInt(r.calories_burned, "cal") : "—",
       },
       isLetsGo: r.effort === "lets_go",
       recordId: r.id,

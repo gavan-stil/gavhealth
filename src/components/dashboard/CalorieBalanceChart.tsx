@@ -10,7 +10,10 @@ interface Props {
   loading: boolean;
 }
 
-const CALORIE_OUTLIER_THRESHOLD = 5000; // Withings CSV import bug produces >10k values
+/** Convert Withings kJ→kcal when value exceeds 8000 (matches backend logic). */
+function toKcal(raw: number): number {
+  return raw > 8000 ? Math.round(raw / 4.184) : raw;
+}
 
 function fmtDate(ymd: string): string {
   const d = new Date(ymd + 'T00:00:00');
@@ -27,16 +30,16 @@ export default function CalorieBalanceChart({ activityData, foodData, loading }:
       days.push(d.toLocaleDateString('en-CA'));
     }
 
-    // calories burned per day from daily_summary rows
+    // calories burned per day from daily_summary rows (kJ→kcal converted)
     const burnedByDate: Record<string, number> = {};
     if (activityData) {
       for (const a of activityData) {
         if (
           a.activity_type === 'daily_summary' &&
-          a.calories_burned !== null &&
-          a.calories_burned <= CALORIE_OUTLIER_THRESHOLD
+          a.calories_burned !== null
         ) {
-          burnedByDate[a.activity_date] = a.calories_burned;
+          const kcal = toKcal(a.calories_burned);
+          if (kcal <= 5000) burnedByDate[a.activity_date] = kcal;
         }
       }
     }

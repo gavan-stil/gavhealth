@@ -221,6 +221,7 @@ async def activities_feed(days: int = Query(default=14), db: AsyncSession = Depe
                    max_hr,
                    distance_km,
                    avg_pace_secs,
+                   calories_burned,
                    COALESCE(effort, 'basic')              AS effort,
                    COALESCE(effort_manually_set, false)   AS effort_manually_set
             FROM activity_logs
@@ -242,6 +243,7 @@ async def activities_feed(days: int = Query(default=14), db: AsyncSession = Depe
             "max_hr": r["max_hr"],
             "distance_km": float(r["distance_km"]) if r["distance_km"] is not None else None,
             "avg_pace_secs": r["avg_pace_secs"],
+            "calories_burned": r["calories_burned"],
             "effort": r["effort"],
             "effort_manually_set": r["effort_manually_set"],
         }

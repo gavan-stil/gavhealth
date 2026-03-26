@@ -21,6 +21,7 @@ interface FeedItem {
   max_hr: number | null;
   distance_km: number | null;
   avg_pace_secs: number | null;
+  calories_burned: number | null;
   effort: EffortLevel;
   effort_manually_set: boolean;
 }
@@ -416,6 +417,7 @@ export default function ActivityFeed() {
                   {item.start_time ? ` · ${formatTime(item.start_time)}` : ''}
                   {' · '}{formatDuration(item.duration_minutes)}
                   {item.avg_bpm ? ` · ${item.avg_bpm}bpm` : ''}
+                  {item.calories_burned ? ` · ${item.calories_burned}cal` : ''}
                 </div>
 
                 {(item.type === 'run' || item.type === 'ride') && (item.distance_km || item.avg_pace_secs) && (
