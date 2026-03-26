@@ -74,12 +74,14 @@ export default function ExerciseManagerSheet({ onClose, onExerciseUpdated }: Pro
   return (
     <>
       {/* Backdrop */}
-      <div
-        onClick={onClose}
-        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 119 }}
-      />
+      {!editingExercise && (
+        <div
+          onClick={onClose}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 119 }}
+        />
+      )}
 
-      {/* Sheet */}
+      {/* Sheet — hidden while editing an exercise */}
       <div
         style={{
           position: "fixed",
@@ -92,6 +94,7 @@ export default function ExerciseManagerSheet({ onClose, onExerciseUpdated }: Pro
           maxHeight: "85vh",
           overflowY: "auto",
           padding: "var(--space-lg)",
+          display: editingExercise ? "none" : undefined,
         }}
       >
         {/* Header */}
