@@ -252,3 +252,14 @@ body {
 .goe-tab-content {
   animation: tab-fade-in var(--duration-normal) var(--ease-drift) both;
 }
+
+/* ── Sheet slide-up (label scan, recipe) ── */
+@keyframes slideUp {
+  from { transform: translateY(60px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}

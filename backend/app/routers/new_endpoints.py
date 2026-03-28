@@ -1706,3 +1706,149 @@ async def update_exercise(exercise_id: int, body: ExerciseUpdateRequest, db: Asy
             for em, mg in muscles
         ],
     }
+
+
+# ---------------------------------------------------------------------------
+# Label Scan — vision AI nutrition extraction
+# ---------------------------------------------------------------------------
+class LabelScanRequest(BaseModel):
+    image_base64: str
+    mode: str = "label"  # "label" or "recipe"
+
+@router.post("/log/food/scan")
+async def scan_food_label(body: LabelScanRequest):
+    """Send a photo of a nutrition label or recipe to Claude Vision for extraction."""
+    from app.services.claude_service import parse_label_image
+
+    if not body.image_base64:
+        raise HTTPException(status_code=400, detail="image_base64 is required")
+    if body.mode not in ("label", "recipe"):
+        raise HTTPException(status_code=400, detail="mode must be 'label' or 'recipe'")
+
+    try:
+        result = await parse_label_image(body.image_base64, body.mode)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Label scan failed: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Recipes — CRUD for saved recipes with ingredient breakdowns
+# ---------------------------------------------------------------------------
+class RecipeCreate(BaseModel):
+    name: str
+    total_weight_g: float | None = None
+    servings: float = 1
+    calories_kcal: int
+    protein_g: float = 0
+    carbs_g: float = 0
+    fat_g: float = 0
+    ingredients: list = []  # [{name, grams, calories_kcal, protein_g, carbs_g, fat_g}]
+
+class RecipeUpdate(BaseModel):
+    name: str | None = None
+    total_weight_g: float | None = None
+    servings: float | None = None
+    calories_kcal: int | None = None
+    protein_g: float | None = None
+    carbs_g: float | None = None
+    fat_g: float | None = None
+    ingredients: list | None = None
+
+def _recipe_row(r: dict) -> dict:
+    """Serialize a recipes row — NUMERIC columns come back as Decimal."""
+    import json as _json
+    ingredients = r.get("ingredients", [])
+    if isinstance(ingredients, str):
+        ingredients = _json.loads(ingredients)
+    return {
+        "id": r["id"],
+        "name": r["name"],
+        "total_weight_g": float(r["total_weight_g"]) if r.get("total_weight_g") else None,
+        "servings": float(r["servings"]) if r.get("servings") else 1,
+        "calories_kcal": int(r["calories_kcal"]),
+        "protein_g": float(r["protein_g"]) if r.get("protein_g") is not None else 0.0,
+        "carbs_g": float(r["carbs_g"]) if r.get("carbs_g") is not None else 0.0,
+        "fat_g": float(r["fat_g"]) if r.get("fat_g") is not None else 0.0,
+        "ingredients": ingredients,
+        "created_at": r.get("created_at"),
+        "updated_at": r.get("updated_at"),
+    }
+
+
+@router.get("/recipes")
+async def list_recipes(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        text("SELECT * FROM recipes ORDER BY updated_at DESC")
+    )
+    return [_recipe_row(dict(r)) for r in result.mappings().all()]
+
+
+@router.post("/recipes")
+async def create_recipe(body: RecipeCreate, db: AsyncSession = Depends(get_db)):
+    import json as _json
+    result = await db.execute(
+        text("""
+            INSERT INTO recipes (name, total_weight_g, servings, calories_kcal, protein_g, carbs_g, fat_g, ingredients)
+            VALUES (:name, :total_weight_g, :servings, :calories_kcal, :protein_g, :carbs_g, :fat_g, :ingredients::jsonb)
+            RETURNING *
+        """),
+        {
+            "name": body.name,
+            "total_weight_g": body.total_weight_g,
+            "servings": body.servings,
+            "calories_kcal": body.calories_kcal,
+            "protein_g": body.protein_g,
+            "carbs_g": body.carbs_g,
+            "fat_g": body.fat_g,
+            "ingredients": _json.dumps(body.ingredients),
+        },
+    )
+    row = result.mappings().first()
+    await db.commit()
+    return _recipe_row(dict(row))
+
+
+@router.patch("/recipes/{recipe_id}")
+async def update_recipe(recipe_id: int, body: RecipeUpdate, db: AsyncSession = Depends(get_db)):
+    import json as _json
+    # Build SET clause dynamically from provided fields
+    updates = body.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    set_clauses = []
+    params: dict = {"id": recipe_id}
+    for key, val in updates.items():
+        if key == "ingredients":
+            set_clauses.append(f"{key} = :{key}::jsonb")
+            params[key] = _json.dumps(val)
+        else:
+            set_clauses.append(f"{key} = :{key}")
+            params[key] = val
+    set_clauses.append("updated_at = NOW()")
+
+    result = await db.execute(
+        text(f"UPDATE recipes SET {', '.join(set_clauses)} WHERE id = :id RETURNING *"),
+        params,
+    )
+    row = result.mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    await db.commit()
+    return _recipe_row(dict(row))
+
+
+@router.delete("/recipes/{recipe_id}")
+async def delete_recipe(recipe_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        text("DELETE FROM recipes WHERE id = :id RETURNING id"),
+        {"id": recipe_id},
+    )
+    row = result.mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    await db.commit()
+    return {"ok": True}

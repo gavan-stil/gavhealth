@@ -112,6 +112,83 @@ async def parse_strength(
     }
 
 
+LABEL_SCAN_SYSTEM_PROMPT = """You are a nutrition label reader. Given a photo of a food product nutrition label:
+1. Extract the product name (or best guess from packaging)
+2. Extract per-serving nutrition (calories, protein, carbs, fat)
+3. Extract serving size in grams
+4. Extract servings per container if visible
+5. Calculate per-100g values
+
+Return ONLY valid JSON matching this schema:
+{"name": str, "per_serving": {"calories_kcal": int, "protein_g": float, "carbs_g": float, "fat_g": float}, "serving_size_g": float, "servings_per_container": float|null, "per_100g": {"calories_kcal": int, "protein_g": float, "carbs_g": float, "fat_g": float}, "confidence": "high"|"medium"|"low"}
+
+Use Australian nutrition panel format. confidence: "high" if all values clearly readable, "medium" if some estimated, "low" if label is unclear or partially visible.
+All calories_kcal values must be whole integers. No markdown fences, no commentary."""
+
+RECIPE_SCAN_SYSTEM_PROMPT = """You are a recipe ingredient parser. Given a photo of a recipe or ingredient list:
+1. Extract each ingredient with its quantity in grams
+2. Estimate nutrition for each ingredient based on the gram amount
+3. Calculate totals across all ingredients
+
+If quantities are in cups/tbsp/tsp/ml etc, convert to grams using Australian standard measures.
+If no quantity is given, estimate a reasonable amount.
+Return ONLY valid JSON:
+{"name": str, "ingredients": [{"name": str, "grams": float, "calories_kcal": int, "protein_g": float, "carbs_g": float, "fat_g": float}], "totals": {"calories_kcal": int, "protein_g": float, "carbs_g": float, "fat_g": float}, "confidence": "high"|"medium"|"low"}
+
+All calories_kcal values must be whole integers. No markdown fences, no commentary."""
+
+
+async def parse_label_image(image_base64: str, mode: str = "label") -> dict:
+    """Use Claude Vision to extract nutrition from a label or recipe photo."""
+    if not settings.anthropic_api_key:
+        raise ValueError("ANTHROPIC_API_KEY not configured")
+
+    client = _get_client()
+
+    system_prompt = LABEL_SCAN_SYSTEM_PROMPT if mode == "label" else RECIPE_SCAN_SYSTEM_PROMPT
+    user_text = (
+        "Extract the nutrition information from this label."
+        if mode == "label"
+        else "Extract the ingredients and their nutrition from this recipe."
+    )
+
+    # Strip data URI prefix if present
+    b64_data = image_base64
+    media_type = "image/jpeg"
+    if image_base64.startswith("data:"):
+        header, b64_data = image_base64.split(",", 1)
+        if "png" in header:
+            media_type = "image/png"
+        elif "webp" in header:
+            media_type = "image/webp"
+
+    response = await client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=1024,
+        system=system_prompt,
+        messages=[{
+            "role": "user",
+            "content": [
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": media_type,
+                        "data": b64_data,
+                    },
+                },
+                {"type": "text", "text": user_text},
+            ],
+        }],
+    )
+
+    text = response.content[0].text.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+
+    return json.loads(text)
+
+
 async def get_readiness(db, target_date: date) -> dict:
     """Get readiness score — deterministic fallback (Claude enhancement deferred)."""
     return await compute_readiness(db, target_date)

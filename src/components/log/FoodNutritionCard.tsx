@@ -1,10 +1,14 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { UtensilsCrossed, X, AlertCircle, Loader } from 'lucide-react';
+import { UtensilsCrossed, X, AlertCircle, Loader, Camera, BookOpen } from 'lucide-react';
 import { useFoodNutrition } from '@/hooks/useFoodNutrition';
 import { useQuickAdd } from '@/hooks/useQuickAdd';
+import { useLabelScan } from '@/hooks/useLabelScan';
+import { useRecipes } from '@/hooks/useRecipes';
 import { FOOD_TARGETS } from '@/types/food';
 import type { ParsedItem, SavedMeal } from '@/types/food';
 import type { QuickAddItem } from '@/hooks/useQuickAdd';
+import LabelScanSheet from './LabelScanSheet';
+import RecipeSheet from './RecipeSheet';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 const pct = (v: number, t: number) => Math.min(100, Math.round((v / t) * 100));
@@ -12,7 +16,7 @@ const fmt = (n: number) => n.toLocaleString();
 
 // ── types ─────────────────────────────────────────────────────────────────────
 type StagedEntry = QuickAddItem & { stageId: number };
-type QuickTab = 'yesterday' | 'frequent' | 'saved';
+type QuickTab = 'yesterday' | 'frequent' | 'saved' | 'recipes';
 
 // ── MacroBar ──────────────────────────────────────────────────────────────────
 function MacroBar({ label, value, target, color }: {
@@ -119,6 +123,15 @@ export default function FoodNutritionCard({
   } = useFoodNutrition(date);
 
   const { yesterdayItems, frequentItems, loading: qaLoading } = useQuickAdd(date);
+
+  // ── Label scan ──────────────────────────────────────────────────────────
+  const scan = useLabelScan();
+  const [scanSheetOpen, setScanSheetOpen] = useState(false);
+  const cameraRef = useRef<HTMLInputElement>(null);
+
+  // ── Recipes ─────────────────────────────────────────────────────────────
+  const { recipes, createRecipe, updateRecipe, deleteRecipe } = useRecipes();
+  const [recipeSheetOpen, setRecipeSheetOpen] = useState(false);
 
   // ── Staged state ──────────────────────────────────────────────────────────
   const [staged, setStaged] = useState<StagedEntry[]>([]);
@@ -335,9 +348,10 @@ export default function FoodNutritionCard({
               <button style={tabStyle('yesterday')} onClick={() => switchTab('yesterday')}>Yesterday</button>
               <button style={tabStyle('frequent')}  onClick={() => switchTab('frequent')}>Frequent</button>
               <button style={tabStyle('saved')}     onClick={() => switchTab('saved')}>Saved</button>
+              <button style={tabStyle('recipes')}   onClick={() => switchTab('recipes')}>Recipes</button>
             </div>
 
-            {activeTab !== 'saved' && (
+            {activeTab !== 'saved' && activeTab !== 'recipes' && (
               <button
                 onClick={() => handleAddAll(activeTab === 'yesterday' ? yesterdayItems : frequentItems)}
                 style={{
@@ -373,6 +387,38 @@ export default function FoodNutritionCard({
                 ))}
               </div>
             )
+          )}
+          {activeTab === 'recipes' && (
+            <div style={{ marginBottom: 8 }}>
+              {recipes.length === 0 ? (
+                <p style={{ font: '400 12px/1.4 Inter,sans-serif', color: 'var(--text-muted)', padding: '4px 0' }}>
+                  No recipes yet — tap Manage to create one.
+                </p>
+              ) : (
+                <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, WebkitOverflowScrolling: 'touch' }}>
+                  {recipes.map(r => (
+                    <Chip
+                      key={r.id}
+                      name={r.name}
+                      kcal={Math.round(r.calories_kcal / r.servings)}
+                      alreadyLogged={todayLogNames.has(r.name.toLowerCase())}
+                      onTap={() => { setRecipeSheetOpen(true); }}
+                    />
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={() => setRecipeSheetOpen(true)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'var(--ochre)', font: '600 11px/1 Inter,sans-serif',
+                  padding: '4px 0', marginTop: 4,
+                }}
+              >
+                <BookOpen size={12} style={{ verticalAlign: -2, marginRight: 4 }} />
+                Manage Recipes
+              </button>
+            </div>
           )}
 
           {/* ── ② STAGED AREA ──────────────────────────────────────────── */}
@@ -456,11 +502,41 @@ export default function FoodNutritionCard({
 
           <div style={{ height: 1, background: 'var(--border-subtle)', marginBottom: 14 }} />
 
-          {/* ── ③ NEW FOOD (NLP) ────────────────────────────────────────── */}
+          {/* ── ③ NEW FOOD (NLP + Camera) ────────────────────────────────── */}
+          <input
+            ref={cameraRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (file) {
+                scan.handleFile(file, 'label');
+                setScanSheetOpen(true);
+              }
+              e.target.value = '';
+            }}
+          />
           <div style={{ marginBottom: 10 }}>
-            <span style={{ font: '600 10px/1 Inter,sans-serif', letterSpacing: '1.5px', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: 8 }}>
-              New food
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ font: '600 10px/1 Inter,sans-serif', letterSpacing: '1.5px', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                New food
+              </span>
+              <button
+                onClick={() => cameraRef.current?.click()}
+                disabled={scan.scanState === 'scanning'}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  background: 'none', border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-pill)', padding: '5px 10px',
+                  color: 'var(--ochre)', font: '600 11px/1 Inter,sans-serif',
+                  cursor: 'pointer', opacity: scan.scanState === 'scanning' ? 0.5 : 1,
+                }}
+              >
+                <Camera size={13} />
+                Scan Label
+              </button>
+            </div>
             <textarea
               value={parseInput}
               onChange={e => setParseInput(e.target.value)}
@@ -653,6 +729,33 @@ export default function FoodNutritionCard({
 
         </div>
       )}
+
+      {/* ── Sheets ───────────────────────────────────────────────────── */}
+      <LabelScanSheet
+        open={scanSheetOpen}
+        onClose={() => { setScanSheetOpen(false); scan.reset(); }}
+        scanState={scan.scanState}
+        imageDataUrl={scan.imageDataUrl}
+        labelResult={scan.labelResult}
+        scanError={scan.scanError}
+        onRetake={() => { scan.reset(); cameraRef.current?.click(); }}
+        onAdd={(item) => {
+          handleStage({ ...item, id: `scan-${Date.now()}`, count: 1 });
+          setScanSheetOpen(false);
+          scan.reset();
+        }}
+      />
+      <RecipeSheet
+        open={recipeSheetOpen}
+        onClose={() => setRecipeSheetOpen(false)}
+        recipes={recipes}
+        onCreateRecipe={createRecipe}
+        onUpdateRecipe={updateRecipe}
+        onDeleteRecipe={deleteRecipe}
+        onAddToStaged={(item) => {
+          handleStage({ ...item, id: `recipe-${Date.now()}`, count: 1 });
+        }}
+      />
     </div>
   );
 }

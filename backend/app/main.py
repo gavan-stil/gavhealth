@@ -106,6 +106,22 @@ async def lifespan(app: FastAPI):
             WHERE name LIKE '% - %'
               AND SPLIT_PART(name, ' - ', 2) != ''
             """,
+            # Recipes table (label scan + recipe feature)
+            """
+            CREATE TABLE IF NOT EXISTS recipes (
+                id              SERIAL PRIMARY KEY,
+                name            TEXT NOT NULL,
+                total_weight_g  NUMERIC(8,1),
+                servings        NUMERIC(6,2) DEFAULT 1,
+                calories_kcal   INTEGER NOT NULL,
+                protein_g       NUMERIC(6,1) NOT NULL DEFAULT 0,
+                carbs_g         NUMERIC(6,1) NOT NULL DEFAULT 0,
+                fat_g           NUMERIC(6,1) NOT NULL DEFAULT 0,
+                ingredients     JSONB NOT NULL DEFAULT '[]',
+                created_at      TIMESTAMPTZ DEFAULT NOW(),
+                updated_at      TIMESTAMPTZ DEFAULT NOW()
+            )
+            """,
             # T22: health goals table (append-only, signal + target range)
             """
             CREATE TABLE IF NOT EXISTS health_goals (
