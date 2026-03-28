@@ -8,6 +8,7 @@ interface CardErrorProps {
 export default function CardError({ section, onRetry }: CardErrorProps) {
   return (
     <div
+      className="goe-card"
       style={{
         background: "var(--bg-card)",
         border: "1px solid var(--border-default)",

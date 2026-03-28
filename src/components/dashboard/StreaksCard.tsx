@@ -11,6 +11,7 @@ const streakConfig = [
 export default function StreaksCard({ data }: { data: StreaksData }) {
   return (
     <div
+      className="goe-card"
       style={{
         background: "var(--bg-card)",
         border: "1px solid var(--border-default)",

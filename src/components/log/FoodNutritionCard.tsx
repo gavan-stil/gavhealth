@@ -294,11 +294,10 @@ export default function FoodNutritionCard({
   };
 
   return (
-    <div style={{
+    <div className="goe-card" style={{
       background: 'var(--bg-card)',
       border: '1px solid var(--border-default)',
       borderRadius: 'var(--radius-md)',
-      overflow: 'hidden',
     }}>
       {/* ── Header ── */}
       <button

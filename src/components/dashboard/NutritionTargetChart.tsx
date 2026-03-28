@@ -116,7 +116,7 @@ export default function NutritionTargetChart({ foodData, loading }: Props) {
   const hasData = proteinData.length > 0;
 
   return (
-    <div style={{
+    <div className="goe-card" style={{
       background: 'var(--bg-card)',
       border: '1px solid var(--border-default)',
       borderRadius: 'var(--radius-lg)',

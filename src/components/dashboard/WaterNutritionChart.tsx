@@ -39,7 +39,7 @@ export default function WaterNutritionChart({ waterData, foodData, loading }: Pr
   const hasData = chartData.some(d => d.water_ml || d.kcal);
 
   return (
-    <div style={{
+    <div className="goe-card" style={{
       background: 'var(--bg-card)',
       border: '1px solid var(--border-default)',
       borderRadius: 'var(--radius-lg)',

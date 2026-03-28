@@ -5,6 +5,7 @@ interface CardEmptyProps {
 export default function CardEmpty({ section }: CardEmptyProps) {
   return (
     <div
+      className="goe-card"
       style={{
         background: "var(--bg-card)",
         border: "1px solid var(--border-default)",

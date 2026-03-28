@@ -164,7 +164,7 @@ export default function ExerciseProgressCard({ exercise, days }: Props) {
 
   if (loading) {
     return (
-      <div style={{ ...cardStyle, opacity: 0.6 }}>
+      <div className="goe-card" style={{ ...cardStyle, opacity: 0.6 }}>
         <span className="label-text" style={{ color: "var(--text-muted)" }}>
           {exercise.name}
         </span>
@@ -183,7 +183,7 @@ export default function ExerciseProgressCard({ exercise, days }: Props) {
   // Error: show minimal error card; empty history: hide entirely (unlinked exercise)
   if (error) {
     return (
-      <div style={cardStyle}>
+      <div className="goe-card" style={cardStyle}>
         <span className="label-text" style={{ color: "var(--text-muted)" }}>
           {exercise.name} — {error}
         </span>
@@ -198,7 +198,7 @@ export default function ExerciseProgressCard({ exercise, days }: Props) {
   const change4w = topWeights[lastIdx] - topWeights[compareIdx];
 
   return (
-    <div style={cardStyle}>
+    <div className="goe-card" style={cardStyle}>
       {/* Header row */}
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-xs)", flexWrap: "wrap" }}>

@@ -305,7 +305,7 @@ export default function SplitProgressChart() {
 
   if (loading) {
     return (
-      <div style={cardStyle}>
+      <div className="goe-card" style={cardStyle}>
         <div style={{ ...pulseStyle, width: "55%", height: 10 }} />
         <div style={{ display: "flex", gap: 6 }}>
           {[1, 2, 3, 4].map((i) => (
@@ -346,7 +346,7 @@ export default function SplitProgressChart() {
   const data = sessions ? buildChartData(sessions, split, lookup) : [];
 
   return (
-    <div style={cardStyle}>
+    <div className="goe-card" style={cardStyle}>
       {/* Header */}
       <span className="label-text" style={{ color: "var(--text-muted)" }}>
         SPLIT PROGRESS

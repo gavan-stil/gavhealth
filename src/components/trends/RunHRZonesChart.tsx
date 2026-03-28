@@ -152,7 +152,7 @@ export default function RunHRZonesChart() {
   };
 
   return (
-    <div style={cardStyle}>
+    <div className="goe-card" style={cardStyle}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "var(--space-md)" }}>
         <span className="section-label" style={{ color: "var(--text-primary)" }}>
           Run HR Zones

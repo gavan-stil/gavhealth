@@ -137,7 +137,7 @@ export default function WorkoutVolumeChart({ sessions, loading, error, refetch, 
   /* Loading */
   if (loading) {
     return (
-      <div style={cardStyle}>
+      <div className="goe-card" style={cardStyle}>
         <SkeletonBlock w="50%" h={10} />
         <div style={{ display: "flex", gap: "var(--space-xs)" }}>
           {[1, 2, 3, 4].map((i) => <SkeletonBlock key={i} w="60px" h={26} />)}
@@ -150,7 +150,7 @@ export default function WorkoutVolumeChart({ sessions, loading, error, refetch, 
   /* Error */
   if (error && !sessions) {
     return (
-      <div style={{ ...cardStyle, alignItems: "center", justifyContent: "center", minHeight: 100 }}>
+      <div className="goe-card" style={{ ...cardStyle, alignItems: "center", justifyContent: "center", minHeight: 100 }}>
         <AlertTriangle size={16} style={{ color: "var(--signal-poor)" }} />
         <span className="body-text" style={{ color: "var(--text-muted)" }}>
           Couldn't load workout data
@@ -171,7 +171,7 @@ export default function WorkoutVolumeChart({ sessions, loading, error, refetch, 
   /* Empty */
   if (!weeks.length) {
     return (
-      <div style={{ ...cardStyle, alignItems: "center", justifyContent: "center", minHeight: 100 }}>
+      <div className="goe-card" style={{ ...cardStyle, alignItems: "center", justifyContent: "center", minHeight: 100 }}>
         <span className="label-text" style={{ color: "var(--text-muted)" }}>
           WORKOUT VOLUME
         </span>
@@ -193,7 +193,7 @@ export default function WorkoutVolumeChart({ sessions, loading, error, refetch, 
   }));
 
   return (
-    <div style={cardStyle}>
+    <div className="goe-card" style={cardStyle}>
       {/* Header */}
       <span className="label-text" style={{ color: "var(--text-muted)" }}>
         WORKOUT VOLUME

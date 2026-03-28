@@ -83,6 +83,7 @@ export default function CardSkeleton({ variant }: { variant: SkeletonVariant }) 
   const Variant = variants[variant];
   return (
     <div
+      className="goe-card"
       style={{
         background: "var(--bg-card)",
         border: "1px solid var(--border-default)",

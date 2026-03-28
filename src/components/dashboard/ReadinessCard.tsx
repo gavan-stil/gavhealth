@@ -43,6 +43,7 @@ export default function ReadinessCard({ data }: { data: ReadinessData }) {
 
   return (
     <div
+      className="goe-card"
       style={{
         background: "var(--bg-card)",
         border: "1px solid var(--border-default)",

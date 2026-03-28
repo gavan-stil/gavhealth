@@ -14,7 +14,6 @@ const cardStyle: React.CSSProperties = {
   background: 'var(--bg-card)',
   border: '1px solid var(--border-default)',
   borderRadius: 'var(--radius-lg)',
-  overflow: 'hidden',
 };
 
 interface Props {
@@ -116,7 +115,7 @@ export default function WaterCard({ open, onToggle, date }: Props) {
   };
 
   return (
-    <div style={cardStyle}>
+    <div className="goe-card" style={cardStyle}>
       {/* Header */}
       <button
         onClick={onToggle}

@@ -124,6 +124,7 @@ export default function DashboardPage() {
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
+      className="goe-card-stack"
       style={{
         padding: "var(--space-lg)",
         display: "flex",
@@ -234,7 +235,7 @@ export default function DashboardPage() {
       {sleepStages.loading ? null : sleepStages.data ? (
         <SleepCard data={sleepStages.data} onClick={() => setSleepSheetOpen(true)} />
       ) : (
-        <div style={{
+        <div className="goe-card" style={{
           background: "var(--bg-card)",
           border: "1px solid var(--border-default)",
           borderRadius: "var(--radius-lg)",
@@ -296,7 +297,7 @@ export default function DashboardPage() {
       />
 
       {/* Collapsed: Vitals + Streaks */}
-      <details style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+      <details className="goe-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)' }}>
         <summary style={{
           padding: 'var(--space-md) var(--space-lg)',
           cursor: 'pointer',

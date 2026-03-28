@@ -29,6 +29,7 @@ export default function IntradayHRChart({ data, loading }: Props) {
   if (loading) {
     return (
       <div
+        className="goe-card"
         style={{
           background: "var(--bg-card)",
           border: "1px solid var(--border-default)",
@@ -57,6 +58,7 @@ export default function IntradayHRChart({ data, loading }: Props) {
   if (!hasBuckets) {
     return (
       <div
+        className="goe-card"
         style={{
           background: "var(--bg-card)",
           border: "1px solid var(--border-default)",

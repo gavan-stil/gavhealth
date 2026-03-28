@@ -29,7 +29,7 @@ export default function MoodEnergyChart({ data, loading }: Props) {
   const isEmpty = !loading && chartData.length === 0;
 
   return (
-    <div style={{
+    <div className="goe-card" style={{
       background: 'var(--bg-card)',
       border: '1px solid var(--border-default)',
       borderRadius: 'var(--radius-lg)',

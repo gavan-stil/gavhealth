@@ -33,7 +33,7 @@ function TrendsSkeleton() {
     <>
       {/* Sparklines skeleton */}
       <div
-        style={{
+        className="goe-card" style={{
           background: "var(--bg-card)",
           border: "1px solid var(--border-default)",
           borderRadius: "var(--radius-lg)",
@@ -65,7 +65,7 @@ function TrendsSkeleton() {
 
       {/* Chart skeleton */}
       <div
-        style={{
+        className="goe-card" style={{
           background: "var(--bg-card)",
           border: "1px solid var(--border-default)",
           borderRadius: "var(--radius-lg)",
@@ -81,7 +81,7 @@ function TrendsSkeleton() {
 
       {/* Correlation skeleton */}
       <div
-        style={{
+        className="goe-card" style={{
           background: "var(--bg-card)",
           border: "1px solid var(--border-default)",
           borderRadius: "var(--radius-lg)",
@@ -115,6 +115,7 @@ export default function TrendsPage() {
 
   return (
     <div
+      className="goe-card-stack"
       style={{
         padding: "var(--space-lg)",
         display: "flex",
@@ -126,7 +127,7 @@ export default function TrendsPage() {
         <TrendsSkeleton />
       ) : !data ? (
         <div
-          style={{
+          className="goe-card" style={{
             background: "var(--bg-card)",
             border: "1px solid var(--border-default)",
             borderRadius: "var(--radius-lg)",

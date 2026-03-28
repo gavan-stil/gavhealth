@@ -156,3 +156,99 @@ body {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* ── Card texture overlay ── */
+.goe-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.goe-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0.04;
+  pointer-events: none;
+  z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+}
+
+.goe-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Card entrance stagger ── */
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.goe-card-stack > .goe-card:nth-child(1) { animation: card-enter var(--duration-slow) var(--ease-settle) both; }
+.goe-card-stack > .goe-card:nth-child(2) { animation: card-enter var(--duration-slow) var(--ease-settle) both; animation-delay: 60ms; }
+.goe-card-stack > .goe-card:nth-child(3) { animation: card-enter var(--duration-slow) var(--ease-settle) both; animation-delay: 120ms; }
+.goe-card-stack > .goe-card:nth-child(4) { animation: card-enter var(--duration-slow) var(--ease-settle) both; animation-delay: 180ms; }
+.goe-card-stack > .goe-card:nth-child(5) { animation: card-enter var(--duration-slow) var(--ease-settle) both; animation-delay: 240ms; }
+.goe-card-stack > .goe-card:nth-child(6) { animation: card-enter var(--duration-slow) var(--ease-settle) both; animation-delay: 300ms; }
+.goe-card-stack > .goe-card:nth-child(n+7) { animation: card-enter var(--duration-slow) var(--ease-settle) both; animation-delay: 360ms; }
+
+/* ── Strava-style underline tabs ── */
+.goe-tab-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border-default);
+  padding: 0 var(--space-lg);
+}
+
+.goe-tab-btn {
+  padding: 12px 16px 10px;
+  font: 600 13px/1 'Inter', sans-serif;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  position: relative;
+  transition: color var(--duration-fast);
+}
+
+.goe-tab-btn:hover {
+  color: var(--text-secondary);
+}
+
+.goe-tab-btn.active {
+  color: var(--ochre);
+}
+
+.goe-tab-btn::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 16px;
+  right: 16px;
+  height: 2px;
+  background: var(--ochre);
+  border-radius: 1px;
+  transform: scaleX(0);
+  transition: transform var(--duration-normal) var(--ease-settle);
+}
+
+.goe-tab-btn.active::after {
+  transform: scaleX(1);
+}
+
+/* ── Tab content crossfade ── */
+@keyframes tab-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.goe-tab-content {
+  animation: tab-fade-in var(--duration-normal) var(--ease-drift) both;
+}

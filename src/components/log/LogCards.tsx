@@ -39,7 +39,7 @@ export default function LogCards() {
   const isToday = selectedDate === todayLocal();
 
   return (
-    <div style={{
+    <div className="goe-card-stack" style={{
       display: 'flex', flexDirection: 'column',
       gap: 'var(--space-md)',
       padding: 'var(--space-lg)',

@@ -202,7 +202,7 @@ export default function StrengthQualityChart() {
 
   if (sessions === null && !error) {
     return (
-      <div style={cardStyle}>
+      <div className="goe-card" style={cardStyle}>
         <div
           style={{
             display: "flex",
@@ -220,7 +220,7 @@ export default function StrengthQualityChart() {
 
   if (error) {
     return (
-      <div style={cardStyle}>
+      <div className="goe-card" style={cardStyle}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <AlertTriangle size={14} color="var(--rust)" />
           <span style={{ fontSize: 12, color: "var(--rust)" }}>{error}</span>
@@ -242,7 +242,7 @@ export default function StrengthQualityChart() {
   // Need ≥ 5 sessions total to show chart, ≥ 1 with HR for scatter
   if (all.length < 5 || withHR.length < 1) {
     return (
-      <div style={cardStyle}>
+      <div className="goe-card" style={cardStyle}>
         <div className="label-text" style={{ color: "var(--text-muted)" }}>
           STRENGTH QUALITY
         </div>
@@ -288,7 +288,7 @@ export default function StrengthQualityChart() {
   const hrMax = Math.ceil(Math.max(...hrs) + 10);
 
   return (
-    <div style={cardStyle}>
+    <div className="goe-card" style={cardStyle}>
       {/* Header */}
       <div
         style={{

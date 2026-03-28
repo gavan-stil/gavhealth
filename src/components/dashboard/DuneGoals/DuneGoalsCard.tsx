@@ -33,11 +33,10 @@ export default function DuneGoalsCard() {
         }
       `}</style>
 
-      <div style={{
+      <div className="goe-card" style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border-default)',
         borderRadius: 'var(--radius-lg)',
-        overflow: 'hidden',
       }}>
         {/* Header */}
         <div

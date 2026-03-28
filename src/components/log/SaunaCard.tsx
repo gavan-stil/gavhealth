@@ -38,11 +38,10 @@ export default function SaunaCard({ open, onToggle }: { open: boolean; onToggle:
   };
 
   return (
-    <div style={{
+    <div className="goe-card" style={{
       background: 'var(--bg-card)',
       border: '1px solid var(--border-default)',
       borderRadius: 'var(--radius-md)',
-      overflow: 'hidden',
     }}>
       <button
         onClick={onToggle}

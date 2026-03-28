@@ -351,11 +351,11 @@ export default function MomentumCard({ data }: Props) {
   return (
     <>
       <div
+        className="goe-card"
         style={{
           background: "linear-gradient(180deg, rgba(90,130,160,0.05) 0%, var(--bg-card) 40%)",
           border: "1px solid rgba(127,170,188,0.10)",
           borderRadius: "var(--radius-lg)",
-          overflow: "hidden",
           cursor: "pointer",
         }}
         onClick={() => setExpanded(e => !e)}

@@ -28,6 +28,7 @@ export default function SleepCard({ data, onClick }: Props) {
 
   return (
     <div
+      className="goe-card"
       onClick={onClick}
       style={{
         background: "var(--bg-card)",

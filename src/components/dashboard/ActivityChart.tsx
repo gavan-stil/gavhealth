@@ -44,7 +44,7 @@ export default function ActivityChart({ data, loading }: Props) {
   }, [data]);
 
   return (
-    <div style={{
+    <div className="goe-card" style={{
       background: 'var(--bg-card)',
       border: '1px solid var(--border-default)',
       borderRadius: 'var(--radius-lg)',

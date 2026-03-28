@@ -223,7 +223,7 @@ export default function ProteinWeightChart({ proteinTarget = 180 }: { proteinTar
 
   if (data === null && !error) {
     return (
-      <div style={cardStyle}>
+      <div className="goe-card" style={cardStyle}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-muted)" }}>
           <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
           <span style={{ fontSize: 13 }}>Loading protein data…</span>
@@ -234,7 +234,7 @@ export default function ProteinWeightChart({ proteinTarget = 180 }: { proteinTar
 
   if (error) {
     return (
-      <div style={cardStyle}>
+      <div className="goe-card" style={cardStyle}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <AlertTriangle size={14} color="var(--rust)" />
           <span style={{ fontSize: 12, color: "var(--rust)" }}>{error}</span>
@@ -247,7 +247,7 @@ export default function ProteinWeightChart({ proteinTarget = 180 }: { proteinTar
 
   if (days.length < 2) {
     return (
-      <div style={cardStyle}>
+      <div className="goe-card" style={cardStyle}>
         <div className="label-text" style={{ color: "var(--text-muted)" }}>
           PROTEIN vs WEIGHT
         </div>
@@ -275,7 +275,7 @@ export default function ProteinWeightChart({ proteinTarget = 180 }: { proteinTar
   const proteinMax = Math.ceil(maxProtein * 1.2 / 20) * 20;
 
   return (
-    <div style={cardStyle}>
+    <div className="goe-card" style={cardStyle}>
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div className="label-text" style={{ color: "var(--text-muted)" }}>

@@ -278,7 +278,7 @@ export default function EnergyBalanceChart({ proteinTarget = 180 }: { proteinTar
   // ── Loading ──
   if (data === null && !error) {
     return (
-      <div style={cardStyle}>
+      <div className="goe-card" style={cardStyle}>
         <div
           style={{
             display: "flex",
@@ -297,7 +297,7 @@ export default function EnergyBalanceChart({ proteinTarget = 180 }: { proteinTar
   // ── Error ──
   if (error) {
     return (
-      <div style={cardStyle}>
+      <div className="goe-card" style={cardStyle}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <AlertTriangle size={14} color="var(--rust)" />
           <span style={{ fontSize: 12, color: "var(--rust)" }}>{error}</span>
@@ -311,7 +311,7 @@ export default function EnergyBalanceChart({ proteinTarget = 180 }: { proteinTar
   // ── Graceful: < 3 days of data ──
   if (days.length < 3) {
     return (
-      <div style={cardStyle}>
+      <div className="goe-card" style={cardStyle}>
         <div className="label-text" style={{ color: "var(--text-muted)" }}>
           ENERGY BALANCE
         </div>
@@ -351,7 +351,7 @@ export default function EnergyBalanceChart({ proteinTarget = 180 }: { proteinTar
     : null;
 
   return (
-    <div style={cardStyle}>
+    <div className="goe-card" style={cardStyle}>
       {/* Header row */}
       <div
         style={{
