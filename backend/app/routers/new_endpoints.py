@@ -1792,7 +1792,7 @@ async def create_recipe(body: RecipeCreate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         text("""
             INSERT INTO recipes (name, total_weight_g, servings, calories_kcal, protein_g, carbs_g, fat_g, ingredients)
-            VALUES (:name, :total_weight_g, :servings, :calories_kcal, :protein_g, :carbs_g, :fat_g, :ingredients::jsonb)
+            VALUES (:name, :total_weight_g, :servings, :calories_kcal, :protein_g, :carbs_g, :fat_g, CAST(:ingredients AS jsonb))
             RETURNING *
         """),
         {
@@ -1807,7 +1807,6 @@ async def create_recipe(body: RecipeCreate, db: AsyncSession = Depends(get_db)):
         },
     )
     row = result.mappings().first()
-    await db.commit()
     return _recipe_row(dict(row))
 
 
@@ -1823,7 +1822,7 @@ async def update_recipe(recipe_id: int, body: RecipeUpdate, db: AsyncSession = D
     params: dict = {"id": recipe_id}
     for key, val in updates.items():
         if key == "ingredients":
-            set_clauses.append(f"{key} = :{key}::jsonb")
+            set_clauses.append(f"{key} = CAST(:{key} AS jsonb)")
             params[key] = _json.dumps(val)
         else:
             set_clauses.append(f"{key} = :{key}")
@@ -1837,7 +1836,6 @@ async def update_recipe(recipe_id: int, body: RecipeUpdate, db: AsyncSession = D
     row = result.mappings().first()
     if not row:
         raise HTTPException(status_code=404, detail="Recipe not found")
-    await db.commit()
     return _recipe_row(dict(row))
 
 
@@ -1850,5 +1848,4 @@ async def delete_recipe(recipe_id: int, db: AsyncSession = Depends(get_db)):
     row = result.mappings().first()
     if not row:
         raise HTTPException(status_code=404, detail="Recipe not found")
-    await db.commit()
     return {"ok": True}

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { X, Camera, AlertTriangle, Loader } from 'lucide-react';
 import type { LabelScanResult, Macros, ParsedItem } from '@/types/food';
 import type { ScanState } from '@/hooks/useLabelScan';
@@ -22,12 +22,12 @@ export default function LabelScanSheet({
   const [editName, setEditName] = useState('');
 
   // Reset form when new result arrives
-  useState(() => {
+  useEffect(() => {
     if (labelResult) {
       setEditName(labelResult.name);
       setAmount(unit === 'servings' ? '1' : String(labelResult.serving_size_g ?? 100));
     }
-  });
+  }, [labelResult]);
 
   // Compute scaled macros
   const scaled: Macros | null = useMemo(() => {
