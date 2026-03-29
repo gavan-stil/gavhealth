@@ -203,10 +203,23 @@ function RecipeForm({ initial, onSave }: {
   onSave: (data: Omit<Recipe, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
 }) {
   const [name, setName] = useState(initial?.name ?? '');
-  const [totalWeightG, setTotalWeightG] = useState(initial?.total_weight_g?.toString() ?? '');
-  const [servings, setServings] = useState(initial?.servings?.toString() ?? '1');
+  // Serving size in grams (per portion). Derive from existing recipe: total_weight / servings
+  const [servingSizeG, setServingSizeG] = useState(() => {
+    if (initial?.total_weight_g && initial?.servings > 0)
+      return String(Math.round(initial.total_weight_g / initial.servings));
+    return '';
+  });
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>(initial?.ingredients ?? []);
   const [saving, setSaving] = useState(false);
+
+  // Auto-calculate batch weight and servings from ingredients + serving size
+  const batchWeightG = useMemo(() =>
+    ingredients.reduce((sum, i) => sum + (i.grams || 0), 0),
+  [ingredients]);
+  const servingSizeNum = parseFloat(servingSizeG) || 0;
+  const calculatedServings = servingSizeNum > 0 && batchWeightG > 0
+    ? Math.round((batchWeightG / servingSizeNum) * 10) / 10
+    : 1;
 
   // Scan support for recipe photos
   const { scanState, recipeResult, scanError, handleFile } = useLabelScan();
@@ -255,8 +268,8 @@ function RecipeForm({ initial, onSave }: {
     try {
       await onSave({
         name: name.trim(),
-        total_weight_g: parseFloat(totalWeightG) || null,
-        servings: parseFloat(servings) || 1,
+        total_weight_g: batchWeightG > 0 ? batchWeightG : null,
+        servings: calculatedServings,
         calories_kcal: totals.calories_kcal,
         protein_g: totals.protein_g,
         carbs_g: totals.carbs_g,
@@ -314,16 +327,17 @@ function RecipeForm({ initial, onSave }: {
         <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Chicken Stir Fry" style={inputStyle} />
       </div>
 
-      {/* Servings + total weight */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <div style={{ flex: 1 }}>
-          <label style={labelStyle}>Servings</label>
-          <input type="number" inputMode="decimal" value={servings} onChange={e => setServings(e.target.value)} style={inputStyle} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label style={labelStyle}>Total Weight (g)</label>
-          <input type="number" inputMode="decimal" value={totalWeightG} onChange={e => setTotalWeightG(e.target.value)} placeholder="optional" style={inputStyle} />
-        </div>
+      {/* Serving size */}
+      <div style={{ marginBottom: 16 }}>
+        <label style={labelStyle}>Serving Size (g)</label>
+        <input type="number" inputMode="decimal" value={servingSizeG}
+          onChange={e => setServingSizeG(e.target.value)}
+          placeholder="e.g. 30" style={inputStyle} />
+        {batchWeightG > 0 && servingSizeNum > 0 && (
+          <p style={{ font: '400 12px/1.4 Inter,sans-serif', color: 'var(--text-muted)', marginTop: 6 }}>
+            Batch total: {batchWeightG}g → <strong style={{ color: 'var(--ochre)' }}>{calculatedServings} servings</strong>
+          </p>
+        )}
       </div>
 
       {/* Ingredients */}
@@ -378,12 +392,12 @@ function RecipeForm({ initial, onSave }: {
           <div style={{ font: '700 14px/1 "JetBrains Mono",monospace', color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>
             {totals.calories_kcal} kcal · P{totals.protein_g} C{totals.carbs_g} F{totals.fat_g}
           </div>
-          {parseFloat(servings) > 1 && (
+          {calculatedServings > 1 && (
             <div style={{ font: '400 12px/1.4 Inter,sans-serif', color: 'var(--text-muted)', marginTop: 4 }}>
-              Per serving: {Math.round(totals.calories_kcal / (parseFloat(servings) || 1))} kcal ·
-              P{(totals.protein_g / (parseFloat(servings) || 1)).toFixed(0)}
-              C{(totals.carbs_g / (parseFloat(servings) || 1)).toFixed(0)}
-              F{(totals.fat_g / (parseFloat(servings) || 1)).toFixed(0)}
+              Per serving ({servingSizeNum}g): {Math.round(totals.calories_kcal / calculatedServings)} kcal ·
+              P{(totals.protein_g / calculatedServings).toFixed(0)}
+              C{(totals.carbs_g / calculatedServings).toFixed(0)}
+              F{(totals.fat_g / calculatedServings).toFixed(0)}
             </div>
           )}
         </div>
