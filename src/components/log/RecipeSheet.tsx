@@ -187,8 +187,17 @@ function RecipeList({ recipes, onNew, onEdit, onUse, onDelete }: {
             )}
           </div>
           <div style={{ font: '600 11px/1 "JetBrains Mono",monospace', color: 'var(--text-muted)', letterSpacing: '-0.3px' }}>
-            {r.calories_kcal} kcal · P{Math.round(r.protein_g)} C{Math.round(r.carbs_g)} F{Math.round(r.fat_g)}
-            {r.servings > 1 && ` · ${r.servings} servings`}
+            {r.servings > 1 ? (
+              <>
+                {Math.round(r.calories_kcal / r.servings)} kcal ·
+                P{Math.round(r.protein_g / r.servings)} C{Math.round(r.carbs_g / r.servings)} F{Math.round(r.fat_g / r.servings)}
+                {' '}/ serving · {r.servings} servings
+              </>
+            ) : (
+              <>
+                {r.calories_kcal} kcal · P{Math.round(r.protein_g)} C{Math.round(r.carbs_g)} F{Math.round(r.fat_g)}
+              </>
+            )}
             {r.ingredients.length > 0 && ` · ${r.ingredients.length} ingredients`}
           </div>
         </div>
@@ -209,6 +218,8 @@ function RecipeForm({ initial, onSave }: {
       return String(Math.round(initial.total_weight_g / initial.servings));
     return '';
   });
+  // Manual servings override — used when ingredients have no gram weights
+  const [manualServings, setManualServings] = useState(initial?.servings?.toString() ?? '1');
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>(initial?.ingredients ?? []);
   const [saving, setSaving] = useState(false);
 
@@ -217,9 +228,11 @@ function RecipeForm({ initial, onSave }: {
     ingredients.reduce((sum, i) => sum + (i.grams || 0), 0),
   [ingredients]);
   const servingSizeNum = parseFloat(servingSizeG) || 0;
-  const calculatedServings = servingSizeNum > 0 && batchWeightG > 0
+  // Use gram-based calc when we have weights + serving size, otherwise fall back to manual
+  const hasWeights = batchWeightG > 0 && servingSizeNum > 0;
+  const calculatedServings = hasWeights
     ? Math.round((batchWeightG / servingSizeNum) * 10) / 10
-    : 1;
+    : (parseFloat(manualServings) || 1);
 
   // Scan support for recipe photos
   const { scanState, recipeResult, scanError, handleFile } = useLabelScan();
@@ -327,18 +340,36 @@ function RecipeForm({ initial, onSave }: {
         <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Chicken Stir Fry" style={inputStyle} />
       </div>
 
-      {/* Serving size */}
-      <div style={{ marginBottom: 16 }}>
-        <label style={labelStyle}>Serving Size (g)</label>
-        <input type="number" inputMode="decimal" value={servingSizeG}
-          onChange={e => setServingSizeG(e.target.value)}
-          placeholder="e.g. 30" style={inputStyle} />
-        {batchWeightG > 0 && servingSizeNum > 0 && (
-          <p style={{ font: '400 12px/1.4 Inter,sans-serif', color: 'var(--text-muted)', marginTop: 6 }}>
-            Batch total: {batchWeightG}g → <strong style={{ color: 'var(--ochre)' }}>{calculatedServings} servings</strong>
-          </p>
-        )}
+      {/* Serving size + servings */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <div style={{ flex: 1 }}>
+          <label style={labelStyle}>Serving Size (g)</label>
+          <input type="number" inputMode="decimal" value={servingSizeG}
+            onChange={e => setServingSizeG(e.target.value)}
+            placeholder="e.g. 30" style={inputStyle} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={labelStyle}>{hasWeights ? 'Servings (auto)' : 'Servings'}</label>
+          {hasWeights ? (
+            <div style={{
+              ...inputStyle, display: 'flex', alignItems: 'center',
+              background: 'var(--bg-card)', color: 'var(--ochre)',
+              font: '700 13px/1.4 "JetBrains Mono",monospace',
+            }}>
+              {calculatedServings}
+            </div>
+          ) : (
+            <input type="number" inputMode="decimal" value={manualServings}
+              onChange={e => setManualServings(e.target.value)}
+              placeholder="1" style={inputStyle} />
+          )}
+        </div>
       </div>
+      {hasWeights && (
+        <p style={{ font: '400 11px/1.4 Inter,sans-serif', color: 'var(--text-muted)', marginTop: -10, marginBottom: 12 }}>
+          {batchWeightG}g batch ÷ {servingSizeNum}g per serving
+        </p>
+      )}
 
       {/* Ingredients */}
       <div style={{ marginBottom: 16 }}>
@@ -444,14 +475,22 @@ function RecipeUse({ recipe, onAdd }: {
         padding: '12px', marginBottom: 16,
         background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)',
       }}>
-        <div style={{ font: '600 11px/1 "JetBrains Mono",monospace', color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '-0.3px' }}>
-          Total: {recipe.calories_kcal} kcal · P{Math.round(recipe.protein_g)} C{Math.round(recipe.carbs_g)} F{Math.round(recipe.fat_g)}
-        </div>
-        <div style={{ font: '400 12px/1.4 Inter,sans-serif', color: 'var(--text-muted)' }}>
-          {recipe.servings} serving{recipe.servings !== 1 ? 's' : ''}
-          {recipe.total_weight_g ? ` · ${recipe.total_weight_g}g total` : ''}
-          {recipe.ingredients.length > 0 ? ` · ${recipe.ingredients.length} ingredients` : ''}
-        </div>
+        {recipe.servings > 1 ? (
+          <>
+            <div style={{ font: '600 12px/1 "JetBrains Mono",monospace', color: 'var(--text-primary)', marginBottom: 6, letterSpacing: '-0.3px' }}>
+              Per serving: {Math.round(recipe.calories_kcal / recipe.servings)} kcal ·
+              P{Math.round(recipe.protein_g / recipe.servings)} C{Math.round(recipe.carbs_g / recipe.servings)} F{Math.round(recipe.fat_g / recipe.servings)}
+            </div>
+            <div style={{ font: '400 11px/1.4 Inter,sans-serif', color: 'var(--text-muted)' }}>
+              Batch: {recipe.calories_kcal} kcal · {recipe.servings} servings
+              {recipe.total_weight_g ? ` · ${recipe.total_weight_g}g total` : ''}
+            </div>
+          </>
+        ) : (
+          <div style={{ font: '600 11px/1 "JetBrains Mono",monospace', color: 'var(--text-muted)', letterSpacing: '-0.3px' }}>
+            {recipe.calories_kcal} kcal · P{Math.round(recipe.protein_g)} C{Math.round(recipe.carbs_g)} F{Math.round(recipe.fat_g)}
+          </div>
+        )}
       </div>
 
       {/* Amount input */}

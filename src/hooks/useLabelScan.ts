@@ -51,7 +51,11 @@ export function recipePortionMacros(
   mode: 'servings' | 'grams',
   amount: number,
 ): Macros {
-  const divisor = mode === 'servings' ? recipe.servings : (recipe.total_weight_g || 1);
+  // Safety: grams mode requires total_weight_g; if missing, return zeros to prevent absurd scaling
+  if (mode === 'grams' && !recipe.total_weight_g) {
+    return { calories_kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 };
+  }
+  const divisor = mode === 'servings' ? (recipe.servings || 1) : recipe.total_weight_g!;
   const factor = amount / divisor;
   return {
     calories_kcal: Math.round(recipe.calories_kcal * factor),
