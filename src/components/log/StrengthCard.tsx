@@ -203,12 +203,12 @@ function ExerciseCard({
     .reduce((best: ExerciseSession | null, s) =>
       !best || s.session_volume_kg > best.session_volume_kg ? s : best, null);
 
-  // All-time PB by top weight (consistent with ActivityDetailSheet/ActivityFeed)
+  // All-time PB by volume (what matters for progressive overload)
   const pbSession = sessionHistory
     .reduce((best: ExerciseSession | null, s) =>
-      !best || s.top_weight_kg > best.top_weight_kg ? s : best, null);
+      !best || s.session_volume_kg > best.session_volume_kg ? s : best, null);
 
-  const isPbLastSession = pbSession && prevSession && pbSession.session_date === prevSession.session_date && pbSession.top_weight_kg === prevSession.top_weight_kg;
+  const isPbLastSession = pbSession && prevSession && pbSession.session_date === prevSession.session_date && pbSession.session_volume_kg === prevSession.session_volume_kg;
 
   const filteredExercises = exercise.name.length > 0
     ? exerciseList.filter(e => e.name.toLowerCase().includes(exercise.name.toLowerCase())).slice(0, 8)
