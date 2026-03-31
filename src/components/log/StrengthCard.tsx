@@ -184,6 +184,7 @@ function ExerciseCard({
   useEffect(() => {
     const match = exerciseList.find(e => e.name.toLowerCase() === exercise.name.toLowerCase());
     if (!match) { setSessionHistory([]); return; }
+    setOverrideCompare(null);
     let cancelled = false;
     apiFetch<ExerciseSession[]>(`/api/strength/exercise/${match.id}/history?days=1825`)
       .then(data => { if (!cancelled) setSessionHistory(data ?? []); })
@@ -901,7 +902,6 @@ export default function StrengthCard({
                       ? sessionReps - lastSplitSession.total_reps : null;
                     const volPct = !volApprox && lastSplitSession.total_volume_kg > 0 && sessionVolume > 0
                       ? ((sessionVolume - lastSplitSession.total_volume_kg) / lastSplitSession.total_volume_kg) * 100 : null;
-                    const modeLabel = compareMode === 'prev' ? 'Last' : compareMode === '30d' ? '30D Best' : 'PB';
                     return (
                       <div style={{
                         background: 'var(--bg-elevated)',
@@ -913,7 +913,7 @@ export default function StrengthCard({
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <div style={{ flex: 1 }}>
                             <div style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-muted)' }}>
-                              {modeLabel} {lastSplitSession.session_date}: {lastSplitSession.total_reps} reps · {Math.round(lastSplitSession.total_volume_kg)}kg
+                              Last {lastSplitSession.session_date}: {lastSplitSession.total_reps} reps · {Math.round(lastSplitSession.total_volume_kg)}kg
                             </div>
                             <div style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                               <span>
