@@ -401,10 +401,10 @@ function ExerciseCard({
       {/* Expandable history comparison: Prev / 30D Best / PB */}
       {showHistory && (() => {
         const histRows = [
-          { label: 'Last', session: prevSession, extra: isPbLastSession ? ' [PB]' : undefined },
-          { label: '30D', session: best30d && prevSession && best30d.session_date === prevSession.session_date ? null : best30d, extra: undefined },
-          { label: 'PB', session: isPbLastSession ? null : pbSession, extra: undefined },
-        ].filter(r => r.session != null) as { label: string; session: ExerciseSession; extra?: string }[];
+          { label: 'Last', mode: 'prev' as CompareMode, session: prevSession, extra: isPbLastSession ? ' [PB]' : undefined },
+          { label: '30D', mode: '30d' as CompareMode, session: best30d && prevSession && best30d.session_date === prevSession.session_date && best30d.session_volume_kg === prevSession.session_volume_kg ? null : best30d, extra: undefined },
+          { label: 'PB', mode: 'pb' as CompareMode, session: isPbLastSession ? null : pbSession, extra: undefined },
+        ].filter(r => r.session != null) as { label: string; mode: CompareMode; session: ExerciseSession; extra?: string }[];
         const hasTopWeight = histRows.some(r => r.session.top_weight_kg > 0);
         return (
         <div style={{
@@ -427,11 +427,11 @@ function ExerciseCard({
               </tr>
             </thead>
             <tbody>
-              {histRows.map(({ label, session, extra }) => (
+              {histRows.map(({ label, mode, session, extra }) => (
                 <tr key={label}>
                   <td style={{
                     font: '600 9px/1 Inter, sans-serif', textTransform: 'uppercase', letterSpacing: '0.5px',
-                    color: label === 'PB' ? 'var(--rust)' : effectiveCompare === label.toLowerCase() ? 'var(--ochre)' : 'var(--text-muted)',
+                    color: label === 'PB' ? 'var(--rust)' : effectiveCompare === mode ? 'var(--ochre)' : 'var(--text-muted)',
                     padding: '5px 4px 5px 0', whiteSpace: 'nowrap',
                   }}>
                     {label}{extra && <span style={{ color: 'var(--rust)' }}>{extra}</span>}
