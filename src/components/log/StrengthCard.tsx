@@ -399,41 +399,67 @@ function ExerciseCard({
       </div>
 
       {/* Expandable history comparison: Prev / 30D Best / PB */}
-      {showHistory && (
+      {showHistory && (() => {
+        const histRows = [
+          { label: 'Last', session: prevSession, extra: isPbLastSession ? ' [PB]' : undefined },
+          { label: '30D', session: best30d && prevSession && best30d.session_date === prevSession.session_date ? null : best30d, extra: undefined },
+          { label: 'PB', session: isPbLastSession ? null : pbSession, extra: undefined },
+        ].filter(r => r.session != null) as { label: string; session: ExerciseSession; extra?: string }[];
+        const hasTopWeight = histRows.some(r => r.session.top_weight_kg > 0);
+        return (
         <div style={{
           background: 'var(--bg-base)',
           border: '1px solid var(--border-subtle)',
           borderRadius: 'var(--radius-sm)',
           padding: '6px 8px',
-          display: 'flex', flexDirection: 'column', gap: 5,
+          overflow: 'hidden',
         }}>
-          {[
-            { label: 'Last', session: prevSession, extra: isPbLastSession ? ' [PB]' : undefined },
-            { label: '30D', session: best30d && prevSession && best30d.session_date === prevSession.session_date ? null : best30d, extra: undefined },
-            { label: 'PB', session: isPbLastSession ? null : pbSession, extra: undefined },
-          ].map(({ label, session, extra }) => session && (
-            <div key={label} style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
-              <span style={{
-                font: '600 9px/1 Inter, sans-serif',
-                color: label === 'PB' ? 'var(--rust)' : 'var(--text-muted)',
-                textTransform: 'uppercase', letterSpacing: '0.5px',
-                minWidth: 22,
-              }}>
-                {label}{extra && <span style={{ color: 'var(--rust)' }}>{extra}</span>}
-              </span>
-              <span style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-muted)' }}>
-                {formatShortDate(session.session_date)}
-              </span>
-              <span style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-secondary)' }}>
-                {session.sets}s
-                {' · '}{Math.round(session.session_volume_kg)}kg vol
-                {session.max_reps_in_set > 0 ? ` · max ${session.max_reps_in_set}r` : ''}
-                {session.top_weight_kg > 0 ? ` · top ${session.top_weight_kg}kg` : ''}
-              </span>
-            </div>
-          ))}
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {['', 'DATE', 'SETS', 'REPS', 'VOL', ...(hasTopWeight ? ['TOP'] : [])].map((h, i) => (
+                  <th key={i} style={{
+                    font: '600 8px/1 Inter, sans-serif', letterSpacing: '0.6px',
+                    color: 'var(--text-muted)', textAlign: i === 0 ? 'left' : 'right',
+                    padding: '0 0 5px', borderBottom: '1px solid var(--border-subtle)',
+                  }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {histRows.map(({ label, session, extra }) => (
+                <tr key={label}>
+                  <td style={{
+                    font: '600 9px/1 Inter, sans-serif', textTransform: 'uppercase', letterSpacing: '0.5px',
+                    color: label === 'PB' ? 'var(--rust)' : effectiveCompare === label.toLowerCase() ? 'var(--ochre)' : 'var(--text-muted)',
+                    padding: '5px 4px 5px 0', whiteSpace: 'nowrap',
+                  }}>
+                    {label}{extra && <span style={{ color: 'var(--rust)' }}>{extra}</span>}
+                  </td>
+                  <td style={{ font: "500 10px/1 'JetBrains Mono', monospace", color: 'var(--text-muted)', textAlign: 'right', padding: '5px 0' }}>
+                    {formatShortDate(session.session_date)}
+                  </td>
+                  <td style={{ font: "500 11px/1 'JetBrains Mono', monospace", color: 'var(--text-secondary)', textAlign: 'right', padding: '5px 0' }}>
+                    {session.sets}
+                  </td>
+                  <td style={{ font: "500 11px/1 'JetBrains Mono', monospace", color: 'var(--text-secondary)', textAlign: 'right', padding: '5px 0' }}>
+                    {session.total_reps}
+                  </td>
+                  <td style={{ font: "500 11px/1 'JetBrains Mono', monospace", color: 'var(--text-secondary)', textAlign: 'right', padding: '5px 0' }}>
+                    {Math.round(session.session_volume_kg).toLocaleString()}
+                  </td>
+                  {hasTopWeight && (
+                    <td style={{ font: "600 11px/1 'JetBrains Mono', monospace", color: 'var(--ochre)', textAlign: 'right', padding: '5px 0' }}>
+                      {session.top_weight_kg > 0 ? `${session.top_weight_kg}kg` : '—'}
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      )}
+        );
+      })()}
 
       {exercise.sets.map((set, si) => {
         const isCompact = set.completed && editingSet !== si;
