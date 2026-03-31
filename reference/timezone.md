@@ -57,14 +57,23 @@ PostgreSQL TIMESTAMPTZ always stores UTC internally regardless of input timezone
 | `new Date().toLocaleString('sv', { timeZone: 'Australia/Brisbane' }).replace(' ', 'T') + '+10:00'` when sending datetime to backend | Sending bare `.toISOString()` — backend gets UTC time with no offset info |
 | Let the browser convert UTC→local for display times | Manually adding/subtracting hours (except `useIntradayHR.ts` which is a deliberate exception) |
 
-### Backend (Python / asyncpg)
+### Backend — SQL Queries
 
 | Do | Don't |
 |----|-------|
-| `dt.astimezone(timezone.utc).replace(tzinfo=None)` before passing to `text()` SQL | Pass tz-aware datetimes to asyncpg `text()` queries |
+| `(column AT TIME ZONE 'Australia/Brisbane')::date` | `func.date(column)` or `column::date` — extracts UTC date |
+| `(CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Brisbane')::date` for today | `CURRENT_DATE` — gives UTC date on Railway's UTC server |
+| `func.date(func.timezone('Australia/Brisbane', Column))` in SQLAlchemy ORM | `func.date(Column)` without timezone |
+| `COALESCE(authoritative_ts, fallback_ts) AT TIME ZONE ...` | Using `created_at` when an event timestamp exists |
+
+### Backend — Python
+
+| Do | Don't |
+|----|-------|
+| `datetime.now(BRISBANE_TZ).date()` for "today" | `date.today()` — gives UTC date on Railway |
+| `dt.astimezone(timezone.utc).replace(tzinfo=None)` before `text()` SQL | Pass tz-aware datetimes to asyncpg `text()` queries |
 | `datetime.fromisoformat(s)` to parse input | Assume input is UTC |
-| Use `AT TIME ZONE 'Australia/Brisbane'` in SQL for date extraction | `func.date(column)` — extracts UTC date |
-| Resolve `None` to a typed `datetime` before the query | Pass Python `None` to `COALESCE(:param::timestamptz, NOW())` |
+| `val.astimezone(ZoneInfo("Australia/Brisbane")).date()` in Python | `val.date()` — gives UTC date |
 
 ---
 
@@ -97,6 +106,20 @@ This gives asyncpg a naive UTC datetime, which PostgreSQL correctly interprets a
 
 ---
 
+## Dual-Table Strength Session Timestamps
+
+`manual_strength_logs` and `strength_sessions` both store session timestamps. They can diverge when the user edits a session via calendar (which updates `strength_sessions.session_datetime` but historically did NOT update `manual_strength_logs.start_time`).
+
+**Rule:** `strength_sessions.session_datetime` is the authoritative timestamp. Any query on `manual_strength_logs` that needs a date/time MUST JOIN to `strength_sessions` via `bridged_session_id` and use `COALESCE(ss.session_datetime, msl.start_time, msl.created_at)`.
+
+**Fixed 2026-03-31:**
+- `PATCH /api/strength/sessions/{id}` now syncs `manual_strength_logs.start_time` on edit
+- Session picker (`recent_strength_sessions`) JOINs to `strength_sessions`
+- `list_strength_sessions` JOINs to `strength_sessions`
+- `last_strength_log` JOINs to `strength_sessions`
+
+---
+
 ## Weight Date Handling
 
 `weight_logs.recorded_at` is a TIMESTAMPTZ (UTC). Unlike `activity_logs`, which stores a dedicated `activity_date` DATE column (Brisbane local), weight has no separate date column. All date-based queries on weight must use `AT TIME ZONE` to extract the correct Brisbane date:
@@ -111,10 +134,48 @@ func.date(recorded_at)
 ```
 
 **Fixed 2026-03-31** in:
-- `data.py` — `/api/weight` date range filters
+- `data.py` — `/api/weight` date range filters, strength PRs best_date
 - `summary.py` — daily summary weight lookup
-- `new_endpoints.py` — `_lookup_bodyweight()` exact-date and rolling-avg queries
-- `new_endpoints.py` — energy balance `weight_days` CTE
+- `logging.py` — bodyweight lookup for NLP strength confirm
+- `new_endpoints.py` — `_lookup_bodyweight()`, energy balance `weight_days` CTE
+- `export.py` — CSV export weight and sauna date extraction
+
+---
+
+## CURRENT_DATE vs CURRENT_TIMESTAMP AT TIME ZONE
+
+Railway servers run in UTC. `CURRENT_DATE` returns the UTC date, which is **yesterday** in Brisbane between midnight and 10am UTC (10am–midnight Brisbane).
+
+```sql
+-- Wrong on Railway (UTC server)
+WHERE activity_date >= CURRENT_DATE - INTERVAL '7 days'
+
+-- Correct
+WHERE activity_date >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Brisbane')::date - INTERVAL '7 days'
+```
+
+**Fixed 2026-03-31** in all routers — every `CURRENT_DATE` replaced.
+
+---
+
+## Python date.today() on Railway
+
+Same problem as `CURRENT_DATE` — Python's `date.today()` returns UTC date on Railway.
+
+```python
+# Wrong
+target_date = date.today()
+
+# Correct
+from zoneinfo import ZoneInfo
+BRISBANE_TZ = ZoneInfo("Australia/Brisbane")
+target_date = datetime.now(BRISBANE_TZ).date()
+```
+
+**Fixed 2026-03-31** in:
+- `summary.py` — daily/weekly summary default dates
+- `logging.py` — food parse default log_date
+- `new_endpoints.py` — strength save fallback session_date
 
 ---
 
@@ -124,11 +185,26 @@ func.date(recorded_at)
 
 ---
 
+## Checklist for New Features
+
+When adding a new feature that involves dates or times:
+
+1. **New TIMESTAMPTZ column?** Every query extracting a date from it needs `AT TIME ZONE 'Australia/Brisbane'`
+2. **New date-range filter?** Use `(CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Brisbane')::date`, not `CURRENT_DATE`
+3. **Python default date?** Use `datetime.now(BRISBANE_TZ).date()`, not `date.today()`
+4. **Python `.date()` on a datetime?** Use `.astimezone(BRISBANE_TZ).date()` instead
+5. **Frontend date from ISO string?** Use `new Date(iso).toLocaleDateString('en-CA')`, not `.toISOString().split('T')[0]`
+6. **Two tables storing the same timestamp?** Designate one as authoritative, JOIN to it, keep them in sync on edits
+7. **New `func.date()` in SQLAlchemy ORM?** Wrap: `func.date(func.timezone('Australia/Brisbane', Column))`
+
+---
+
 ## Debugging Checklist
 
 If a date/time looks wrong:
 
-1. **Off by one day?** → UTC date being used instead of Brisbane local. Check for `.toISOString().split('T')[0]` or `func.date()` without timezone conversion.
+1. **Off by one day?** → UTC date being used instead of Brisbane local. Check for `.toISOString().split('T')[0]`, `func.date()` without timezone, `CURRENT_DATE`, or `date.today()`.
 2. **"Can't subtract offset-naive and offset-aware"?** → asyncpg getting a tz-aware datetime. Add `.replace(tzinfo=None)` after `.astimezone(timezone.utc)`.
 3. **COALESCE with NULL fails?** → Python `None` passed to asyncpg for a typed column. Resolve to a real `datetime` before the query.
-4. **Time shows wrong but date is right?** → Check if backend is returning UTC and frontend is displaying without conversion, or vice versa.
+4. **Time shows wrong but date is right?** → Check if two tables store the same timestamp and have diverged. Use the authoritative source.
+5. **Date right in calendar but wrong elsewhere?** → Calendar reads from `strength_sessions`; other views may read from `manual_strength_logs`. Ensure JOINs are in place.

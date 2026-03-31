@@ -1,6 +1,12 @@
 """Daily summary, weekly summary, and readiness endpoints."""
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
+
+BRISBANE_TZ = ZoneInfo("Australia/Brisbane")
+
+def _brisbane_today() -> date:
+    return datetime.now(BRISBANE_TZ).date()
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
@@ -25,7 +31,7 @@ router = APIRouter(prefix="/api", tags=["summary"])
 
 @router.get("/summary/daily", response_model=DailySummaryResponse)
 async def daily_summary(
-    target_date: date = Query(default_factory=date.today, alias="date"),
+    target_date: date = Query(default_factory=_brisbane_today, alias="date"),
     db: AsyncSession = Depends(get_db),
     _key: str = Depends(verify_api_key),
 ):
@@ -113,7 +119,7 @@ async def daily_summary(
 
 @router.get("/readiness", response_model=ReadinessResponse)
 async def readiness(
-    target_date: date = Query(default_factory=date.today, alias="date"),
+    target_date: date = Query(default_factory=_brisbane_today, alias="date"),
     db: AsyncSession = Depends(get_db),
     _key: str = Depends(verify_api_key),
 ):
@@ -129,7 +135,7 @@ async def weekly_summary(
     _key: str = Depends(verify_api_key),
 ):
     """Aggregate weekly health summary for the last N weeks."""
-    today = date.today()
+    today = _brisbane_today()
     # Align to Monday of the current week
     current_monday = today - timedelta(days=today.weekday())
 
@@ -175,8 +181,8 @@ async def weekly_summary(
         sauna_count = (
             await db.execute(
                 select(func.count()).select_from(SaunaLog).where(
-                    func.date(SaunaLog.session_datetime) >= week_start,
-                    func.date(SaunaLog.session_datetime) <= week_end,
+                    func.date(func.timezone('Australia/Brisbane', SaunaLog.session_datetime)) >= week_start,
+                    func.date(func.timezone('Australia/Brisbane', SaunaLog.session_datetime)) <= week_end,
                 )
             )
         ).scalar_one()

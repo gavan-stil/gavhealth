@@ -3,6 +3,7 @@
 import csv
 import io
 from datetime import date, timedelta
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
@@ -109,12 +110,12 @@ async def _build_lookup(db: AsyncSession, date_from: date, date_to: date) -> dic
 
     # --- Weight (recorded_at is datetime, cast to date) ---
     q = select(WeightLog).where(
-        func.date(WeightLog.recorded_at) >= date_from,
-        func.date(WeightLog.recorded_at) <= date_to,
+        func.date(func.timezone('Australia/Brisbane', WeightLog.recorded_at)) >= date_from,
+        func.date(func.timezone('Australia/Brisbane', WeightLog.recorded_at)) <= date_to,
     ).order_by(WeightLog.recorded_at)
     result = await db.execute(q)
     for w in result.scalars():
-        d = w.recorded_at.date() if hasattr(w.recorded_at, "date") else w.recorded_at
+        d = w.recorded_at.astimezone(ZoneInfo("Australia/Brisbane")).date() if hasattr(w.recorded_at, "astimezone") else (w.recorded_at.date() if hasattr(w.recorded_at, "date") else w.recorded_at)
         r = ensure(d)
         # If multiple readings on same day, keep the latest
         r["weight_kg"] = w.weight_kg
@@ -176,13 +177,13 @@ async def _build_lookup(db: AsyncSession, date_from: date, date_to: date) -> dic
 
     # --- Sauna ---
     q = select(SaunaLog).where(
-        func.date(SaunaLog.session_datetime) >= date_from,
-        func.date(SaunaLog.session_datetime) <= date_to,
+        func.date(func.timezone('Australia/Brisbane', SaunaLog.session_datetime)) >= date_from,
+        func.date(func.timezone('Australia/Brisbane', SaunaLog.session_datetime)) <= date_to,
     )
     result = await db.execute(q)
     sauna_by_day: dict[date, list] = {}
     for s in result.scalars():
-        d = s.session_datetime.date() if hasattr(s.session_datetime, "date") else s.session_datetime
+        d = s.session_datetime.astimezone(ZoneInfo("Australia/Brisbane")).date() if hasattr(s.session_datetime, "astimezone") else (s.session_datetime.date() if hasattr(s.session_datetime, "date") else s.session_datetime)
         sauna_by_day.setdefault(d, []).append(s)
 
     for d, sessions in sauna_by_day.items():

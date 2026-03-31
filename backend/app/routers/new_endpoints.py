@@ -229,7 +229,7 @@ async def activities_feed(days: int = Query(default=14), db: AsyncSession = Depe
                    COALESCE(effort, 'basic')              AS effort,
                    COALESCE(effort_manually_set, false)   AS effort_manually_set
             FROM activity_logs
-            WHERE activity_date >= CURRENT_DATE - (:days * INTERVAL '1 day')
+            WHERE activity_date >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Brisbane')::date - (:days * INTERVAL '1 day')
             ORDER BY activity_date DESC
         """),
         {"days": days},
@@ -264,7 +264,7 @@ async def get_habits_history(days: int = Query(default=14), db: AsyncSession = D
         text("""
             SELECT id, habit_date, did_breathing, did_devotions, notes
             FROM daily_habits
-            WHERE habit_date >= CURRENT_DATE - (:days * INTERVAL '1 day')
+            WHERE habit_date >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Brisbane')::date - (:days * INTERVAL '1 day')
             ORDER BY habit_date DESC
         """),
         {"days": days},
@@ -369,7 +369,7 @@ async def save_strength_log(body: StrengthLogCreate, db: AsyncSession = Depends(
         await db.flush()  # get session.id
         bridged_session_id = session.id
 
-        session_date = ref_date if ref_date else date.today()
+        session_date = ref_date if ref_date else datetime.now(BRISBANE_TZ).date()
         bodyweight_kg = await _lookup_bodyweight(db, session_date)
 
         set_number_global = 0
@@ -433,10 +433,12 @@ async def save_strength_log(body: StrengthLogCreate, db: AsyncSession = Depends(
 async def last_strength_log(split: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         text("""
-            SELECT (created_at AT TIME ZONE 'Australia/Brisbane')::date AS date, exercises
-            FROM manual_strength_logs
-            WHERE workout_split = :split
-            ORDER BY created_at DESC
+            SELECT (COALESCE(ss.session_datetime, msl.start_time, msl.created_at) AT TIME ZONE 'Australia/Brisbane')::date AS date,
+                   msl.exercises
+            FROM manual_strength_logs msl
+            LEFT JOIN strength_sessions ss ON ss.id = msl.bridged_session_id
+            WHERE msl.workout_split = :split
+            ORDER BY COALESCE(ss.session_datetime, msl.start_time, msl.created_at) DESC
             LIMIT 1
         """),
         {"split": split},
@@ -468,13 +470,14 @@ async def recent_strength_sessions(
     # Fetch all sessions for this split (all rows needed for PB + most_loaded computation)
     result = await db.execute(
         text("""
-            SELECT id,
-                   (created_at AT TIME ZONE 'Australia/Brisbane')::date AS local_date,
-                   (start_time AT TIME ZONE 'Australia/Brisbane')       AS local_start,
-                   exercises
-            FROM manual_strength_logs
-            WHERE workout_split = :split
-            ORDER BY created_at DESC
+            SELECT msl.id,
+                   (COALESCE(ss.session_datetime, msl.start_time, msl.created_at) AT TIME ZONE 'Australia/Brisbane')::date AS local_date,
+                   (COALESCE(ss.session_datetime, msl.start_time) AT TIME ZONE 'Australia/Brisbane') AS local_start,
+                   msl.exercises
+            FROM manual_strength_logs msl
+            LEFT JOIN strength_sessions ss ON ss.id = msl.bridged_session_id
+            WHERE msl.workout_split = :split
+            ORDER BY COALESCE(ss.session_datetime, msl.start_time, msl.created_at) DESC
         """),
         {"split": split},
     )
@@ -703,13 +706,15 @@ async def unlink_strength(id: int, db: AsyncSession = Depends(get_db)):
 async def list_strength_sessions(days: int = Query(default=14), db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         text("""
-            SELECT id, (created_at AT TIME ZONE 'Australia/Brisbane')::date AS log_date,
-                   workout_split, duration_minutes,
-                   jsonb_array_length(exercises) AS exercise_count,
-                   matched_activity_id, match_confirmed, bridged_session_id
-            FROM manual_strength_logs
-            WHERE (created_at AT TIME ZONE 'Australia/Brisbane')::date >= CURRENT_DATE - (:days * INTERVAL '1 day')
-            ORDER BY created_at DESC
+            SELECT msl.id,
+                   (COALESCE(ss.session_datetime, msl.start_time, msl.created_at) AT TIME ZONE 'Australia/Brisbane')::date AS log_date,
+                   msl.workout_split, msl.duration_minutes,
+                   jsonb_array_length(msl.exercises) AS exercise_count,
+                   msl.matched_activity_id, msl.match_confirmed, msl.bridged_session_id
+            FROM manual_strength_logs msl
+            LEFT JOIN strength_sessions ss ON ss.id = msl.bridged_session_id
+            WHERE (COALESCE(ss.session_datetime, msl.start_time, msl.created_at) AT TIME ZONE 'Australia/Brisbane')::date >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Brisbane')::date - (:days * INTERVAL '1 day')
+            ORDER BY COALESCE(ss.session_datetime, msl.start_time, msl.created_at) DESC
         """),
         {"days": days},
     )
@@ -741,7 +746,7 @@ async def linkable_activities(days: int = Query(default=14), db: AsyncSession = 
                    activity_date AS date,
                    duration_mins AS duration_minutes
             FROM activity_logs
-            WHERE activity_date >= CURRENT_DATE - (:days * INTERVAL '1 day')
+            WHERE activity_date >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Brisbane')::date - (:days * INTERVAL '1 day')
             ORDER BY activity_date DESC
         """),
         {"days": days},
@@ -1023,6 +1028,11 @@ async def update_strength_session(id: int, body: StrengthSessionUpdate, db: Asyn
             new_dt = new_dt.astimezone(timezone.utc)
         await db.execute(
             text("UPDATE strength_sessions SET session_datetime = :dt WHERE id = :id"),
+            {"dt": new_dt, "id": id},
+        )
+        # Keep manual_strength_logs.start_time in sync
+        await db.execute(
+            text("UPDATE manual_strength_logs SET start_time = :dt WHERE bridged_session_id = :id"),
             {"dt": new_dt, "id": id},
         )
 
@@ -1374,7 +1384,7 @@ async def energy_balance(days: int = Query(default=30), db: AsyncSession = Depen
                     SUM(COALESCE(calories_kcal, 0))  AS calories_in,
                     SUM(COALESCE(protein_g, 0))       AS protein_g
                 FROM food_logs
-                WHERE log_date >= CURRENT_DATE - (:days * INTERVAL '1 day')::interval
+                WHERE log_date >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Brisbane')::date - (:days * INTERVAL '1 day')::interval
                 GROUP BY log_date
             ),
             burn_days AS (
@@ -1390,14 +1400,14 @@ async def energy_balance(days: int = Query(default=30), db: AsyncSession = Depen
                     END                              AS calories_burned_total
                 FROM activity_logs
                 WHERE activity_type = 'daily_summary'
-                  AND activity_date >= CURRENT_DATE - (:days * INTERVAL '1 day')::interval
+                  AND activity_date >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Brisbane')::date - (:days * INTERVAL '1 day')::interval
             ),
             weight_days AS (
                 SELECT DISTINCT ON ((recorded_at AT TIME ZONE 'Australia/Brisbane')::date)
                     (recorded_at AT TIME ZONE 'Australia/Brisbane')::date AS weight_date,
                     weight_kg
                 FROM weight_logs
-                WHERE (recorded_at AT TIME ZONE 'Australia/Brisbane')::date >= CURRENT_DATE - (:days * INTERVAL '1 day')::interval
+                WHERE (recorded_at AT TIME ZONE 'Australia/Brisbane')::date >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Brisbane')::date - (:days * INTERVAL '1 day')::interval
                 ORDER BY (recorded_at AT TIME ZONE 'Australia/Brisbane')::date, recorded_at DESC
             )
             SELECT
@@ -1445,7 +1455,7 @@ async def hr_zones(days: int = Query(default=30, ge=1, le=365), db: AsyncSession
                 hr_zone_3
             FROM activity_logs
             WHERE activity_type IN ('run', 'ride')
-              AND activity_date >= CURRENT_DATE - (:days * INTERVAL '1 day')
+              AND activity_date >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Brisbane')::date - (:days * INTERVAL '1 day')
               AND (hr_zone_0 IS NOT NULL OR hr_zone_1 IS NOT NULL
                    OR hr_zone_2 IS NOT NULL OR hr_zone_3 IS NOT NULL)
             ORDER BY activity_date ASC

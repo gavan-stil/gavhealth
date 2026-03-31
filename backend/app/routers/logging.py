@@ -63,7 +63,7 @@ async def parse_food_entry(
     _key: str = Depends(verify_api_key),
 ):
     """Step 1: Send food description to Claude for macro estimation."""
-    log_date = body.log_date or date.today()
+    log_date = body.log_date or datetime.now(BRISBANE_TZ).date()
     try:
         result = await parse_food(body.description, body.meal_label, log_date)
         return FoodParseResponse(**result)
@@ -141,7 +141,7 @@ async def confirm_strength_entry(
     bw_result = await db.execute(
         sa_text("""
             SELECT weight_kg FROM weight_logs
-            WHERE recorded_at::date = :session_date
+            WHERE (recorded_at AT TIME ZONE 'Australia/Brisbane')::date = :session_date
             ORDER BY recorded_at DESC
             LIMIT 1
         """),
@@ -155,7 +155,7 @@ async def confirm_strength_entry(
             sa_text("""
                 SELECT AVG(weight_kg) AS avg_weight FROM (
                     SELECT weight_kg FROM weight_logs
-                    WHERE recorded_at::date < :session_date
+                    WHERE (recorded_at AT TIME ZONE 'Australia/Brisbane')::date < :session_date
                     ORDER BY recorded_at DESC
                     LIMIT 7
                 ) sub

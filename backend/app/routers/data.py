@@ -445,7 +445,7 @@ async def food_weekly(
                     SUM(COALESCE(fat_g, 0))                       AS daily_fat_g,
                     COUNT(*)                                       AS meal_count
                 FROM food_logs
-                WHERE log_date >= CURRENT_DATE - (:weeks * INTERVAL '1 week')
+                WHERE log_date >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Brisbane')::date - (:weeks * INTERVAL '1 week')
                 GROUP BY log_date, DATE_TRUNC('week', log_date::timestamp)::date
             ) AS daily_agg
             GROUP BY week_start
@@ -583,7 +583,7 @@ async def strength_prs(
                 ss.exercise_id,
                 e.name AS exercise_name,
                 ss.weight_kg AS max_weight_kg,
-                DATE(sn.session_datetime) AS best_date
+                (sn.session_datetime AT TIME ZONE 'Australia/Brisbane')::date AS best_date
             FROM strength_sets ss
             JOIN exercises e ON e.id = ss.exercise_id
             JOIN strength_sessions sn ON sn.id = ss.session_id
