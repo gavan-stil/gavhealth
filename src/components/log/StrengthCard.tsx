@@ -179,6 +179,8 @@ function ExerciseCard({
   const [editingSet, setEditingSet] = useState<number | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [overrideCompare, setOverrideCompare] = useState<CompareMode | null>(null);
+  // Reset override when session-level toggle changes
+  useEffect(() => { setOverrideCompare(null); }, [sessionCompareMode]);
   const effectiveCompare = overrideCompare ?? sessionCompareMode;
 
   useEffect(() => {
