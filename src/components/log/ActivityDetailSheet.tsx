@@ -47,6 +47,7 @@ type RawSession = {
 type RawExercise = { id: number; name: string; category: string; uses_bodyweight: boolean; muscles?: { muscle_group: string; macro_group: string; is_primary: boolean }[] };
 
 type HistoryEntry = {
+  session_id?: number;
   session_date: string;
   sets: number;
   total_reps: number;
@@ -244,7 +245,7 @@ export default function ActivityDetailSheet({
         const histMap = new Map<number, HistoryEntry[]>();
         await Promise.all(
           Array.from(ids).map(async id => {
-            const h = await apiFetch<HistoryEntry[]>(`/api/strength/exercise/${id}/history?days=90`);
+            const h = await apiFetch<HistoryEntry[]>(`/api/strength/exercise/${id}/history?days=1825`);
             histMap.set(id, h);
           })
         );
@@ -256,7 +257,7 @@ export default function ActivityDetailSheet({
           if (!ex) return;
           const { name } = parseEx(r);
           const hist = histMap.get(ex.id) ?? [];
-          const entry = hist.find(h => h.session_date.slice(0, 10) === sessionDate);
+          const entry = hist.find(h => h.session_id === raw.id) ?? hist.find(h => h.session_date.slice(0, 10) === sessionDate);
           if (!entry) return;
           const allTimeMax = hist.reduce((m, h) => Math.max(m, h.top_weight_kg), 0);
           const isPb = !ex.uses_bodyweight && entry.top_weight_kg > 0 && entry.top_weight_kg >= allTimeMax;

@@ -17,6 +17,7 @@ export interface StrengthSession {
 }
 
 export interface ExerciseSession {
+  session_id?: number;
   session_date: string;
   sets: number;
   total_reps: number;

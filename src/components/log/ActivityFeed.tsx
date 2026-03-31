@@ -47,7 +47,7 @@ type RawSession = {
   total_sets: number; total_reps: number; total_load_kg: number;
 };
 type RawExercise = { id: number; name: string; uses_bodyweight: boolean };
-type HistoryEntry = { session_date: string; sets: number; total_reps: number; top_weight_kg: number };
+type HistoryEntry = { session_id?: number; session_date: string; sets: number; total_reps: number; top_weight_kg: number };
 type ExRow = { name: string; sets: number; totalReps: number; topWeightKg: number; usesBodyweight: boolean; isPb: boolean };
 type OrphanDetail = { bodyAreas: string[]; totalSets: number; totalReps: number; totalLoadKg: number; rows: ExRow[] };
 
@@ -610,7 +610,7 @@ function OrphanCard({
         const histMap = new Map<number, HistoryEntry[]>();
         await Promise.all(
           Array.from(ids).map(async id => {
-            const h = await apiFetch<HistoryEntry[]>(`/api/strength/exercise/${id}/history?days=90`);
+            const h = await apiFetch<HistoryEntry[]>(`/api/strength/exercise/${id}/history?days=1825`);
             histMap.set(id, h);
           })
         );
@@ -622,7 +622,7 @@ function OrphanCard({
           if (!ex) return;
           const { name } = parseEx(r);
           const hist = histMap.get(ex.id) ?? [];
-          const entry = hist.find(h => h.session_date.slice(0, 10) === sessionDate);
+          const entry = hist.find(h => h.session_id === raw.id) ?? hist.find(h => h.session_date.slice(0, 10) === sessionDate);
           if (!entry) return;
           const allTimeMax = hist.reduce((m, h) => Math.max(m, h.top_weight_kg), 0);
           const isPb = !ex.uses_bodyweight && entry.top_weight_kg > 0 && entry.top_weight_kg >= allTimeMax;

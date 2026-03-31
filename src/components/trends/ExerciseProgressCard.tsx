@@ -194,8 +194,11 @@ export default function ExerciseProgressCard({ exercise, days }: Props) {
 
   const topWeights = history.map((h) => h.top_weight_kg);
   const lastIdx = history.length - 1;
-  const compareIdx = Math.max(0, lastIdx - 4);
-  const change4w = topWeights[lastIdx] - topWeights[compareIdx];
+  // Find session closest to 4 weeks ago (time-based, not session-count)
+  const fourWeeksAgo = Date.now() - 28 * 24 * 60 * 60 * 1000;
+  const compareIdx = history.findIndex((h) => new Date(h.session_date).getTime() >= fourWeeksAgo);
+  const effectiveCompareIdx = compareIdx === -1 ? 0 : compareIdx;
+  const change4w = topWeights[lastIdx] - topWeights[effectiveCompareIdx];
 
   return (
     <div className="goe-card" style={cardStyle}>
@@ -227,7 +230,7 @@ export default function ExerciseProgressCard({ exercise, days }: Props) {
             {exercise.name}
           </span>
         </div>
-        {lastIdx > compareIdx && (
+        {lastIdx > effectiveCompareIdx && (
           <span
             style={{
               fontSize: 10,

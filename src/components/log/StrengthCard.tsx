@@ -194,12 +194,12 @@ function ExerciseCard({
     .reduce((best: ExerciseSession | null, s) =>
       !best || s.session_volume_kg > best.session_volume_kg ? s : best, null);
 
-  // All-time PB by volume
+  // All-time PB by top weight (consistent with ActivityDetailSheet/ActivityFeed)
   const pbSession = sessionHistory
     .reduce((best: ExerciseSession | null, s) =>
-      !best || s.session_volume_kg > best.session_volume_kg ? s : best, null);
+      !best || s.top_weight_kg > best.top_weight_kg ? s : best, null);
 
-  const isPbLastSession = pbSession && prevSession && pbSession.session_date === prevSession.session_date;
+  const isPbLastSession = pbSession && prevSession && pbSession.session_date === prevSession.session_date && pbSession.top_weight_kg === prevSession.top_weight_kg;
 
   const filteredExercises = exercise.name.length > 0
     ? exerciseList.filter(e => e.name.toLowerCase().includes(exercise.name.toLowerCase())).slice(0, 8)
@@ -376,7 +376,7 @@ function ExerciseCard({
         }}>
           {[
             { label: 'Last', session: prevSession, extra: isPbLastSession ? ' [PB]' : undefined },
-            { label: '30D', session: best30d === prevSession ? null : best30d, extra: undefined },
+            { label: '30D', session: best30d && prevSession && best30d.session_date === prevSession.session_date ? null : best30d, extra: undefined },
             { label: 'PB', session: isPbLastSession ? null : pbSession, extra: undefined },
           ].map(({ label, session, extra }) => session && (
             <div key={label} style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>

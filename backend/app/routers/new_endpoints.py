@@ -1095,6 +1095,7 @@ async def exercise_history(
     result = await db.execute(
         text("""
             SELECT
+                ss.id                                  AS session_id,
                 (ss.session_datetime AT TIME ZONE 'Australia/Brisbane')::date AS session_date,
                 COUNT(st.id)                           AS sets,
                 SUM(st.reps)                           AS total_reps,
@@ -1114,6 +1115,7 @@ async def exercise_history(
     rows = result.mappings().all()
     return [
         {
+            "session_id": r["session_id"],
             "session_date": r["session_date"].isoformat() if r["session_date"] else None,
             "sets": r["sets"],
             "total_reps": r["total_reps"],
