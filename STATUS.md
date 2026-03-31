@@ -18,6 +18,86 @@ None — all tasks complete. See backlog.
 
 ---
 
+## Recent Session (2026-03-29) — Label Scan + Recipes
+
+**New feature: Photo-based nutrition label scanning**
+- Camera capture → Claude Vision AI → extract per-serving & per-100g macros
+- User specifies amount (servings or grams) → macros scaled → staged for logging
+- New `LabelScanSheet` component (full-screen overlay, zIndex 120)
+- Backend: `POST /api/log/food/scan` with `scan_type: "label" | "recipe"` — resizes image to 1024px, sends to Claude Sonnet 4 for structured JSON extraction
+- Frontend: `useLabelScan` hook manages scan state machine (idle → scanning → done/error)
+- `recipePortionMacros()` helper scales macros by servings or grams with safety guard
+
+**New feature: Recipes with portion calculator**
+- Full CRUD: create (manual or photo scan), edit, delete recipes
+- Recipe form: name, serving size (g), ingredients list with per-ingredient macros
+- Auto-calculates batch total → servings from ingredient weights ÷ serving size
+- Manual servings fallback when ingredients don't have gram weights
+- RecipeUse view: pick servings or grams, live-scaled macro preview, stage for logging
+- Backend: `recipes` table (name, total_weight_g, servings, macros, ingredients JSONB)
+- Backend: `GET/POST/PATCH/DELETE /api/recipes` — curl-verified 2026-03-29
+- Frontend: `RecipeSheet` (4 views: list/create/edit/use), `useRecipes` hook
+
+**5-bug fix pass (commit: 76282a6):**
+1. RecipeList showed batch total macros — now shows per-serving
+2. RecipeUse header ambiguous — now "Per serving: X kcal" with batch info below
+3. Edit lost servings for recipes without ingredient weights — manual servings fallback
+4. recipePortionMacros grams mode could 100x with null total_weight_g — safety guard
+5. Serving size + servings now side-by-side layout (auto or manual)
+
+**Files added:**
+- `src/components/log/LabelScanSheet.tsx`
+- `src/components/log/RecipeSheet.tsx`
+- `src/hooks/useLabelScan.ts`
+- `src/hooks/useRecipes.ts`
+- `archive/specs/label-scan-recipes.md` (spec + 18-item bug register)
+
+**Files modified:**
+- `src/components/log/FoodNutritionCard.tsx` — wired scan + recipe sheets, camera button
+- `src/types/food.ts` — LabelScanResult, RecipeScanResult, Recipe, RecipeIngredient types
+- `src/styles/tokens.css` — slideUp + spin keyframes
+- `backend/app/main.py` — recipes table migration, include new router
+- `backend/app/routers/new_endpoints.py` — scan + recipe CRUD endpoints
+- `backend/app/services/claude_service.py` — vision scan service
+
+---
+
+## Recent Session (2026-03-27) — Exercise Muscle Tags + Manage Exercises Page
+
+**New feature: multi-tag muscle groups for exercises**
+- Exercises can now have multiple muscle group tags (e.g. lat pulldowns = back major + arms minor)
+- Each tag is Major or Minor — controls which category the exercise appears under in Trends
+- Backend: `exercise_muscles` junction table + `muscle_groups` table (migration 005)
+- Backend: `PATCH /api/exercises/{id}` accepts `muscles` array, `GET/POST /api/muscle-groups`
+- Backend: `GET /api/exercises` returns `muscles[]` with `muscle_group`, `macro_group`, `is_primary`
+- Backend: NLP confirm auto-creates muscle links from exercise category
+
+**New page: `/exercises` — Manage Exercises**
+- Standalone page (not an overlay/sheet) — accessible via gear icon on Trends → Exercise Progress
+- Shows all exercises grouped by macro (Push/Pull/Legs/Abs/Other) with muscle tag chips
+- Tap exercise → inline editor expands in-place (no modal/sheet)
+- Editor: toggle Major/Minor, remove tags, add from existing groups, create new groups
+- Back arrow returns to `/trends`
+- Previous overlay approach (ExerciseManagerSheet/ExerciseEditSheet) was broken on mobile (z-index/scroll issues with sheets inside Trends page scroll container)
+
+**Bug fix: bodyweight volume calc**
+- Backend SQL was unconditionally adding bodyweight to all sets' volume — inflating KG-based exercises. Now guards with `CASE WHEN st.is_bodyweight`. Fixes 4 queries.
+
+**Bug fix: exercises.category write**
+- `PATCH /api/exercises/{id}` was writing macro_group ("push") to category, but `_session_category()` expects muscle names ("chest"). Fixed to write primary muscle name.
+
+**Files added:**
+- `src/pages/ExercisesPage.tsx` — standalone exercises management page
+- `src/components/exercises/ExerciseManagerSheet.tsx` — unused (superseded by ExercisesPage)
+- `src/components/exercises/ExerciseEditSheet.tsx` — unused (superseded by ExercisesPage)
+
+**Files modified:**
+- `src/App.tsx` — added `/exercises` route
+- `src/components/trends/ExerciseProgressSection.tsx` — gear icon navigates to `/exercises` instead of opening overlay
+- Backend: `exercises.py`, `new_endpoints.py`, `models.py`, `schemas/health.py`, migration 005
+
+---
+
 ## Recent Session (2026-03-18) — DuneGoalsCard
 
 **New feature: Goals Dune Card** — animated dune landscape visualising goal alignment on Dashboard.

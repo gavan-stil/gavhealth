@@ -124,6 +124,23 @@ All require `X-API-Key` header.
 | `DELETE /api/activity-logs/{id}` | Deletes a workout activity record from `activity_logs`. Returns `{ ok: true }`. Used by "Delete workout" button in DayDetailSheet and ActivityFeed. |
 | `DELETE /api/strength/sessions/{id}` | Deletes a strength session and its related `manual_strength_logs` (via bridged_session_id). Returns `{ ok: true }`. |
 
+### Label Scan (Vision AI)
+
+| Endpoint | Method | Body | Returns |
+|----------|--------|------|---------|
+| `POST /api/log/food/scan` | POST | `{ "image_base64": "<base64>", "scan_type": "label" \| "recipe" }` | **label**: `{ name, per_serving: {calories_kcal, protein_g, carbs_g, fat_g}, serving_size_g, servings_per_container, per_100g, confidence }`. **recipe**: `{ name, ingredients: [{name, grams, calories_kcal, protein_g, carbs_g, fat_g}], totals, confidence }` |
+
+### Recipes (CRUD)
+
+| Endpoint | Method | Body | Returns |
+|----------|--------|------|---------|
+| `GET /api/recipes` | GET | — | `[Recipe]` — all saved recipes |
+| `POST /api/recipes` | POST | `{ name, total_weight_g?, servings, calories_kcal, protein_g, carbs_g, fat_g, ingredients: [{name, grams, calories_kcal, protein_g, carbs_g, fat_g}] }` | `Recipe` (created) |
+| `PATCH /api/recipes/{id}` | PATCH | Partial `Recipe` fields | `Recipe` (updated) |
+| `DELETE /api/recipes/{id}` | DELETE | — | `{ ok: true }` |
+
+> **Curl-verified 2026-03-29** — all 4 recipe endpoints + scan endpoint confirmed working.
+
 ### Habits History (planned — Task 8)
 
 | Endpoint | Method | Body | Notes |
@@ -151,6 +168,6 @@ All require `X-API-Key` header.
 
 ## Database Tables (12)
 
-`weight_logs`, `sleep_logs`, `activity_logs`, `rhr_logs`, `food_logs`, `sauna_logs`, `dexa_scans`, `daily_habits`, `strength_sessions`, `strength_sets`, `exercises`, `sync_log`, `hr_intraday`, `water_logs`, `mood_logs`, `saved_meals`, `health_goals`
+`weight_logs`, `sleep_logs`, `activity_logs`, `rhr_logs`, `food_logs`, `sauna_logs`, `dexa_scans`, `daily_habits`, `strength_sessions`, `strength_sets`, `exercises`, `sync_log`, `hr_intraday`, `water_logs`, `mood_logs`, `saved_meals`, `health_goals`, `recipes`
 
 Total seeded: ~4,189 rows + health_goals seed (6 rows on first deploy).

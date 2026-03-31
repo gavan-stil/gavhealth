@@ -97,10 +97,30 @@ This gives asyncpg a naive UTC datetime, which PostgreSQL correctly interprets a
 
 ---
 
+## Weight Date Handling
+
+`weight_logs.recorded_at` is a TIMESTAMPTZ (UTC). Unlike `activity_logs`, which stores a dedicated `activity_date` DATE column (Brisbane local), weight has no separate date column. All date-based queries on weight must use `AT TIME ZONE` to extract the correct Brisbane date:
+
+```sql
+-- Correct
+(recorded_at AT TIME ZONE 'Australia/Brisbane')::date
+
+-- Wrong — gives UTC date
+recorded_at::date
+func.date(recorded_at)
+```
+
+**Fixed 2026-03-31** in:
+- `data.py` — `/api/weight` date range filters
+- `summary.py` — daily summary weight lookup
+- `new_endpoints.py` — `_lookup_bodyweight()` exact-date and rolling-avg queries
+- `new_endpoints.py` — energy balance `weight_days` CTE
+
+---
+
 ## Known Exceptions
 
 - **`useIntradayHR.ts`**: Manually adds 10h to UTC time (`now.setTime(now.getTime() + 10 * 3600 * 1000)`) — this is intentional and correct for computing Brisbane date without relying on device timezone.
-- **`data.py:73`**: `func.date(WeightLog.recorded_at)` extracts UTC date, not Brisbane date. Not yet fixed — low impact since weight is typically logged midday.
 
 ---
 

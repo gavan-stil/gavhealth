@@ -31,7 +31,7 @@
 ## Frontend Stack
 
 - **React 19** + **Vite 7** + **TypeScript 5.9**
-- **react-router-dom v7** — 4 routes, BrowserRouter
+- **react-router-dom v7** — 6 routes, BrowserRouter
 - **recharts** — sparklines and overlay charts
 - **lucide-react** — icons
 - No Redux/Zustand — pure React hooks
@@ -52,6 +52,8 @@ main.tsx
                     ├── CalendarPage   /calendar
                     ├── LogPage        /log
                     ├── TrendsPage     /trends
+                    ├── GoalsPage      /goals
+                    ├── ExercisesPage  /exercises
                     └── * → Navigate to /
 ```
 
@@ -87,6 +89,8 @@ CalendarPage (filter + selected-day state)
 LogPage (two tabs: Log | Activity)
 ├── LogCards accordion
 │   ├── FoodCard       ← input → parse → review → confirm → success
+│   │   ├── LabelScanSheet  ← photo → vision AI → review macros → stage
+│   │   └── RecipeSheet     ← list/create/edit/use recipes, portion calc
 │   ├── StrengthCard   ← Builder mode OR Brain Dump NLP mode
 │   ├── SaunaCard      ← direct form (datetime, duration, temp, toggles)
 │   └── HabitsCard     ← breathing + devotions checkboxes
@@ -149,6 +153,8 @@ function useCardFetch<TRaw, TOut>(path, transform): CardState<TOut>
 | useActivityFeed | `src/hooks/useActivityFeed.ts` | `/api/activity` — 14 days |
 | useStrengthTrends *(T11 — planned)* | `src/hooks/useStrengthTrends.ts` | `/api/strength/sessions?days=N` |
 | useExerciseHistory *(T11 — planned)* | `src/hooks/useExerciseHistory.ts` | `/api/strength/exercise/:id/history?days=N` |
+| useLabelScan | `src/hooks/useLabelScan.ts` | `POST /api/log/food/scan` (vision AI) |
+| useRecipes | `src/hooks/useRecipes.ts` | `GET/POST/PATCH/DELETE /api/recipes` |
 
 ---
 
