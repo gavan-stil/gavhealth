@@ -45,7 +45,7 @@ async def daily_summary(
     weight_row = (
         await db.execute(
             select(WeightLog.weight_kg)
-            .where(func.date(WeightLog.recorded_at) == target_date)
+            .where(func.date(func.timezone('Australia/Brisbane', WeightLog.recorded_at)) == target_date)
             .order_by(WeightLog.recorded_at.desc())
             .limit(1)
         )

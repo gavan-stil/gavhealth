@@ -72,11 +72,11 @@ async def list_weights(
     count_q = select(func.count()).select_from(WeightLog)
 
     if start_date:
-        q = q.where(func.date(WeightLog.recorded_at) >= start_date)
-        count_q = count_q.where(func.date(WeightLog.recorded_at) >= start_date)
+        q = q.where(func.date(func.timezone('Australia/Brisbane', WeightLog.recorded_at)) >= start_date)
+        count_q = count_q.where(func.date(func.timezone('Australia/Brisbane', WeightLog.recorded_at)) >= start_date)
     if end_date:
-        q = q.where(func.date(WeightLog.recorded_at) <= end_date)
-        count_q = count_q.where(func.date(WeightLog.recorded_at) <= end_date)
+        q = q.where(func.date(func.timezone('Australia/Brisbane', WeightLog.recorded_at)) <= end_date)
+        count_q = count_q.where(func.date(func.timezone('Australia/Brisbane', WeightLog.recorded_at)) <= end_date)
 
     total = (await db.execute(count_q)).scalar_one()
     rows = (await db.execute(q.limit(limit).offset(offset))).scalars().all()
