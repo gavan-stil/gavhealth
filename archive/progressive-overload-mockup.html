@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Progressive Overload Comparison — Mockup</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
+
+  :root {
+    --bg-base: #0d0d0a;
+    --bg-card: #14130f;
+    --bg-elevated: #1e1d18;
+    --border-default: #222018;
+    --border-subtle: #1a1914;
+    --text-primary: #f0ece4;
+    --text-secondary: #b0a890;
+    --text-muted: #7a7060;
+    --ochre: #d4a04a;
+    --ochre-light: #e8c47a;
+    --gold: #e8c47a;
+    --rust: #b47050;
+    --dawn: #7FAABC;
+    --signal-good: #e8c47a;
+    --signal-poor: #c47a6a;
+    --radius-sm: 8px;
+    --radius-pill: 100px;
+    --space-sm: 8px;
+    --space-md: 14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg-base);
+    color: var(--text-secondary);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    max-width: 375px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+
+  h2 {
+    font: 700 12px/1 Inter, sans-serif;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 24px 0 10px;
+  }
+
+  .strength-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: 14px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* ── Session summary row ── */
+  .session-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+  }
+
+  .session-compare-label {
+    font: 400 11px/1.3 Inter, sans-serif;
+    color: var(--text-muted);
+  }
+
+  .session-now-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .session-now-text {
+    font: 400 11px/1.4 Inter, sans-serif;
+    color: var(--text-secondary);
+  }
+
+  /* ── Compare mode toggle ── */
+  .compare-toggle {
+    display: inline-flex;
+    gap: 0;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+    margin-left: auto;
+  }
+
+  .compare-btn {
+    padding: 3px 10px;
+    font: 600 9px/1 Inter, sans-serif;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .compare-btn.active {
+    background: var(--ochre);
+    color: var(--bg-base);
+  }
+
+  .compare-btn:not(.active):hover {
+    color: var(--text-secondary);
+  }
+
+  /* ── Diff badge ── */
+  .badge {
+    font: 600 10px/1 Inter, sans-serif;
+    padding: 2px 6px;
+    border-radius: var(--radius-pill);
+    white-space: nowrap;
+  }
+  .badge.good {
+    color: var(--signal-good);
+    background: rgba(232,196,122,0.12);
+  }
+  .badge.poor {
+    color: var(--signal-poor);
+    background: rgba(196,122,106,0.12);
+  }
+
+  /* ── Exercise card ── */
+  .exercise-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    padding: var(--space-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .ex-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+
+  .ex-name {
+    font: 600 14px/1.5 Inter, sans-serif;
+    color: var(--text-primary);
+    flex: 1;
+  }
+
+  .ex-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .ss-btn, .x-btn {
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    font: 700 10px/1 Inter, sans-serif;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    border: 1px solid var(--border-default);
+    background: transparent;
+    color: var(--text-muted);
+  }
+
+  .reorder-btn {
+    padding: 2px 4px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+  }
+  .reorder-btn:hover { opacity: 1; }
+  .reorder-btn.disabled { opacity: 0.2; pointer-events: none; }
+
+  /* ── Now row (per-exercise) ── */
+  .now-row {
+    font: 400 11px/1.4 Inter, sans-serif;
+    color: var(--text-secondary);
+    padding-left: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .compare-cycle-btn {
+    margin-left: auto;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font: 500 10px/1 Inter, sans-serif;
+    color: var(--text-muted);
+    padding: 2px 4px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .compare-cycle-btn .override-label {
+    color: var(--ochre);
+    font-weight: 600;
+  }
+
+  /* ── History panel ── */
+  .history-panel {
+    background: var(--bg-base);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .history-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .history-label {
+    font: 600 9px/1 Inter, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 22px;
+    color: var(--text-muted);
+  }
+  .history-label.pb { color: var(--rust); }
+  .history-label.active { color: var(--ochre); }
+
+  .history-date {
+    font: 400 11px/1.4 Inter, sans-serif;
+    color: var(--text-muted);
+  }
+
+  .history-stats {
+    font: 400 11px/1.4 Inter, sans-serif;
+    color: var(--text-secondary);
+  }
+
+  /* ── Active indicator dot ── */
+  .active-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--ochre);
+    flex-shrink: 0;
+    margin-right: -2px;
+  }
+
+  /* ── Set rows ── */
+  .set-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font: 400 13px/1.4 Inter, sans-serif;
+    color: var(--text-secondary);
+  }
+
+  .set-num {
+    font: 600 10px/1 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    width: 16px;
+  }
+
+  .set-label {
+    flex: 1;
+    font: 400 13px/1.4 Inter, sans-serif;
+    color: var(--text-secondary);
+  }
+
+  /* ── Screen labels ── */
+  .screen-label {
+    font: 700 11px/1 Inter, sans-serif;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ochre);
+    margin: 32px 0 6px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-default);
+  }
+
+  .screen-desc {
+    font: 400 11px/1.4 Inter, sans-serif;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     SCREEN 1: Comparing to PREV (default)
+     ═══════════════════════════════════════════════════════ -->
+<div class="screen-label">Screen 1 — Compare to Previous (default)</div>
+<div class="screen-desc">Session toggle set to "Prev". All exercise diffs compare to last session.</div>
+
+<div class="strength-card">
+
+  <!-- Session summary -->
+  <div class="session-summary">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="flex: 1;">
+        <div class="session-compare-label">Last 2026-03-31: 265 reps &middot; 18,824kg</div>
+        <div class="session-now-row">
+          <span class="session-now-text">Now: 267 reps &middot; 19,049kg</span>
+          <span class="badge good">+2 reps</span>
+          <span class="badge good">+1% vol</span>
+        </div>
+      </div>
+      <div class="compare-toggle">
+        <button class="compare-btn active">Prev</button>
+        <button class="compare-btn">30D</button>
+        <button class="compare-btn">PB</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Exercise 1: Ring chest dips (weighted) -->
+  <div class="exercise-card">
+    <div class="ex-header">
+      <span class="ex-name">Ring chest dips</span>
+      <div class="ex-controls">
+        <button class="reorder-btn disabled">&#x25B2;</button>
+        <button class="reorder-btn">&#x25BC;</button>
+        <button class="ss-btn">SS</button>
+        <button class="x-btn">&times;</button>
+      </div>
+    </div>
+
+    <div class="now-row">
+      <span>Now: 6 sets &middot; 53 reps &middot; 4,459kg vol</span>
+      <span class="badge good">+2 reps</span>
+      <span class="badge good">+4% vol</span>
+      <button class="compare-cycle-btn">History &#x25BE;</button>
+    </div>
+
+    <div class="set-row"><span class="set-num">1</span><span class="set-label">BW &times; 10</span></div>
+    <div class="set-row"><span class="set-num">2</span><span class="set-label">+20kg &times; 12</span></div>
+    <div class="set-row"><span class="set-num">3</span><span class="set-label">+25kg &times; 8</span></div>
+    <div class="set-row"><span class="set-num">4</span><span class="set-label">+25kg &times; 8</span></div>
+    <div class="set-row"><span class="set-num">5</span><span class="set-label">+25kg &times; 7</span></div>
+    <div class="set-row"><span class="set-num">6</span><span class="set-label">BW &times; 8</span></div>
+  </div>
+
+  <!-- Exercise 2: Ring pike pushup (BW) -->
+  <div class="exercise-card">
+    <div class="ex-header">
+      <span class="ex-name">Ring pike pushup</span>
+      <div class="ex-controls">
+        <button class="reorder-btn disabled">&#x25B2;</button>
+        <button class="reorder-btn">&#x25BC;</button>
+        <button class="ss-btn">SS</button>
+        <button class="x-btn">&times;</button>
+      </div>
+    </div>
+
+    <div class="now-row">
+      <span>Now: 4 sets &middot; 38 reps &middot; ~BW vol</span>
+      <span class="badge good">+3 reps</span>
+      <button class="compare-cycle-btn">History &#x25BE;</button>
+    </div>
+
+    <div class="set-row"><span class="set-num">1</span><span class="set-label">BW &times; 12</span></div>
+    <div class="set-row"><span class="set-num">2</span><span class="set-label">BW &times; 10</span></div>
+    <div class="set-row"><span class="set-num">3</span><span class="set-label">BW &times; 8</span></div>
+    <div class="set-row"><span class="set-num">4</span><span class="set-label">BW &times; 8</span></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════
+     SCREEN 2: Comparing to 30D BEST
+     ═══════════════════════════════════════════════════════ -->
+<div class="screen-label">Screen 2 — Compare to 30-Day Best</div>
+<div class="screen-desc">Session toggle switched to "30D". Diffs now compare against best session in the last 30 days.</div>
+
+<div class="strength-card">
+
+  <div class="session-summary">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="flex: 1;">
+        <div class="session-compare-label">30D Best 2026-03-22: 278 reps &middot; 19,240kg</div>
+        <div class="session-now-row">
+          <span class="session-now-text">Now: 267 reps &middot; 19,049kg</span>
+          <span class="badge poor">&minus;11 reps</span>
+          <span class="badge poor">&minus;1% vol</span>
+        </div>
+      </div>
+      <div class="compare-toggle">
+        <button class="compare-btn">Prev</button>
+        <button class="compare-btn active">30D</button>
+        <button class="compare-btn">PB</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Exercise with history expanded showing active indicator -->
+  <div class="exercise-card">
+    <div class="ex-header">
+      <span class="ex-name">Ring chest dips</span>
+      <div class="ex-controls">
+        <button class="reorder-btn disabled">&#x25B2;</button>
+        <button class="reorder-btn">&#x25BC;</button>
+        <button class="ss-btn">SS</button>
+        <button class="x-btn">&times;</button>
+      </div>
+    </div>
+
+    <div class="now-row">
+      <span>Now: 6 sets &middot; 53 reps &middot; 4,459kg vol</span>
+      <span class="badge poor">&minus;2 reps</span>
+      <span class="badge poor">&minus;2% vol</span>
+      <button class="compare-cycle-btn">History &#x25B4;</button>
+    </div>
+
+    <!-- History with active dot on 30D row -->
+    <div class="history-panel">
+      <div class="history-row">
+        <span class="history-label">Last</span>
+        <span class="history-date">31 Mar</span>
+        <span class="history-stats">6s &middot; 4,272kg vol &middot; max 10r &middot; top 25kg</span>
+      </div>
+      <div class="history-row">
+        <div class="active-dot"></div>
+        <span class="history-label active">30D</span>
+        <span class="history-date">22 Mar</span>
+        <span class="history-stats">6s &middot; 4,549kg vol &middot; max 11r &middot; top 20kg</span>
+      </div>
+      <div class="history-row">
+        <span class="history-label pb">PB</span>
+        <span class="history-date">31 Mar</span>
+        <span class="history-stats">6s &middot; 4,272kg vol &middot; top 25kg</span>
+      </div>
+    </div>
+
+    <div class="set-row"><span class="set-num">1</span><span class="set-label">BW &times; 10</span></div>
+    <div class="set-row"><span class="set-num">2</span><span class="set-label">+20kg &times; 12</span></div>
+    <div class="set-row"><span class="set-num">3</span><span class="set-label">+25kg &times; 8</span></div>
+  </div>
+
+  <!-- Exercise 2 follows session default -->
+  <div class="exercise-card">
+    <div class="ex-header">
+      <span class="ex-name">Ring pike pushup</span>
+      <div class="ex-controls">
+        <button class="reorder-btn disabled">&#x25B2;</button>
+        <button class="reorder-btn">&#x25BC;</button>
+        <button class="ss-btn">SS</button>
+        <button class="x-btn">&times;</button>
+      </div>
+    </div>
+
+    <div class="now-row">
+      <span>Now: 4 sets &middot; 38 reps &middot; ~BW vol</span>
+      <span class="badge good">+1 rep</span>
+      <button class="compare-cycle-btn">History &#x25BE;</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════
+     SCREEN 3: Per-exercise override
+     ═══════════════════════════════════════════════════════ -->
+<div class="screen-label">Screen 3 — Per-Exercise Override</div>
+<div class="screen-desc">Session is set to "Prev", but Ring chest dips has been overridden to compare against "PB". The override label shows in ochre next to the History button.</div>
+
+<div class="strength-card">
+
+  <div class="session-summary">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="flex: 1;">
+        <div class="session-compare-label">Last 2026-03-31: 265 reps &middot; 18,824kg</div>
+        <div class="session-now-row">
+          <span class="session-now-text">Now: 267 reps &middot; 19,049kg</span>
+          <span class="badge good">+2 reps</span>
+          <span class="badge good">+1% vol</span>
+        </div>
+      </div>
+      <div class="compare-toggle">
+        <button class="compare-btn active">Prev</button>
+        <button class="compare-btn">30D</button>
+        <button class="compare-btn">PB</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Exercise 1: overridden to PB -->
+  <div class="exercise-card">
+    <div class="ex-header">
+      <span class="ex-name">Ring chest dips</span>
+      <div class="ex-controls">
+        <button class="reorder-btn disabled">&#x25B2;</button>
+        <button class="reorder-btn">&#x25BC;</button>
+        <button class="ss-btn">SS</button>
+        <button class="x-btn">&times;</button>
+      </div>
+    </div>
+
+    <div class="now-row">
+      <span>Now: 6 sets &middot; 53 reps &middot; 4,459kg vol</span>
+      <span class="badge good">+2 reps</span>
+      <span class="badge good">+4% vol</span>
+      <!-- Override indicator: shows "vs PB" in ochre, tap cycles -->
+      <button class="compare-cycle-btn">
+        <span class="override-label">vs PB</span> &#x25BE;
+      </button>
+    </div>
+
+    <div class="set-row"><span class="set-num">1</span><span class="set-label">BW &times; 10</span></div>
+    <div class="set-row"><span class="set-num">2</span><span class="set-label">+20kg &times; 12</span></div>
+    <div class="set-row"><span class="set-num">3</span><span class="set-label">+25kg &times; 8</span></div>
+    <div class="set-row"><span class="set-num">4</span><span class="set-label">+25kg &times; 8</span></div>
+    <div class="set-row"><span class="set-num">5</span><span class="set-label">+25kg &times; 7</span></div>
+    <div class="set-row"><span class="set-num">6</span><span class="set-label">BW &times; 8</span></div>
+  </div>
+
+  <!-- Exercise 2: follows session default (Prev) — no override label -->
+  <div class="exercise-card">
+    <div class="ex-header">
+      <span class="ex-name">Ring pike pushup</span>
+      <div class="ex-controls">
+        <button class="reorder-btn disabled">&#x25B2;</button>
+        <button class="reorder-btn">&#x25BC;</button>
+        <button class="ss-btn">SS</button>
+        <button class="x-btn">&times;</button>
+      </div>
+    </div>
+
+    <div class="now-row">
+      <span>Now: 4 sets &middot; 38 reps &middot; ~BW vol</span>
+      <span class="badge good">+3 reps</span>
+      <button class="compare-cycle-btn">History &#x25BE;</button>
+    </div>
+
+    <div class="set-row"><span class="set-num">1</span><span class="set-label">BW &times; 12</span></div>
+    <div class="set-row"><span class="set-num">2</span><span class="set-label">BW &times; 10</span></div>
+    <div class="set-row"><span class="set-num">3</span><span class="set-label">BW &times; 8</span></div>
+    <div class="set-row"><span class="set-num">4</span><span class="set-label">BW &times; 8</span></div>
+  </div>
+</div>
+
+<div style="height: 60px;"></div>
+
+</body>
+</html>

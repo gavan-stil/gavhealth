@@ -11,6 +11,7 @@ type WorkoutExercise = { name: string; superset: boolean; sets: WorkoutSet[] };
 type StrengthState = 'empty' | 'parsing' | 'parsed' | 'confirmed' | 'saving' | 'error';
 type CardMode = 'builder' | 'braindump';
 type SplitName = 'push' | 'pull' | 'legs' | 'abs';
+type CompareMode = 'prev' | '30d' | 'pb';
 
 const DRAFT_KEY = 'strength_draft';
 
@@ -161,19 +162,24 @@ function computeCurrentStats(sets: WorkoutSet[], bwKg: number | null): { sets: n
 }
 
 function ExerciseCard({
-  exercise, exerciseIndex, onUpdate, onRemove, exerciseList, bodyweightKg,
+  exercise, exerciseIndex, exerciseCount, onUpdate, onRemove, onMove, exerciseList, bodyweightKg, sessionCompareMode,
 }: {
   exercise: WorkoutExercise;
   exerciseIndex: number;
+  exerciseCount: number;
   onUpdate: (idx: number, ex: WorkoutExercise) => void;
   onRemove: (idx: number) => void;
+  onMove: (idx: number, dir: -1 | 1) => void;
   exerciseList: Exercise[];
   bodyweightKg: number | null;
+  sessionCompareMode: CompareMode;
 }) {
   const [inputFocused, setInputFocused] = useState(false);
   const [sessionHistory, setSessionHistory] = useState<ExerciseSession[]>([]);
   const [editingSet, setEditingSet] = useState<number | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [overrideCompare, setOverrideCompare] = useState<CompareMode | null>(null);
+  const effectiveCompare = overrideCompare ?? sessionCompareMode;
 
   useEffect(() => {
     const match = exerciseList.find(e => e.name.toLowerCase() === exercise.name.toLowerCase());
@@ -222,20 +228,21 @@ function ExerciseCard({
   };
 
   const currentStats = computeCurrentStats(exercise.sets, bodyweightKg);
+  const compareTarget = effectiveCompare === 'pb' ? pbSession : effectiveCompare === '30d' ? (best30d ?? prevSession) : prevSession;
   let repsDiffStr: string | null = null;
   let repsDiffPositive = true;
   let volDiffStr: string | null = null;
   let volDiffPositive = true;
-  if (prevSession) {
-    if (prevSession.total_reps > 0) {
-      const diff = currentStats.reps - prevSession.total_reps;
+  if (compareTarget) {
+    if (compareTarget.total_reps > 0) {
+      const diff = currentStats.reps - compareTarget.total_reps;
       if (Math.abs(diff) >= 1) {
         repsDiffPositive = diff >= 0;
         repsDiffStr = (diff > 0 ? '+' : '') + diff + ' reps';
       }
     }
-    if (prevSession.session_volume_kg > 0 && currentStats.volume !== null && currentStats.volume > 0) {
-      const pct = ((currentStats.volume - prevSession.session_volume_kg) / prevSession.session_volume_kg) * 100;
+    if (compareTarget.session_volume_kg > 0 && currentStats.volume !== null && currentStats.volume > 0) {
+      const pct = ((currentStats.volume - compareTarget.session_volume_kg) / compareTarget.session_volume_kg) * 100;
       if (Math.abs(pct) >= 0.5) {
         volDiffPositive = pct >= 0;
         volDiffStr = (pct > 0 ? '+' : '') + Math.round(pct) + '% vol';
@@ -247,7 +254,7 @@ function ExerciseCard({
     <div style={{
       background: 'var(--bg-elevated)',
       border: `1px solid var(--border-default)`,
-      borderLeft: exercise.superset ? '3px solid var(--ember)' : '1px solid var(--border-default)',
+      borderLeft: '1px solid var(--border-default)',
       borderRadius: 'var(--radius-sm)',
       padding: 'var(--space-md)',
       display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)',
@@ -266,16 +273,26 @@ function ExerciseCard({
           }}
         />
         <button
-          onClick={() => onUpdate(exerciseIndex, { ...exercise, superset: !exercise.superset })}
+          onClick={() => onMove(exerciseIndex, -1)}
+          disabled={exerciseIndex === 0}
           style={{
-            padding: '2px 8px', borderRadius: 'var(--radius-pill)',
-            font: '700 10px/1 Inter, sans-serif', letterSpacing: '0.5px', cursor: 'pointer',
-            border: `1px solid ${exercise.superset ? 'var(--gold)' : 'var(--border-default)'}`,
-            background: exercise.superset ? 'var(--gold)' : 'transparent',
-            color: exercise.superset ? 'var(--bg-base)' : 'var(--text-muted)',
+            padding: '2px 4px', border: 'none', background: 'transparent',
+            color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12, lineHeight: 1,
+            opacity: exerciseIndex === 0 ? 0.2 : 0.6,
           }}
         >
-          SS
+          ▲
+        </button>
+        <button
+          onClick={() => onMove(exerciseIndex, 1)}
+          disabled={exerciseIndex === exerciseCount - 1}
+          style={{
+            padding: '2px 4px', border: 'none', background: 'transparent',
+            color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12, lineHeight: 1,
+            opacity: exerciseIndex === exerciseCount - 1 ? 0.2 : 0.6,
+          }}
+        >
+          ▼
         </button>
         <button
           onClick={() => onRemove(exerciseIndex)}
@@ -350,7 +367,13 @@ function ExerciseCard({
         )}
         {sessionHistory.length > 0 && (
           <button
-            onClick={() => setShowHistory(h => !h)}
+            onClick={() => {
+              if (!showHistory) { setShowHistory(true); return; }
+              const modes: CompareMode[] = ['prev', '30d', 'pb'];
+              const curIdx = modes.indexOf(effectiveCompare);
+              const nextMode = modes[(curIdx + 1) % modes.length];
+              if (nextMode === sessionCompareMode) { setOverrideCompare(null); } else { setOverrideCompare(nextMode); }
+            }}
             style={{
               marginLeft: 'auto',
               background: 'none', border: 'none', cursor: 'pointer',
@@ -360,7 +383,14 @@ function ExerciseCard({
               display: 'flex', alignItems: 'center', gap: 3,
             }}
           >
-            History {showHistory ? '▴' : '▾'}
+            {overrideCompare ? (
+              <span style={{ color: 'var(--ochre)', fontWeight: 600 }}>
+                vs {overrideCompare === 'prev' ? 'Prev' : overrideCompare === '30d' ? '30D' : 'PB'}
+              </span>
+            ) : (
+              <>History</>
+            )}
+            {' '}{showHistory ? '▴' : '▾'}
           </button>
         )}
       </div>
@@ -534,6 +564,7 @@ export default function StrengthCard({
   const [savedDraft, setSavedDraft] = useState<StrengthDraft | null>(() => readDraft());
   const [bodyweightKg, setBodyweightKg] = useState<number | null>(null);
   const [lastSplitSession, setLastSplitSession] = useState<{ session_date: string; total_reps: number; total_volume_kg: number } | null>(null);
+  const [compareMode, setCompareMode] = useState<CompareMode>('prev');
 
   // Persist draft whenever meaningful state changes
   useEffect(() => {
@@ -593,6 +624,16 @@ export default function StrengthCard({
 
   const removeExercise = (idx: number) => {
     setExercises(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const moveExercise = (idx: number, dir: -1 | 1) => {
+    setExercises(prev => {
+      const next = [...prev];
+      const targetIdx = idx + dir;
+      if (targetIdx < 0 || targetIdx >= next.length) return prev;
+      [next[idx], next[targetIdx]] = [next[targetIdx], next[idx]];
+      return next;
+    });
   };
 
   const addExercise = () => {
@@ -860,6 +901,7 @@ export default function StrengthCard({
                       ? sessionReps - lastSplitSession.total_reps : null;
                     const volPct = !volApprox && lastSplitSession.total_volume_kg > 0 && sessionVolume > 0
                       ? ((sessionVolume - lastSplitSession.total_volume_kg) / lastSplitSession.total_volume_kg) * 100 : null;
+                    const modeLabel = compareMode === 'prev' ? 'Last' : compareMode === '30d' ? '30D Best' : 'PB';
                     return (
                       <div style={{
                         background: 'var(--bg-elevated)',
@@ -868,33 +910,57 @@ export default function StrengthCard({
                         padding: 'var(--space-sm) var(--space-md)',
                         display: 'flex', flexDirection: 'column', gap: 4,
                       }}>
-                        <div style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-muted)' }}>
-                          Last {lastSplitSession.session_date}: {lastSplitSession.total_reps} reps · {Math.round(lastSplitSession.total_volume_kg)}kg
-                        </div>
-                        <div style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <span>
-                            Now: {sessionReps} reps · {volApprox ? '~' : ''}{Math.round(sessionVolume)}kg
-                          </span>
-                          {repsDiff !== null && Math.abs(repsDiff) >= 1 && (
-                            <span style={{
-                              font: '600 10px/1 Inter, sans-serif',
-                              color: repsDiff >= 0 ? 'var(--signal-good)' : 'var(--signal-poor)',
-                              background: repsDiff >= 0 ? 'rgba(232,196,122,0.12)' : 'rgba(196,122,106,0.12)',
-                              padding: '1px 5px', borderRadius: 'var(--radius-pill)',
-                            }}>
-                              {(repsDiff > 0 ? '+' : '') + repsDiff} reps
-                            </span>
-                          )}
-                          {volPct !== null && Math.abs(volPct) >= 0.5 && (
-                            <span style={{
-                              font: '600 10px/1 Inter, sans-serif',
-                              color: volPct >= 0 ? 'var(--signal-good)' : 'var(--signal-poor)',
-                              background: volPct >= 0 ? 'rgba(232,196,122,0.12)' : 'rgba(196,122,106,0.12)',
-                              padding: '1px 5px', borderRadius: 'var(--radius-pill)',
-                            }}>
-                              {(volPct > 0 ? '+' : '') + Math.round(volPct)}% vol
-                            </span>
-                          )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-muted)' }}>
+                              {modeLabel} {lastSplitSession.session_date}: {lastSplitSession.total_reps} reps · {Math.round(lastSplitSession.total_volume_kg)}kg
+                            </div>
+                            <div style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <span>
+                                Now: {sessionReps} reps · {volApprox ? '~' : ''}{Math.round(sessionVolume)}kg
+                              </span>
+                              {repsDiff !== null && Math.abs(repsDiff) >= 1 && (
+                                <span style={{
+                                  font: '600 10px/1 Inter, sans-serif',
+                                  color: repsDiff >= 0 ? 'var(--signal-good)' : 'var(--signal-poor)',
+                                  background: repsDiff >= 0 ? 'rgba(232,196,122,0.12)' : 'rgba(196,122,106,0.12)',
+                                  padding: '1px 5px', borderRadius: 'var(--radius-pill)',
+                                }}>
+                                  {(repsDiff > 0 ? '+' : '') + repsDiff} reps
+                                </span>
+                              )}
+                              {volPct !== null && Math.abs(volPct) >= 0.5 && (
+                                <span style={{
+                                  font: '600 10px/1 Inter, sans-serif',
+                                  color: volPct >= 0 ? 'var(--signal-good)' : 'var(--signal-poor)',
+                                  background: volPct >= 0 ? 'rgba(232,196,122,0.12)' : 'rgba(196,122,106,0.12)',
+                                  padding: '1px 5px', borderRadius: 'var(--radius-pill)',
+                                }}>
+                                  {(volPct > 0 ? '+' : '') + Math.round(volPct)}% vol
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div style={{
+                            display: 'inline-flex', background: 'rgba(255,255,255,0.04)',
+                            border: '1px solid var(--border-default)', borderRadius: 'var(--radius-pill)', overflow: 'hidden',
+                          }}>
+                            {(['prev', '30d', 'pb'] as CompareMode[]).map(m => (
+                              <button
+                                key={m}
+                                onClick={() => setCompareMode(m)}
+                                style={{
+                                  padding: '3px 10px',
+                                  font: '600 9px/1 Inter, sans-serif', letterSpacing: '0.4px', textTransform: 'uppercase',
+                                  border: 'none', cursor: 'pointer', transition: 'all 0.15s',
+                                  background: compareMode === m ? 'var(--ochre)' : 'transparent',
+                                  color: compareMode === m ? 'var(--bg-base)' : 'var(--text-muted)',
+                                }}
+                              >
+                                {m === 'prev' ? 'Prev' : m === '30d' ? '30D' : 'PB'}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     );
@@ -906,10 +972,13 @@ export default function StrengthCard({
                       key={i}
                       exercise={ex}
                       exerciseIndex={i}
+                      exerciseCount={exercises.length}
                       onUpdate={updateExercise}
                       onRemove={removeExercise}
+                      onMove={moveExercise}
                       exerciseList={exerciseList}
                       bodyweightKg={bodyweightKg}
+                      sessionCompareMode={compareMode}
                     />
                   ))}
 
