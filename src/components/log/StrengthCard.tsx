@@ -564,7 +564,8 @@ export default function StrengthCard({
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [savedDraft, setSavedDraft] = useState<StrengthDraft | null>(() => readDraft());
   const [bodyweightKg, setBodyweightKg] = useState<number | null>(null);
-  const [lastSplitSession, setLastSplitSession] = useState<{ session_date: string; total_reps: number; total_volume_kg: number } | null>(null);
+  type SplitSessionData = { session_date: string; total_reps: number; total_volume_kg: number };
+  const [splitSessions, setSplitSessions] = useState<{ prev: SplitSessionData | null; best_30d: SplitSessionData | null; pb: SplitSessionData | null }>({ prev: null, best_30d: null, pb: null });
   const [compareMode, setCompareMode] = useState<CompareMode>('prev');
 
   // Persist draft whenever meaningful state changes
@@ -614,9 +615,16 @@ export default function StrengthCard({
   }, []);
 
   useEffect(() => {
-    apiFetch<{ session_date: string; total_reps: number; total_volume_kg: number } | null>(`/api/strength/sessions/last-by-split/${selectedSplit}`)
-      .then(r => setLastSplitSession(r ?? null))
-      .catch(() => setLastSplitSession(null));
+    apiFetch<{ session_date: string; total_reps: number; total_volume_kg: number; best_30d?: SplitSessionData | null; pb?: SplitSessionData | null } | null>(`/api/strength/sessions/last-by-split/${selectedSplit}`)
+      .then(r => {
+        if (!r) { setSplitSessions({ prev: null, best_30d: null, pb: null }); return; }
+        setSplitSessions({
+          prev: { session_date: r.session_date, total_reps: r.total_reps, total_volume_kg: r.total_volume_kg },
+          best_30d: r.best_30d ?? null,
+          pb: r.pb ?? null,
+        });
+      })
+      .catch(() => setSplitSessions({ prev: null, best_30d: null, pb: null }));
   }, [selectedSplit]);
 
   const updateExercise = (idx: number, ex: WorkoutExercise) => {
@@ -891,6 +899,7 @@ export default function StrengthCard({
 
                   {/* Session comparison header */}
                   {(() => {
+                    const lastSplitSession = compareMode === 'pb' ? splitSessions.pb : compareMode === '30d' ? (splitSessions.best_30d ?? splitSessions.prev) : splitSessions.prev;
                     if (!lastSplitSession || exercises.length === 0) return null;
                     const sessionReps = exercises.reduce((a, e) => a + e.sets.reduce((s, set) => s + set.reps, 0), 0);
                     const sessionVolume = exercises.reduce((a, e) => {
@@ -913,7 +922,7 @@ export default function StrengthCard({
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <div style={{ flex: 1 }}>
                             <div style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-muted)' }}>
-                              Last {lastSplitSession.session_date}: {lastSplitSession.total_reps} reps · {Math.round(lastSplitSession.total_volume_kg)}kg
+                              {compareMode === 'prev' ? 'Last' : compareMode === '30d' ? '30D Best' : 'PB'} {lastSplitSession.session_date}: {lastSplitSession.total_reps} reps · {Math.round(lastSplitSession.total_volume_kg)}kg
                             </div>
                             <div style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                               <span>

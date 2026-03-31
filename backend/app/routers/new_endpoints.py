@@ -1140,8 +1140,8 @@ async def exercise_history(
 
 # ---------------------------------------------------------------------------
 # T18. GET /api/strength/sessions/last-by-split/{split}
-# Returns total_reps + BW-inclusive total_volume_kg for the most recent saved
-# session of the given split.  Used by StrengthCard session-level comparison.
+# Returns prev, 30D best, and all-time PB session stats for the given split.
+# Used by StrengthCard session-level comparison toggle.
 # ---------------------------------------------------------------------------
 @router.get("/strength/sessions/last-by-split/{split}")
 async def last_session_by_split(split: str, db: AsyncSession = Depends(get_db)):
@@ -1149,31 +1149,63 @@ async def last_session_by_split(split: str, db: AsyncSession = Depends(get_db)):
     if split not in VALID_SPLITS:
         raise HTTPException(status_code=400, detail=f"split must be one of: {', '.join(VALID_SPLITS)}")
 
-    result = await db.execute(
-        text("""
-            SELECT
-                (ss.session_datetime AT TIME ZONE 'Australia/Brisbane')::date AS session_date,
-                COALESCE(SUM(st.reps), 0)                                        AS total_reps,
-                COALESCE(SUM(
-                    st.reps * (CASE WHEN st.is_bodyweight THEN COALESCE(st.bodyweight_at_session, 0) ELSE 0 END + COALESCE(st.weight_kg, 0))
-                ), 0)                                                             AS total_volume_kg
-            FROM strength_sessions ss
-            LEFT JOIN strength_sets st ON st.session_id = ss.id
-            WHERE ss.session_label = :split
-              AND ss.source = 'manual'
-            GROUP BY ss.id, ss.session_datetime
-            ORDER BY ss.session_datetime DESC
-            LIMIT 1
-        """),
+    base_sql = """
+        SELECT
+            (ss.session_datetime AT TIME ZONE 'Australia/Brisbane')::date AS session_date,
+            COALESCE(SUM(st.reps), 0)                                        AS total_reps,
+            COALESCE(SUM(
+                st.reps * (CASE WHEN st.is_bodyweight THEN COALESCE(st.bodyweight_at_session, 0) ELSE 0 END + COALESCE(st.weight_kg, 0))
+            ), 0)                                                             AS total_volume_kg
+        FROM strength_sessions ss
+        LEFT JOIN strength_sets st ON st.session_id = ss.id
+        WHERE ss.session_label = :split
+          AND ss.source = 'manual'
+          {extra_where}
+        GROUP BY ss.id, ss.session_datetime
+        ORDER BY {order_by}
+        LIMIT 1
+    """
+
+    def _row_to_dict(row):
+        if not row:
+            return None
+        return {
+            "session_date": row["session_date"].isoformat() if row["session_date"] else None,
+            "total_reps": int(row["total_reps"]),
+            "total_volume_kg": round(float(row["total_volume_kg"])),
+        }
+
+    # Prev: most recent session
+    prev_result = await db.execute(
+        text(base_sql.format(extra_where="", order_by="ss.session_datetime DESC")),
         {"split": split},
     )
-    row = result.mappings().first()
-    if not row:
+    prev = _row_to_dict(prev_result.mappings().first())
+
+    # 30D best: highest volume in last 30 days
+    best30d_result = await db.execute(
+        text(base_sql.format(
+            extra_where="AND ss.session_datetime >= CURRENT_TIMESTAMP - INTERVAL '30 days'",
+            order_by="total_volume_kg DESC",
+        )),
+        {"split": split},
+    )
+    best30d = _row_to_dict(best30d_result.mappings().first())
+
+    # PB: all-time highest volume
+    pb_result = await db.execute(
+        text(base_sql.format(extra_where="", order_by="total_volume_kg DESC")),
+        {"split": split},
+    )
+    pb = _row_to_dict(pb_result.mappings().first())
+
+    # Backward compat: return prev at top level + new fields
+    if not prev:
         return None
     return {
-        "session_date": row["session_date"].isoformat() if row["session_date"] else None,
-        "total_reps": int(row["total_reps"]),
-        "total_volume_kg": round(float(row["total_volume_kg"])),
+        **prev,
+        "best_30d": best30d,
+        "pb": pb,
     }
 
 
