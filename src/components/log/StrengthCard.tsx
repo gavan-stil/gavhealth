@@ -66,7 +66,7 @@ function groupSetsToExercises(rawSets: RawSet[]): WorkoutExercise[] {
     if (!map.has(s.exercise_name)) {
       map.set(s.exercise_name, { name: s.exercise_name, superset: false, sets: [] });
     }
-    const loadType: LoadType = s.is_bodyweight ? 'bw' : 'kg';
+    const loadType: LoadType = !s.is_bodyweight ? 'kg' : (s.weight_kg !== null && s.weight_kg > 0) ? 'bw+' : 'bw';
     map.get(s.exercise_name)!.sets.push({
       load_type: loadType,
       kg: s.weight_kg ?? 0,
@@ -171,18 +171,35 @@ function ExerciseCard({
   bodyweightKg: number | null;
 }) {
   const [inputFocused, setInputFocused] = useState(false);
-  const [prevSession, setPrevSession] = useState<ExerciseSession | null>(null);
+  const [sessionHistory, setSessionHistory] = useState<ExerciseSession[]>([]);
   const [editingSet, setEditingSet] = useState<number | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     const match = exerciseList.find(e => e.name.toLowerCase() === exercise.name.toLowerCase());
-    if (!match) { setPrevSession(null); return; }
+    if (!match) { setSessionHistory([]); return; }
     let cancelled = false;
-    apiFetch<ExerciseSession[]>(`/api/strength/exercise/${match.id}/history?days=365`)
-      .then(data => { if (!cancelled) setPrevSession(data.length > 0 ? data[data.length - 1] : null); })
-      .catch(() => { if (!cancelled) setPrevSession(null); });
+    apiFetch<ExerciseSession[]>(`/api/strength/exercise/${match.id}/history?days=1825`)
+      .then(data => { if (!cancelled) setSessionHistory(data ?? []); })
+      .catch(() => { if (!cancelled) setSessionHistory([]); });
     return () => { cancelled = true; };
   }, [exercise.name, exerciseList]);
+
+  const prevSession = sessionHistory.length > 0 ? sessionHistory[sessionHistory.length - 1] : null;
+
+  // 30-day best by volume
+  const cutoff30d = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const best30d = sessionHistory
+    .filter(s => new Date(s.session_date).getTime() >= cutoff30d)
+    .reduce((best: ExerciseSession | null, s) =>
+      !best || s.session_volume_kg > best.session_volume_kg ? s : best, null);
+
+  // All-time PB by volume
+  const pbSession = sessionHistory
+    .reduce((best: ExerciseSession | null, s) =>
+      !best || s.session_volume_kg > best.session_volume_kg ? s : best, null);
+
+  const isPbLastSession = pbSession && prevSession && pbSession.session_date === prevSession.session_date;
 
   const filteredExercises = exercise.name.length > 0
     ? exerciseList.filter(e => e.name.toLowerCase().includes(exercise.name.toLowerCase())).slice(0, 8)
@@ -300,15 +317,7 @@ function ExerciseCard({
         )}
       </div>
 
-      {prevSession && (
-        <div style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-muted)', paddingLeft: 2 }}>
-          {'Last: '}
-          {prevSession.sets} sets · {prevSession.total_reps} reps
-          {prevSession.session_volume_kg > 0 ? ` · ${Math.round(prevSession.session_volume_kg)}kg vol` : ''}
-          {' · '}
-          {formatShortDate(prevSession.session_date)}
-        </div>
-      )}
+      {/* Now row + diff badges */}
       <div style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-secondary)', paddingLeft: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
         <span>
           {'Now: '}
@@ -339,7 +348,59 @@ function ExerciseCard({
             {volDiffStr}
           </span>
         )}
+        {sessionHistory.length > 0 && (
+          <button
+            onClick={() => setShowHistory(h => !h)}
+            style={{
+              marginLeft: 'auto',
+              background: 'none', border: 'none', cursor: 'pointer',
+              font: '500 10px/1 Inter, sans-serif',
+              color: 'var(--text-muted)',
+              padding: '2px 4px',
+              display: 'flex', alignItems: 'center', gap: 3,
+            }}
+          >
+            History {showHistory ? '▴' : '▾'}
+          </button>
+        )}
       </div>
+
+      {/* Expandable history comparison: Prev / 30D Best / PB */}
+      {showHistory && (
+        <div style={{
+          background: 'var(--bg-base)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 'var(--radius-sm)',
+          padding: '6px 8px',
+          display: 'flex', flexDirection: 'column', gap: 5,
+        }}>
+          {[
+            { label: 'Last', session: prevSession, extra: isPbLastSession ? ' [PB]' : undefined },
+            { label: '30D', session: best30d === prevSession ? null : best30d, extra: undefined },
+            { label: 'PB', session: isPbLastSession ? null : pbSession, extra: undefined },
+          ].map(({ label, session, extra }) => session && (
+            <div key={label} style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{
+                font: '600 9px/1 Inter, sans-serif',
+                color: label === 'PB' ? 'var(--rust)' : 'var(--text-muted)',
+                textTransform: 'uppercase', letterSpacing: '0.5px',
+                minWidth: 22,
+              }}>
+                {label}{extra && <span style={{ color: 'var(--rust)' }}>{extra}</span>}
+              </span>
+              <span style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-muted)' }}>
+                {formatShortDate(session.session_date)}
+              </span>
+              <span style={{ font: '400 11px/1.4 Inter, sans-serif', color: 'var(--text-secondary)' }}>
+                {session.sets}s
+                {' · '}{Math.round(session.session_volume_kg)}kg vol
+                {session.max_reps_in_set > 0 ? ` · max ${session.max_reps_in_set}r` : ''}
+                {session.top_weight_kg > 0 ? ` · top ${session.top_weight_kg}kg` : ''}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {exercise.sets.map((set, si) => {
         const isCompact = set.completed && editingSet !== si;

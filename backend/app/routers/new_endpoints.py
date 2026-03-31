@@ -93,7 +93,7 @@ def _session_category(categories: list[str], session_label: str | None = None) -
 async def _lookup_bodyweight(db: AsyncSession, session_date) -> float | None:
     """Get bodyweight: exact date match, else 7-day rolling avg."""
     bw_result = await db.execute(
-        text("SELECT weight_kg FROM weight_logs WHERE recorded_at::date = :d ORDER BY recorded_at DESC LIMIT 1"),
+        text("SELECT weight_kg FROM weight_logs WHERE (recorded_at AT TIME ZONE 'Australia/Brisbane')::date = :d ORDER BY recorded_at DESC LIMIT 1"),
         {"d": session_date},
     )
     row = bw_result.mappings().first()
@@ -102,7 +102,7 @@ async def _lookup_bodyweight(db: AsyncSession, session_date) -> float | None:
     rolling = await db.execute(
         text("""SELECT AVG(weight_kg) AS avg FROM (
             SELECT weight_kg FROM weight_logs
-            WHERE recorded_at::date < :d
+            WHERE (recorded_at AT TIME ZONE 'Australia/Brisbane')::date < :d
             ORDER BY recorded_at DESC LIMIT 7
         ) sub"""),
         {"d": session_date},
@@ -1098,6 +1098,7 @@ async def exercise_history(
                 (ss.session_datetime AT TIME ZONE 'Australia/Brisbane')::date AS session_date,
                 COUNT(st.id)                           AS sets,
                 SUM(st.reps)                           AS total_reps,
+                MAX(st.reps)                           AS max_reps_in_set,
                 MAX(COALESCE(st.weight_kg, 0))         AS top_weight_kg,
                 SUM(st.reps * (CASE WHEN st.is_bodyweight THEN COALESCE(st.bodyweight_at_session, 0) ELSE 0 END + COALESCE(st.weight_kg, 0))) AS session_volume_kg,
                 MAX(COALESCE(st.weight_kg, 0) * (1.0 + st.reps / 30.0)) AS estimated_1rm
@@ -1116,6 +1117,7 @@ async def exercise_history(
             "session_date": r["session_date"].isoformat() if r["session_date"] else None,
             "sets": r["sets"],
             "total_reps": r["total_reps"],
+            "max_reps_in_set": int(r["max_reps_in_set"]) if r["max_reps_in_set"] is not None else 0,
             "top_weight_kg": float(r["top_weight_kg"]),
             "session_volume_kg": float(r["session_volume_kg"]),
             "estimated_1rm": round(float(r["estimated_1rm"]), 1),
@@ -1389,12 +1391,12 @@ async def energy_balance(days: int = Query(default=30), db: AsyncSession = Depen
                   AND activity_date >= CURRENT_DATE - (:days * INTERVAL '1 day')::interval
             ),
             weight_days AS (
-                SELECT DISTINCT ON (recorded_at::date)
-                    recorded_at::date                AS weight_date,
+                SELECT DISTINCT ON ((recorded_at AT TIME ZONE 'Australia/Brisbane')::date)
+                    (recorded_at AT TIME ZONE 'Australia/Brisbane')::date AS weight_date,
                     weight_kg
                 FROM weight_logs
-                WHERE recorded_at::date >= CURRENT_DATE - (:days * INTERVAL '1 day')::interval
-                ORDER BY recorded_at::date, recorded_at DESC
+                WHERE (recorded_at AT TIME ZONE 'Australia/Brisbane')::date >= CURRENT_DATE - (:days * INTERVAL '1 day')::interval
+                ORDER BY (recorded_at AT TIME ZONE 'Australia/Brisbane')::date, recorded_at DESC
             )
             SELECT
                 fd.log_date                          AS date,

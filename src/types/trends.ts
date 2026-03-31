@@ -20,6 +20,7 @@ export interface ExerciseSession {
   session_date: string;
   sets: number;
   total_reps: number;
+  max_reps_in_set: number;
   top_weight_kg: number;
   session_volume_kg: number;
   estimated_1rm: number;
