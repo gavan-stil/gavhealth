@@ -197,7 +197,7 @@ function ExerciseCard({
   const resetRest = () => setRestStart(null);
 
   useEffect(() => {
-    const match = exerciseList.find(e => e.name.toLowerCase() === exercise.name.toLowerCase());
+    const match = exerciseList.find(e => e.name.trim().toLowerCase() === exercise.name.trim().toLowerCase());
     if (!match) { setSessionHistory([]); return; }
     setOverrideCompare(null);
     let cancelled = false;
@@ -223,8 +223,8 @@ function ExerciseCard({
 
   const isPbLastSession = pbSession && prevSession && pbSession.session_date === prevSession.session_date && pbSession.session_volume_kg === prevSession.session_volume_kg;
 
-  const filteredExercises = exercise.name.length > 0
-    ? exerciseList.filter(e => e.name.toLowerCase().includes(exercise.name.toLowerCase())).slice(0, 8)
+  const filteredExercises = exercise.name.trim().length > 0
+    ? exerciseList.filter(e => e.name.trim().toLowerCase().includes(exercise.name.trim().toLowerCase())).slice(0, 8)
     : [];
   const showDropdown = inputFocused && filteredExercises.length > 0;
 
@@ -761,12 +761,13 @@ export default function StrengthCard({
   const handleSaveSession = async () => {
     setState('saving');
     setMatchMessage(null);
+    const trimmed = exercises.map(e => ({ ...e, name: e.name.trim() }));
     try {
       const result = await apiFetch<{ id: number; matched_activity_id: number | null }>('/api/log/strength/save', {
         method: 'POST',
         body: JSON.stringify({
           workout_split: selectedSplit,
-          exercises,
+          exercises: trimmed,
           start_time: buildStartTime(startDate, startTime),
           duration_minutes: duration,
           notes: notes.trim() || null,
@@ -817,12 +818,13 @@ export default function StrengthCard({
 
   const handleBrainDumpConfirm = async () => {
     setState('saving');
+    const trimmed = exercises.map(e => ({ ...e, name: e.name.trim() }));
     try {
       const result = await apiFetch<{ id: number; matched_activity_id: number | null }>('/api/log/strength/save', {
         method: 'POST',
         body: JSON.stringify({
           workout_split: selectedSplit,
-          exercises,
+          exercises: trimmed,
           start_time: buildStartTime(startDate, startTime),
           duration_minutes: duration,
           notes: notes.trim() || null,
