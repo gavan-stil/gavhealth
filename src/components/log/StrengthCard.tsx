@@ -27,6 +27,7 @@ type StrengthDraft = {
   parsedLabel: string | null;
   strengthState: 'empty' | 'parsed';
   savedAt: number;
+  workoutStart?: number | null;
 };
 
 function readDraft(): StrengthDraft | null {
@@ -677,6 +678,23 @@ export default function StrengthCard({
   const [splitSessions, setSplitSessions] = useState<{ prev: SplitSessionData | null; best_30d: SplitSessionData | null; pb: SplitSessionData | null }>({ prev: null, best_30d: null, pb: null });
   const [compareMode, setCompareMode] = useState<CompareMode>('prev');
 
+  // Session workout timer
+  const [workoutStart, setWorkoutStart] = useState<number | null>(null);
+  const [workoutElapsed, setWorkoutElapsed] = useState(0);
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const workoutRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (workoutRef.current) clearInterval(workoutRef.current);
+    if (!workoutStart) { setWorkoutElapsed(0); return; }
+    workoutRef.current = setInterval(() => setWorkoutElapsed(Math.floor((Date.now() - workoutStart) / 1000)), 1000);
+    return () => { if (workoutRef.current) clearInterval(workoutRef.current); };
+  }, [workoutStart]);
+  const startWorkout = () => {
+    const now = new Date();
+    setWorkoutStart(Date.now());
+    setStartTime(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
+  };
+
   // Persist draft whenever meaningful state changes
   useEffect(() => {
     if (state === 'confirmed' || state === 'saving') return;
@@ -687,9 +705,10 @@ export default function StrengthCard({
       brainDumpInput, parsedLabel,
       strengthState: state === 'parsed' ? 'parsed' : 'empty',
       savedAt: Date.now(),
+      workoutStart,
     };
     localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-  }, [mode, selectedSplit, exercises, startDate, startTime, duration, notes, brainDumpInput, parsedLabel, state]);
+  }, [mode, selectedSplit, exercises, startDate, startTime, duration, notes, brainDumpInput, parsedLabel, state, workoutStart]);
 
   const restoreDraft = () => {
     if (!savedDraft) return;
@@ -703,6 +722,7 @@ export default function StrengthCard({
     setBrainDumpInput(savedDraft.brainDumpInput);
     setParsedLabel(savedDraft.parsedLabel);
     setState(savedDraft.strengthState);
+    if (savedDraft.workoutStart) setWorkoutStart(savedDraft.workoutStart);
     setSavedDraft(null);
   };
 
@@ -759,6 +779,8 @@ export default function StrengthCard({
   };
 
   const handleSaveSession = async () => {
+    const finalDuration = workoutStart ? Math.max(1, Math.round((Date.now() - workoutStart) / 60000)) : duration;
+    if (workoutStart) { setDuration(finalDuration); setWorkoutStart(null); }
     setState('saving');
     setMatchMessage(null);
     const trimmed = exercises.map(e => ({ ...e, name: e.name.trim() }));
@@ -769,7 +791,7 @@ export default function StrengthCard({
           workout_split: selectedSplit,
           exercises: trimmed,
           start_time: buildStartTime(startDate, startTime),
-          duration_minutes: duration,
+          duration_minutes: finalDuration,
           notes: notes.trim() || null,
         }),
       });
@@ -817,6 +839,8 @@ export default function StrengthCard({
   };
 
   const handleBrainDumpConfirm = async () => {
+    const finalDuration = workoutStart ? Math.max(1, Math.round((Date.now() - workoutStart) / 60000)) : duration;
+    if (workoutStart) { setDuration(finalDuration); setWorkoutStart(null); }
     setState('saving');
     const trimmed = exercises.map(e => ({ ...e, name: e.name.trim() }));
     try {
@@ -826,7 +850,7 @@ export default function StrengthCard({
           workout_split: selectedSplit,
           exercises: trimmed,
           start_time: buildStartTime(startDate, startTime),
-          duration_minutes: duration,
+          duration_minutes: finalDuration,
           notes: notes.trim() || null,
         }),
       });
@@ -1085,6 +1109,109 @@ export default function StrengthCard({
                       </div>
                     );
                   })()}
+
+                  {/* Workout timer */}
+                  {(() => {
+                    const isRunning = workoutStart !== null;
+                    const wMins = Math.floor(workoutElapsed / 60);
+                    const wSecs = workoutElapsed % 60;
+                    const wDisplay = `${wMins}:${wSecs.toString().padStart(2, '0')}`;
+                    const startedAt = workoutStart ? new Date(workoutStart).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true }) : null;
+                    return (
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '6px 10px',
+                        background: 'var(--bg-base)',
+                        border: `1px solid ${isRunning ? 'rgba(212,160,74,0.2)' : 'var(--border-subtle)'}`,
+                        borderRadius: 'var(--radius-sm)',
+                      }}>
+                        <button
+                          onClick={() => { if (!isRunning) startWorkout(); }}
+                          style={{
+                            width: 22, height: 22, borderRadius: '50%',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            border: 'none', cursor: isRunning ? 'default' : 'pointer', flexShrink: 0,
+                            background: isRunning ? 'rgba(212,160,74,0.15)' : 'rgba(127,170,188,0.12)',
+                            color: isRunning ? 'var(--ochre)' : 'var(--dawn)',
+                          }}
+                        >
+                          {isRunning ? <Clock size={12} /> : (
+                            <svg viewBox="0 0 24 24" width={12} height={12} fill="currentColor"><polygon points="6,4 20,12 6,20" /></svg>
+                          )}
+                        </button>
+                        <span style={{
+                          font: "700 18px/1 'JetBrains Mono', monospace",
+                          letterSpacing: -0.5,
+                          color: isRunning ? 'var(--ochre-light)' : 'var(--text-muted)',
+                        }}>
+                          {wDisplay}
+                        </span>
+                        {startedAt && (
+                          <span style={{ font: '400 10px/1 Inter, sans-serif', color: 'var(--text-muted)' }}>
+                            started {startedAt}
+                          </span>
+                        )}
+                        <div style={{ flex: 1 }} />
+                        {isRunning && (
+                          <>
+                            <div style={{
+                              width: 5, height: 5, borderRadius: '50%', flexShrink: 0,
+                              background: 'var(--ochre)',
+                              animation: 'pulse-dot 1.5s ease-in-out infinite',
+                            }} />
+                            <button
+                              onClick={() => setResetConfirmOpen(true)}
+                              style={{
+                                font: '500 9px/1 Inter, sans-serif', letterSpacing: 0.5, textTransform: 'uppercase',
+                                color: 'var(--text-muted)', background: 'rgba(122,112,96,0.12)',
+                                border: 'none', borderRadius: 'var(--radius-pill)',
+                                padding: '3px 7px', cursor: 'pointer',
+                              }}
+                            >
+                              RESET
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Reset confirmation */}
+                  {resetConfirmOpen && (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '8px 10px',
+                      background: 'rgba(180,112,80,0.08)',
+                      border: '1px solid rgba(180,112,80,0.2)',
+                      borderRadius: 'var(--radius-sm)',
+                    }}>
+                      <span style={{ font: '400 12px/1.3 Inter, sans-serif', color: 'var(--text-secondary)', flex: 1 }}>
+                        Reset workout timer?
+                      </span>
+                      <button
+                        onClick={() => { setWorkoutStart(null); setResetConfirmOpen(false); }}
+                        style={{
+                          font: '600 11px/1 Inter, sans-serif',
+                          color: 'var(--rust)', background: 'rgba(180,112,80,0.12)',
+                          border: 'none', borderRadius: 'var(--radius-pill)',
+                          padding: '5px 12px', cursor: 'pointer',
+                        }}
+                      >
+                        Reset
+                      </button>
+                      <button
+                        onClick={() => setResetConfirmOpen(false)}
+                        style={{
+                          font: '600 11px/1 Inter, sans-serif',
+                          color: 'var(--text-muted)', background: 'transparent',
+                          border: '1px solid var(--border-default)', borderRadius: 'var(--radius-pill)',
+                          padding: '4px 12px', cursor: 'pointer',
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
 
                   {/* Exercise cards */}
                   {exercises.map((ex, i) => (
