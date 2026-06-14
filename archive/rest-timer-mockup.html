@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rest Timer — Exercise Card Mockup</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;800&display=swap');
+
+  :root {
+    --bg-base: #0d0d0a;
+    --bg-card: #14130f;
+    --bg-elevated: #1e1d18;
+    --border-default: #222018;
+    --border-subtle: #1a1914;
+    --text-primary: #f0ece4;
+    --text-secondary: #b0a890;
+    --text-tertiary: #9a9080;
+    --text-muted: #7a7060;
+    --ochre: #d4a04a;
+    --ochre-light: #e8c47a;
+    --signal-good: #e8c47a;
+    --signal-poor: #c47a6a;
+    --rust: #b47050;
+    --dawn: #7FAABC;
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 14px;
+    --space-lg: 20px;
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-pill: 100px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg-base);
+    color: var(--text-secondary);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 16px;
+    max-width: 375px;
+    margin: 0 auto;
+  }
+
+  .screen-label {
+    font: 800 11px/1 Inter, sans-serif;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ochre);
+    margin: 32px 0 12px;
+  }
+  .screen-label:first-child { margin-top: 8px; }
+
+  .exercise-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    padding: var(--space-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    margin-bottom: 16px;
+  }
+
+  /* Header row */
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+  .card-header .name {
+    flex: 1;
+    font: 600 14px/1.5 Inter, sans-serif;
+    color: var(--text-primary);
+  }
+  .card-header .arrow {
+    font-size: 12px;
+    color: var(--text-muted);
+    opacity: 0.6;
+  }
+  .card-header .close {
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+
+  /* Now row */
+  .now-row {
+    font: 400 11px/1.4 Inter, sans-serif;
+    color: var(--text-secondary);
+    padding-left: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .diff-badge {
+    font: 600 10px/1 Inter, sans-serif;
+    padding: 1px 5px;
+    border-radius: var(--radius-pill);
+  }
+  .diff-good {
+    color: var(--signal-good);
+    background: rgba(232,196,122,0.12);
+  }
+  .diff-poor {
+    color: var(--signal-poor);
+    background: rgba(196,122,106,0.12);
+  }
+  .history-toggle {
+    margin-left: auto;
+    font: 500 10px/1 Inter, sans-serif;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  /* Set row */
+  .set-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+  .set-num {
+    font: 600 10px/1 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    width: 16px;
+  }
+  .set-label {
+    font: 400 13px/1.4 Inter, sans-serif;
+    color: var(--text-secondary);
+    flex: 1;
+  }
+  .set-check {
+    color: var(--signal-good);
+    font-size: 14px;
+  }
+  .set-unchecked {
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  .add-set {
+    font: 600 12px/1 Inter, sans-serif;
+    color: var(--text-muted);
+    padding: var(--space-xs) 0;
+    text-align: left;
+  }
+
+  /* ─── Rest Timer ─── */
+  .rest-timer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--bg-base);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    transition: border-color 0.15s;
+  }
+  .rest-timer:active {
+    border-color: var(--border-default);
+  }
+  .rest-timer.running {
+    border-color: rgba(212, 160, 74, 0.25);
+  }
+
+  .timer-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .timer-icon.idle {
+    background: rgba(127, 170, 188, 0.12);
+    color: var(--dawn);
+  }
+  .timer-icon.running {
+    background: rgba(212, 160, 74, 0.15);
+    color: var(--ochre);
+  }
+
+  .timer-icon svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .timer-label {
+    font: 500 11px/1 Inter, sans-serif;
+    color: var(--text-muted);
+    flex: 1;
+  }
+  .timer-label.running {
+    color: var(--text-secondary);
+  }
+
+  .timer-value {
+    font: 700 16px/1 'JetBrains Mono', monospace;
+    letter-spacing: -0.5px;
+    color: var(--text-muted);
+    min-width: 44px;
+    text-align: right;
+  }
+  .timer-value.running {
+    color: var(--ochre-light);
+  }
+  .timer-value.warning {
+    color: var(--rust);
+  }
+
+  .timer-reset {
+    font: 500 9px/1 Inter, sans-serif;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: rgba(122,112,96,0.12);
+    border: none;
+    border-radius: var(--radius-pill);
+    padding: 3px 7px;
+    cursor: pointer;
+    opacity: 0.7;
+  }
+  .timer-reset:active {
+    opacity: 1;
+  }
+
+  /* Pulse dot animation */
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .pulse-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--ochre);
+    animation: pulse-dot 1.5s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  .note {
+    font: 400 11px/1.5 Inter, sans-serif;
+    color: var(--text-muted);
+    padding: 8px 0 4px;
+    border-top: 1px solid var(--border-subtle);
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ────────── SCREEN 1: Idle timer ────────── -->
+<div class="screen-label">Screen 1 — Timer idle (tap to start)</div>
+
+<div class="exercise-card">
+  <div class="card-header">
+    <span class="name">Bench Press</span>
+    <span class="arrow">▲</span>
+    <span class="arrow">▼</span>
+    <span class="close">✕</span>
+  </div>
+
+  <div class="now-row">
+    <span>Now: 4 sets · 32 reps · 2,880kg vol</span>
+    <span class="diff-badge diff-good">+4 reps</span>
+    <span class="diff-badge diff-good">+5% vol</span>
+    <span class="history-toggle">History ▾</span>
+  </div>
+
+  <div class="set-row">
+    <span class="set-num">1</span>
+    <span class="set-label">80kg × 8</span>
+    <span class="set-check">☑</span>
+  </div>
+  <div class="set-row">
+    <span class="set-num">2</span>
+    <span class="set-label">80kg × 8</span>
+    <span class="set-check">☑</span>
+  </div>
+  <div class="set-row">
+    <span class="set-num">3</span>
+    <span class="set-label">80kg × 8</span>
+    <span class="set-check">☑</span>
+  </div>
+  <div class="set-row">
+    <span class="set-num">4</span>
+    <span class="set-label">80kg × 8</span>
+    <span class="set-unchecked">☐</span>
+  </div>
+
+  <!-- REST TIMER — IDLE -->
+  <div class="rest-timer" onclick="this.querySelector('.timer-label').textContent='Resting...'; this.classList.add('running');">
+    <div class="timer-icon idle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
+    </div>
+    <span class="timer-label">Rest</span>
+    <span class="timer-value">0:00</span>
+  </div>
+
+  <span class="add-set">+ Add Set</span>
+</div>
+
+<!-- ────────── SCREEN 2: Running — comfortable rest ────────── -->
+<div class="screen-label">Screen 2 — Running (1:23 rest)</div>
+
+<div class="exercise-card">
+  <div class="card-header">
+    <span class="name">Bench Press</span>
+    <span class="arrow">▲</span>
+    <span class="arrow">▼</span>
+    <span class="close">✕</span>
+  </div>
+
+  <div class="now-row">
+    <span>Now: 4 sets · 32 reps · 2,880kg vol</span>
+    <span class="diff-badge diff-good">+4 reps</span>
+    <span class="diff-badge diff-good">+5% vol</span>
+    <span class="history-toggle">History ▾</span>
+  </div>
+
+  <div class="set-row">
+    <span class="set-num">1</span>
+    <span class="set-label">80kg × 8</span>
+    <span class="set-check">☑</span>
+  </div>
+  <div class="set-row">
+    <span class="set-num">2</span>
+    <span class="set-label">80kg × 8</span>
+    <span class="set-check">☑</span>
+  </div>
+  <div class="set-row">
+    <span class="set-num">3</span>
+    <span class="set-label">80kg × 8</span>
+    <span class="set-check">☑</span>
+  </div>
+  <div class="set-row">
+    <span class="set-num">4</span>
+    <span class="set-label">80kg × 8</span>
+    <span class="set-unchecked">☐</span>
+  </div>
+
+  <!-- REST TIMER — RUNNING -->
+  <div class="rest-timer running">
+    <div class="timer-icon running">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
+    </div>
+    <span class="timer-label running">Resting</span>
+    <div class="pulse-dot"></div>
+    <span class="timer-value running">1:23</span>
+    <button class="timer-reset">RESET</button>
+  </div>
+
+  <span class="add-set">+ Add Set</span>
+</div>
+
+<!-- ────────── SCREEN 3: Long rest warning ────────── -->
+<div class="screen-label">Screen 3 — Long rest (3:45 — colour shift)</div>
+
+<div class="exercise-card">
+  <div class="card-header">
+    <span class="name">Bench Press</span>
+    <span class="arrow">▲</span>
+    <span class="arrow">▼</span>
+    <span class="close">✕</span>
+  </div>
+
+  <div class="now-row">
+    <span>Now: 4 sets · 32 reps · 2,880kg vol</span>
+    <span class="diff-badge diff-good">+4 reps</span>
+    <span class="diff-badge diff-good">+5% vol</span>
+    <span class="history-toggle">History ▾</span>
+  </div>
+
+  <div class="set-row">
+    <span class="set-num">1</span>
+    <span class="set-label">80kg × 8</span>
+    <span class="set-check">☑</span>
+  </div>
+  <div class="set-row">
+    <span class="set-num">2</span>
+    <span class="set-label">80kg × 8</span>
+    <span class="set-check">☑</span>
+  </div>
+  <div class="set-row">
+    <span class="set-num">3</span>
+    <span class="set-label">80kg × 8</span>
+    <span class="set-check">☑</span>
+  </div>
+  <div class="set-row">
+    <span class="set-num">4</span>
+    <span class="set-label">80kg × 8</span>
+    <span class="set-check">☑</span>
+  </div>
+
+  <!-- REST TIMER — LONG REST WARNING -->
+  <div class="rest-timer running" style="border-color: rgba(180, 112, 80, 0.25);">
+    <div class="timer-icon running" style="background: rgba(180,112,80,0.15); color: var(--rust);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
+    </div>
+    <span class="timer-label running">Resting</span>
+    <div class="pulse-dot" style="background: var(--rust);"></div>
+    <span class="timer-value warning">3:45</span>
+    <button class="timer-reset">RESET</button>
+  </div>
+
+  <span class="add-set">+ Add Set</span>
+</div>
+
+<!-- ────────── SCREEN 4: Checkbox auto-starts timer ────────── -->
+<div class="screen-label">Screen 4 — Auto-start: checking a set starts the timer</div>
+
+<div class="exercise-card">
+  <div class="card-header">
+    <span class="name">Incline Dumbbell Press</span>
+    <span class="arrow">▲</span>
+    <span class="arrow">▼</span>
+    <span class="close">✕</span>
+  </div>
+
+  <div class="now-row">
+    <span>Now: 3 sets · 24 reps · 720kg vol</span>
+    <span class="diff-badge diff-poor">-4 reps</span>
+    <span class="history-toggle">History ▾</span>
+  </div>
+
+  <div class="set-row">
+    <span class="set-num">1</span>
+    <span class="set-label">10kg × 10</span>
+    <span class="set-check">☑</span>
+  </div>
+  <div class="set-row">
+    <span class="set-num">2</span>
+    <span class="set-label">10kg × 8</span>
+    <span class="set-check">☑</span>
+  </div>
+  <div class="set-row" style="background: rgba(232,196,122,0.06); border-radius: 4px; padding: 4px 0;">
+    <span class="set-num">3</span>
+    <span class="set-label" style="color: var(--text-primary);">10kg × 6</span>
+    <span class="set-check" style="position: relative;">
+      ☑
+      <span style="
+        position: absolute; top: -6px; right: -20px;
+        font: 600 7px/1 Inter, sans-serif;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        color: var(--dawn);
+        background: rgba(127,170,188,0.12);
+        padding: 2px 4px;
+        border-radius: 3px;
+        white-space: nowrap;
+      ">just done</span>
+    </span>
+  </div>
+
+  <!-- REST TIMER — Auto-started (just ticked the checkbox) -->
+  <div class="rest-timer running">
+    <div class="timer-icon running">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
+    </div>
+    <span class="timer-label running">Resting</span>
+    <div class="pulse-dot"></div>
+    <span class="timer-value running">0:03</span>
+    <button class="timer-reset">RESET</button>
+  </div>
+
+  <span class="add-set">+ Add Set</span>
+</div>
+
+<div class="note" style="margin-top: 24px; padding: 12px; background: var(--bg-elevated); border-radius: var(--radius-sm);">
+  <strong style="color: var(--text-primary); font-size: 12px;">Behaviour summary</strong><br><br>
+  <strong style="color: var(--ochre);">Start:</strong> Tap the timer row, OR check a set checkbox (auto-start)<br>
+  <strong style="color: var(--ochre);">Reset:</strong> Tap RESET button, OR tap the timer row again, OR add a new set<br>
+  <strong style="color: var(--ochre);">Colour shift:</strong> Ochre → Rust at 3:00 (long rest nudge, no sound/vibration)<br>
+  <strong style="color: var(--ochre);">Scope:</strong> Per exercise card — each card has its own independent timer<br>
+  <strong style="color: var(--ochre);">No persistence:</strong> Pure frontend state, no data saved
+</div>
+
+</body>
+</html>

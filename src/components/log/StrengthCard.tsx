@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Dumbbell, Check, X, Plus, AlertCircle, Square, CheckSquare, Pencil } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Dumbbell, Check, X, Plus, AlertCircle, Square, CheckSquare, Pencil, Clock } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import type { Exercise, ExerciseSession } from '@/types/trends';
 import SessionPickerSheet from './SessionPickerSheet';
@@ -183,6 +183,19 @@ function ExerciseCard({
   useEffect(() => { setOverrideCompare(null); }, [sessionCompareMode]);
   const effectiveCompare = overrideCompare ?? sessionCompareMode;
 
+  // Rest timer
+  const [restStart, setRestStart] = useState<number | null>(null);
+  const [restElapsed, setRestElapsed] = useState(0);
+  const restRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (restRef.current) clearInterval(restRef.current);
+    if (!restStart) { setRestElapsed(0); return; }
+    restRef.current = setInterval(() => setRestElapsed(Math.floor((Date.now() - restStart) / 1000)), 1000);
+    return () => { if (restRef.current) clearInterval(restRef.current); };
+  }, [restStart]);
+  const startRest = () => setRestStart(Date.now());
+  const resetRest = () => setRestStart(null);
+
   useEffect(() => {
     const match = exerciseList.find(e => e.name.toLowerCase() === exercise.name.toLowerCase());
     if (!match) { setSessionHistory([]); return; }
@@ -228,6 +241,7 @@ function ExerciseCard({
   const addSet = () => {
     const last = exercise.sets[exercise.sets.length - 1] ?? DEFAULT_SET;
     onUpdate(exerciseIndex, { ...exercise, sets: [...exercise.sets, { ...last }] });
+    resetRest();
   };
 
   const currentStats = computeCurrentStats(exercise.sets, bodyweightKg);
@@ -516,7 +530,7 @@ function ExerciseCard({
                 <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>×</span>
                 <Stepper value={set.reps} onChange={reps => updateSet(si, { reps })} step={1} min={1} />
                 <button
-                  onClick={() => { updateSet(si, { completed: !set.completed }); if (!set.completed) setEditingSet(null); }}
+                  onClick={() => { updateSet(si, { completed: !set.completed }); if (!set.completed) { setEditingSet(null); startRest(); } }}
                   style={{
                     background: 'transparent', border: 'none', cursor: 'pointer',
                     color: set.completed ? 'var(--signal-good)' : 'var(--text-muted)', padding: 2,
@@ -540,6 +554,73 @@ function ExerciseCard({
           </div>
         );
       })}
+
+      {/* Rest timer */}
+      {(() => {
+        const isRunning = restStart !== null;
+        const isLong = restElapsed >= 165;
+        const mins = Math.floor(restElapsed / 60);
+        const secs = restElapsed % 60;
+        const display = `${mins}:${secs.toString().padStart(2, '0')}`;
+        return (
+          <div
+            onClick={() => { if (isRunning) resetRest(); else startRest(); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px 10px',
+              background: 'var(--bg-base)',
+              border: `1px solid ${isRunning ? (isLong ? 'rgba(180,112,80,0.25)' : 'rgba(212,160,74,0.25)') : 'var(--border-subtle)'}`,
+              borderRadius: 'var(--radius-sm)',
+              cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent',
+              userSelect: 'none',
+              transition: 'border-color 0.15s',
+            }}
+          >
+            <div style={{
+              width: 20, height: 20, borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              background: isRunning ? (isLong ? 'rgba(180,112,80,0.15)' : 'rgba(212,160,74,0.15)') : 'rgba(127,170,188,0.12)',
+              color: isRunning ? (isLong ? 'var(--rust)' : 'var(--ochre)') : 'var(--dawn)',
+            }}>
+              <Clock size={12} />
+            </div>
+            <span style={{
+              font: '500 11px/1 Inter, sans-serif', flex: 1,
+              color: isRunning ? 'var(--text-secondary)' : 'var(--text-muted)',
+            }}>
+              {isRunning ? 'Resting' : 'Rest'}
+            </span>
+            {isRunning && (
+              <div style={{
+                width: 5, height: 5, borderRadius: '50%', flexShrink: 0,
+                background: isLong ? 'var(--rust)' : 'var(--ochre)',
+                animation: 'pulse-dot 1.5s ease-in-out infinite',
+              }} />
+            )}
+            <span style={{
+              font: "700 16px/1 'JetBrains Mono', monospace",
+              letterSpacing: -0.5, minWidth: 44, textAlign: 'right',
+              color: isRunning ? (isLong ? 'var(--rust)' : 'var(--ochre-light)') : 'var(--text-muted)',
+            }}>
+              {display}
+            </span>
+            {isRunning && (
+              <button
+                onClick={e => { e.stopPropagation(); resetRest(); }}
+                style={{
+                  font: '500 9px/1 Inter, sans-serif', letterSpacing: 0.5, textTransform: 'uppercase',
+                  color: 'var(--text-muted)', background: 'rgba(122,112,96,0.12)',
+                  border: 'none', borderRadius: 'var(--radius-pill)',
+                  padding: '3px 7px', cursor: 'pointer',
+                }}
+              >
+                RESET
+              </button>
+            )}
+          </div>
+        );
+      })()}
 
       <button
         onClick={addSet}
