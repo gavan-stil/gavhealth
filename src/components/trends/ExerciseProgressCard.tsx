@@ -192,7 +192,8 @@ export default function ExerciseProgressCard({ exercise, days }: Props) {
   }
   if (!history || history.length === 0) return null;
 
-  const topWeights = history.map((h) => h.top_weight_kg);
+  // Effective load (bodyweight-inclusive); falls back to external weight until backend deploy lands
+  const topWeights = history.map((h) => h.top_effective_kg ?? h.top_weight_kg);
   const lastIdx = history.length - 1;
   // Find session closest to 4 weeks ago (time-based, not session-count)
   const fourWeeksAgo = Date.now() - 28 * 24 * 60 * 60 * 1000;

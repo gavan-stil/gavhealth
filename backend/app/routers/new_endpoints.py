@@ -1131,8 +1131,9 @@ async def exercise_history(
                 SUM(st.reps)                           AS total_reps,
                 MAX(st.reps)                           AS max_reps_in_set,
                 MAX(COALESCE(st.weight_kg, 0))         AS top_weight_kg,
+                MAX(CASE WHEN st.is_bodyweight THEN COALESCE(st.bodyweight_at_session, 0) ELSE 0 END + COALESCE(st.weight_kg, 0)) AS top_effective_kg,
                 SUM(st.reps * (CASE WHEN st.is_bodyweight THEN COALESCE(st.bodyweight_at_session, 0) ELSE 0 END + COALESCE(st.weight_kg, 0))) AS session_volume_kg,
-                MAX(COALESCE(st.weight_kg, 0) * (1.0 + st.reps / 30.0)) AS estimated_1rm
+                MAX((CASE WHEN st.is_bodyweight THEN COALESCE(st.bodyweight_at_session, 0) ELSE 0 END + COALESCE(st.weight_kg, 0)) * (1.0 + st.reps / 30.0)) AS estimated_1rm
             FROM strength_sessions ss
             JOIN strength_sets st ON st.session_id = ss.id
             WHERE st.exercise_id = :exercise_id
@@ -1151,6 +1152,7 @@ async def exercise_history(
             "total_reps": r["total_reps"],
             "max_reps_in_set": int(r["max_reps_in_set"]) if r["max_reps_in_set"] is not None else 0,
             "top_weight_kg": float(r["top_weight_kg"]),
+            "top_effective_kg": round(float(r["top_effective_kg"]), 1),
             "session_volume_kg": float(r["session_volume_kg"]),
             "estimated_1rm": round(float(r["estimated_1rm"]), 1),
         }

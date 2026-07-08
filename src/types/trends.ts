@@ -22,9 +22,10 @@ export interface ExerciseSession {
   sets: number;
   total_reps: number;
   max_reps_in_set: number;
-  top_weight_kg: number;
+  top_weight_kg: number;          // external/added weight only — PB-flag semantics, 0 for pure BW
+  top_effective_kg?: number;      // bodyweight-inclusive load; optional until backend deploy lands
   session_volume_kg: number;
-  estimated_1rm: number;
+  estimated_1rm: number;          // Epley on effective load (BW-inclusive since 2026-07-08)
 }
 
 export interface ExerciseMuscle {
