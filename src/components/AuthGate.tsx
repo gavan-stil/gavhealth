@@ -9,7 +9,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [shake, setShake] = useState(false);
 
   useEffect(() => {
-    if (sessionStorage.getItem(SESSION_KEY) === 'true') {
+    // localStorage persists across Safari launches; sessionStorage was wiped every time the tab closed
+    if (localStorage.getItem(SESSION_KEY) === 'true' || sessionStorage.getItem(SESSION_KEY) === 'true') {
       setAuthenticated(true);
     }
   }, []);
@@ -19,7 +20,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (value === PASSWORD) {
-      sessionStorage.setItem(SESSION_KEY, 'true');
+      localStorage.setItem(SESSION_KEY, 'true');
       setAuthenticated(true);
     } else {
       setShake(true);
