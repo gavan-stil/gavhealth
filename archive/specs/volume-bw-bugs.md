@@ -65,6 +65,48 @@ For BW exercises this flip-flops 0↔20 depending on whether any set was `bw+` �
   it IS the load being lifted, and bodyweight gain is a stated goal.
 - *NULL `bodyweight_at_session`:* COALESCE→0 keeps today's behaviour; verified zero such rows exist.
 
+## BUG 3 — Trends split charts drop most sessions since April (found 2026-07-08, same review)
+
+**Symptom:** Split Progress showed "5 sessions / latest 29 Jun" for Push despite ~20 push sessions in the
+window (latest 5 Jul). Strength Quality showed most dots as "Mixed" and "3 of 38 have HR".
+
+**Two stacked causes:**
+1. `_session_category` only consulted the user's explicit `session_label` (set from `workout_split` at
+   builder save) when muscle-group inference came up EMPTY. Any session spanning ≥2 muscle groups — i.e.
+   nearly all of them — returned `"mixed"` regardless of the label. The authority order was inverted.
+2. `activity_log_id` is NULL on almost every session since April: the save-time activity match runs when
+   the manual log is saved, but Withings syncs the workout row HOURS LATER — the match races the sync and
+   loses. With the link dead, the frontend `workout_split` lookup can't rescue the category, HR/duration
+   never attach, and the Withings rows keep `workout_split = NULL` (calendar unlabelled).
+
+**Fixes:**
+- `_session_category` now returns a valid `session_label` FIRST; muscle inference is fallback-only.
+- `_sweep_unlinked_sessions`: links unlinked sessions to unclaimed same-date workout rows, copies the
+  session label to `activity_logs.workout_split` (only when NULL), and sets `matched_activity_id` on the
+  bridged manual log. Runs on every builder save (best-effort, wrapped so it can never block the save) and
+  on demand via `POST /api/strength/sessions/backfill-links`.
+
+**Premortem:**
+- *Wrong pairing is worse than no pairing:* the sweep only links when a date has EXACTLY one unlinked
+  session and one unclaimed workout. Double-session days (e.g. 24 Jun abs+push) are skipped, never guessed —
+  `PATCH /api/log/strength/{id}/relink` remains the manual escape hatch.
+- *Overwriting user data:* `workout_split` copied only `WHERE workout_split IS NULL`; `matched_activity_id`
+  only when NULL; invalid (NLP free-text) labels are not copied.
+- *`daily_summary` trap (see MEMORY.md):* sweep filters `activity_type = 'workout'` explicitly.
+- *Timezone:* session datetimes converted to Brisbane local date before comparing to `activity_date`.
+- *Label-first category moves mislabelled sessions between tabs* (20 Apr / 14 May are labelled `abs` but
+  muscle-infer `push`): they now follow the user's label — intended, but a visible diff.
+- *Chart re-normalisation:* Push tab goes 5 → ~20 sessions; normalised lines re-scale. Expected correction.
+- *NLP-source sessions* with labels outside push/pull/legs/abs fall through to inference — behaviour unchanged.
+
+## Reviewed, working as intended (data gaps, not code)
+
+- **Energy Balance / Protein vs Weight / Nutrition weekly:** no food logs since the week of 11 May 2026 —
+  empty states are correct. Resume food logging to repopulate.
+- **Water card:** `water_logs` empty for 14+ days — "No water data yet" is accurate (if grating).
+- **5 Jul push session has NO Withings workout row at all** (watch not worn/synced) — nothing to link;
+  it appears in charts via its label but will never have HR.
+
 ## Documented, deliberately not fixed
 
 1. **`GET /api/strength/prs`** — ignores bodyweight entirely (`WHERE weight_kg IS NOT NULL`). No frontend

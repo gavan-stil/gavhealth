@@ -65,12 +65,17 @@ def _infer_category(name: str) -> str:
 
 
 def _session_category(categories: list[str], session_label: str | None = None) -> str:
-    """Map a list of exercise DB categories → scatter colour group.
+    """Map a session → scatter colour group (push, pull, legs, abs, mixed).
 
-    DB categories: chest, back, shoulders, arms, legs, core, other
-    Scatter groups: push, pull, legs, abs, mixed
-    Falls back to session_label when exercise categories are ambiguous.
+    session_label is the user's explicit split choice at save time
+    (builder sets it from workout_split) — it wins whenever valid.
+    Muscle-group inference is only a fallback for unlabelled sessions;
+    a normal session spans several muscle groups and would otherwise
+    resolve to "mixed" and drop out of split-filtered charts.
     """
+    VALID_SPLITS = ("push", "pull", "legs", "abs")
+    if session_label and session_label.lower() in VALID_SPLITS:
+        return session_label.lower()
     MACRO = {
         "chest": "push", "shoulders": "push", "arms": "push",
         "back": "pull",
@@ -80,11 +85,6 @@ def _session_category(categories: list[str], session_label: str | None = None) -
     }
     cats = {MACRO.get(c, "mixed") for c in (categories or []) if c}
     cats.discard("mixed")          # ignore unknowns when deciding
-    if not cats:
-        LABEL_MAP = {"push": "push", "pull": "pull", "legs": "legs", "abs": "abs"}
-        if session_label and session_label.lower() in LABEL_MAP:
-            return LABEL_MAP[session_label.lower()]
-        return "mixed"
     if len(cats) == 1:
         return cats.pop()
     return "mixed"
@@ -109,6 +109,65 @@ async def _lookup_bodyweight(db: AsyncSession, session_date) -> float | None:
     )
     r = rolling.mappings().first()
     return float(r["avg"]) if r and r["avg"] else None
+
+
+async def _sweep_unlinked_sessions(db: AsyncSession) -> list[dict]:
+    """Link unlinked strength sessions to unclaimed same-date workout activity rows.
+
+    Withings syncs after the manual save, so the save-time match usually finds
+    nothing and sessions stay unlinked (no HR/duration in Trends). This sweep
+    heals them retroactively — but ONLY when the pairing is unambiguous:
+    exactly one unlinked session and one unclaimed workout on that local date.
+    Ambiguous dates (double sessions) are skipped rather than guessed.
+    Idempotent: linked sessions and claimed workouts drop out of scope.
+    """
+    result = await db.execute(
+        text("""
+            WITH unlinked AS (
+                SELECT ss.id AS session_id,
+                       (ss.session_datetime AT TIME ZONE 'Australia/Brisbane')::date AS d,
+                       ss.session_label
+                FROM strength_sessions ss
+                WHERE ss.activity_log_id IS NULL
+            ),
+            unclaimed AS (
+                SELECT al.id AS activity_id, al.activity_date AS d
+                FROM activity_logs al
+                WHERE al.activity_type = 'workout'
+                  AND al.id NOT IN (
+                      SELECT activity_log_id FROM strength_sessions
+                      WHERE activity_log_id IS NOT NULL
+                  )
+            ),
+            pairs AS (
+                SELECT u.session_id, u.session_label, c.activity_id
+                FROM unlinked u
+                JOIN unclaimed c ON c.d = u.d
+                WHERE (SELECT COUNT(*) FROM unlinked u2 WHERE u2.d = u.d) = 1
+                  AND (SELECT COUNT(*) FROM unclaimed c2 WHERE c2.d = u.d) = 1
+            )
+            UPDATE strength_sessions ss
+            SET activity_log_id = p.activity_id
+            FROM pairs p
+            WHERE ss.id = p.session_id
+            RETURNING ss.id AS session_id, p.activity_id, p.session_label
+        """)
+    )
+    linked = [dict(r) for r in result.mappings().all()]
+    for row in linked:
+        # Propagate the user's split label to the Withings row (calendar reads it),
+        # but never overwrite a split the user already set there.
+        if row["session_label"] and row["session_label"].lower() in ("push", "pull", "legs", "abs"):
+            await db.execute(
+                text("UPDATE activity_logs SET workout_split = :split WHERE id = :aid AND workout_split IS NULL"),
+                {"split": row["session_label"].lower(), "aid": row["activity_id"]},
+            )
+        await db.execute(
+            text("""UPDATE manual_strength_logs SET matched_activity_id = :aid
+                    WHERE bridged_session_id = :sid AND matched_activity_id IS NULL"""),
+            {"aid": row["activity_id"], "sid": row["session_id"]},
+        )
+    return linked
 
 
 # ---------------------------------------------------------------------------
@@ -417,6 +476,13 @@ async def save_strength_log(body: StrengthLogCreate, db: AsyncSession = Depends(
             text("UPDATE manual_strength_logs SET bridged_session_id = :sid WHERE id = :lid"),
             {"sid": bridged_session_id, "lid": log_id},
         )
+
+    # Heal older unlinked sessions — Withings usually syncs after save time,
+    # so their save-time match found nothing. Best-effort; never block the save.
+    try:
+        await _sweep_unlinked_sessions(db)
+    except Exception:
+        pass
 
     await db.commit()
     return {
@@ -969,6 +1035,18 @@ async def strength_sessions(days: int = Query(default=90), db: AsyncSession = De
         }
         for r in rows
     ]
+
+
+# ---------------------------------------------------------------------------
+# POST /api/strength/sessions/backfill-links
+# Runs the unambiguous session↔workout link sweep on demand (idempotent).
+# Also runs automatically on every builder save.
+# ---------------------------------------------------------------------------
+@router.post("/strength/sessions/backfill-links")
+async def backfill_session_links(db: AsyncSession = Depends(get_db)):
+    linked = await _sweep_unlinked_sessions(db)
+    await db.commit()
+    return {"linked": len(linked), "pairs": linked}
 
 
 # ---------------------------------------------------------------------------
