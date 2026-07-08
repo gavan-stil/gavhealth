@@ -106,15 +106,25 @@ window (latest 5 Jul). Strength Quality showed most dots as "Mixed" and "3 of 38
 exercise appearing in only one session trivially "holds the record" — with 5–9 exercises per session,
 virtually every session contained at least one, so every card got the flame.
 
-**Fix:** chronological running-max. An exercise is a PB only if it STRICTLY beat the best of all
-EARLIER sessions (weight or reps), and only if it appeared in at least one earlier session.
+**Fix (two levels, matching StrengthCard's volume-based PB convention):**
+- **Session flame:** the session's BW-inclusive total volume strictly beat every EARLIER session of the
+  split — a volume record when it happened. (First pass used "any exercise set a record", but in a
+  progressing bodyweight program some exercise edges a rep record most sessions, so the flame stayed
+  near-universal. Volume record is the meaningful session-level bar.)
+- **Per-exercise dots:** strictly beat the best weight/reps of all EARLIER sessions, with prior history
+  required.
+Session volumes now computed for ALL sessions up front (single weight_logs fetch, resolved in Python
+with the same exact-date→rolling-7 semantics as `_lookup_bodyweight`), replacing the post-selection
+bodyweight top-up.
 
 **Premortem:**
 - *Sort order changes:* picker sorts PBs first; far fewer PBs now means mostly chronological order — intended.
-- *Ties don't count:* equalling your best reps is not a PB. Deliberate; strict `>`.
-- *First-ever exercises never PB:* deliberate — "new exercise" isn't "personal best".
-- *Historical flames change meaning:* a PB flame now marks the session where the record was SET,
-  not every session that happened to contain the current record.
+- *Ties don't count:* equalling your best is not a PB. Deliberate; strict `>`.
+- *First-ever sessions/exercises never PB:* deliberate — "first time" isn't "personal best".
+- *Volume comparability:* sessions with no weight data fall back to added-kg-only volume, same as their
+  display value — records compare like with like.
+- *One weight_logs fetch (~400 rows) per request* replaces up to 20 per-date queries — cheaper, and the
+  volume shown now always matches the volume used for the PB decision.
 
 ## Auto-link trust indicator (added 2026-07-08, user request)
 
