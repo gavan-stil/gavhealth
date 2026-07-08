@@ -99,6 +99,32 @@ window (latest 5 Jul). Strength Quality showed most dots as "Mixed" and "3 of 38
 - *Chart re-normalisation:* Push tab goes 5 → ~20 sessions; normalised lines re-scale. Expected correction.
 - *NLP-source sessions* with labels outside push/pull/legs/abs fall through to inference — behaviour unchanged.
 
+## BUG 4 — Every session in the picker wears a PB badge (found 2026-07-08)
+
+**Bug:** per-exercise PB compared each session against the all-time max INCLUDING ITSELF
+(`top_w >= atm_w`, `max(reps) >= atm_r`). The record-holding session always flags itself, and any
+exercise appearing in only one session trivially "holds the record" — with 5–9 exercises per session,
+virtually every session contained at least one, so every card got the flame.
+
+**Fix:** chronological running-max. An exercise is a PB only if it STRICTLY beat the best of all
+EARLIER sessions (weight or reps), and only if it appeared in at least one earlier session.
+
+**Premortem:**
+- *Sort order changes:* picker sorts PBs first; far fewer PBs now means mostly chronological order — intended.
+- *Ties don't count:* equalling your best reps is not a PB. Deliberate; strict `>`.
+- *First-ever exercises never PB:* deliberate — "new exercise" isn't "personal best".
+- *Historical flames change meaning:* a PB flame now marks the session where the record was SET,
+  not every session that happened to contain the current record.
+
+## Auto-link trust indicator (added 2026-07-08, user request)
+
+Links now carry provenance via `manual_strength_logs.match_confirmed`:
+- **Manual** (`match_confirmed = true`): user tapped "Link workout" (`PATCH /sessions/{id}/link`, which
+  now sets the flag) or used the relink endpoint.
+- **Auto** (`false`/null): save-time match or `_sweep_unlinked_sessions`.
+`/api/strength/sessions` exposes `link_confirmed`; DayDetailSheet shows a dawn-blue "⚡ auto-linked"
+chip on sessions whose link was made automatically. Unlink + relink by hand upgrades it to confirmed.
+
 ## Reviewed, working as intended (data gaps, not code)
 
 - **Energy Balance / Protein vs Weight / Nutrition weekly:** no food logs since the week of 11 May 2026 —

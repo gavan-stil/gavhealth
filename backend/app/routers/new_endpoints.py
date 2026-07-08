@@ -563,26 +563,52 @@ async def recent_strength_sessions(
 
     sessions_parsed = [(row, _parse_exs(row["exercises"])) for row in rows]
 
-    # ---- All-time max weight + reps per exercise name (across all sessions in this split) ----
-    all_time_max_weight: dict[str, float] = {}
-    all_time_max_reps:   dict[str, int]   = {}
+    # ---- PB detection: chronological running max per exercise name ----
+    # A session's exercise is a PB only if it STRICTLY beat the best of all
+    # EARLIER sessions (weight or reps). First-ever appearances don't count —
+    # comparing a session against an all-time max that includes itself marked
+    # nearly every session as a PB (any single-occurrence exercise trivially
+    # "held the record"). Ties don't count either: equalling isn't beating.
     name_sets_per_session: list[frozenset] = []
-
     for (_row, exs) in sessions_parsed:
-        name_set = frozenset(e.get("name", "").lower().strip() for e in exs if e.get("name"))
-        name_sets_per_session.append(name_set)
+        name_sets_per_session.append(
+            frozenset(e.get("name", "").lower().strip() for e in exs if e.get("name"))
+        )
+
+    def _ex_maxes(ex: dict) -> tuple[float | None, int]:
+        """(top non-bw weight, max reps) across an exercise's sets."""
+        top_w: float | None = None
+        top_r = 0
+        for s in ex.get("sets", []):
+            lt = s.get("load_type", "kg")
+            kg = s.get("kg")
+            if lt != "bw" and kg is not None:
+                kg_f = float(kg)
+                if top_w is None or kg_f > top_w:
+                    top_w = kg_f
+            top_r = max(top_r, int(s.get("reps", 0) or 0))
+        return top_w, top_r
+
+    # rows are newest-first — walk oldest-first accumulating records
+    pb_flags: list[dict[str, bool]] = [dict() for _ in sessions_parsed]
+    running_w: dict[str, float] = {}
+    running_r: dict[str, int]   = {}
+    for i in range(len(sessions_parsed) - 1, -1, -1):
+        _row, exs = sessions_parsed[i]
         for ex in exs:
             n = ex.get("name", "").lower().strip()
             if not n:
                 continue
-            for s in ex.get("sets", []):
-                lt   = s.get("load_type", "kg")
-                kg   = s.get("kg")
-                reps = int(s.get("reps", 0) or 0)
-                if lt != "bw" and kg is not None:
-                    all_time_max_weight[n] = max(all_time_max_weight.get(n, 0.0), float(kg))
-                if reps:
-                    all_time_max_reps[n] = max(all_time_max_reps.get(n, 0), reps)
+            top_w, top_r = _ex_maxes(ex)
+            seen_before = n in running_r
+            is_pb = seen_before and (
+                (top_w is not None and top_w > running_w.get(n, 0.0))
+                or (top_r > running_r.get(n, 0))
+            )
+            pb_flags[i][n] = pb_flags[i].get(n, False) or is_pb
+            if top_w is not None:
+                running_w[n] = max(running_w.get(n, 0.0), top_w)
+            running_r[n] = max(running_r.get(n, 0), top_r)
 
     # ---- most_loaded: exercise name-set that appears most frequently ----
     name_set_counts = Counter(name_sets_per_session)
@@ -630,12 +656,7 @@ async def recent_strength_sessions(
                 if lt in ("bw", "bw+"):
                     bw_reps_total += int(s.get("reps", 0) or 0)
 
-            atm_w = all_time_max_weight.get(n_lower)
-            atm_r = all_time_max_reps.get(n_lower, 0)
-            ex_pb = bool(
-                (atm_w is not None and top_w is not None and top_w >= atm_w)
-                or (reps_list and max(reps_list) >= atm_r and atm_r > 0)
-            )
+            ex_pb = pb_flags[i].get(n_lower, False)
             if ex_pb:
                 session_is_pb = True
 
@@ -983,6 +1004,7 @@ async def strength_sessions(days: int = Query(default=90), db: AsyncSession = De
                 ss.activity_log_id,
                 ss.session_label,
                 COALESCE(al.duration_mins, msl.duration_minutes) AS duration_mins,
+                msl.match_confirmed                    AS link_confirmed,
                 al.avg_hr,
                 al.calories_burned                     AS calories,
                 COUNT(st.id)                           AS total_sets,
@@ -1006,7 +1028,8 @@ async def strength_sessions(days: int = Query(default=90), db: AsyncSession = De
             LEFT JOIN manual_strength_logs msl ON msl.bridged_session_id = ss.id
             WHERE ss.session_datetime >= CURRENT_TIMESTAMP - (:days * INTERVAL '1 day')
             GROUP BY ss.id, ss.session_datetime, ss.session_label, ss.activity_log_id,
-                     al.duration_mins, al.avg_hr, al.calories_burned, msl.duration_minutes
+                     al.duration_mins, al.avg_hr, al.calories_burned, msl.duration_minutes,
+                     msl.match_confirmed
             ORDER BY ss.session_datetime DESC
         """),
         {"days": days},
@@ -1021,6 +1044,7 @@ async def strength_sessions(days: int = Query(default=90), db: AsyncSession = De
             "activity_log_id": r["activity_log_id"],
             "session_label": r["session_label"],
             "duration_mins": float(r["duration_mins"]) if r["duration_mins"] is not None else None,
+            "link_confirmed": bool(r["link_confirmed"]) if r["link_confirmed"] is not None else False,
             "avg_hr": r["avg_hr"],
             "calories": r["calories"],
             "total_sets": r["total_sets"],
@@ -1103,6 +1127,14 @@ async def link_strength_session(id: int, body: LinkBody, db: AsyncSession = Depe
     row = result.mappings().first()
     if not row:
         raise HTTPException(status_code=404, detail="Session not found")
+    # User made this link by hand — mark it confirmed so the UI can
+    # distinguish it from sweep/save-time auto-links.
+    await db.execute(
+        text("""UPDATE manual_strength_logs
+                SET matched_activity_id = :aid, match_confirmed = true
+                WHERE bridged_session_id = :id"""),
+        {"aid": body.activity_id, "id": id},
+    )
     await db.commit()
     return {"ok": True, "id": id}
 

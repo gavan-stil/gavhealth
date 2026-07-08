@@ -29,6 +29,7 @@ type RawSession = {
   session_date: string;
   session_datetime?: string | null;
   activity_log_id: number | null;
+  link_confirmed?: boolean;
   session_label?: string | null;
   duration_mins: number | null;
   total_sets: number;
@@ -58,6 +59,7 @@ type ExRow = {
 type SessionDetail = {
   id: number;
   activityLogId: number | null;
+  linkConfirmed: boolean;
   sessionDatetime: string | null;
   sessionLabel: string | null;
   split: string;
@@ -269,6 +271,7 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
           return {
             id: s.id,
             activityLogId: s.activity_log_id,
+            linkConfirmed: s.link_confirmed ?? false,
             sessionDatetime: s.session_datetime ?? null,
             sessionLabel: s.session_label ?? null,
             split: splitDisplay,
@@ -489,6 +492,17 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
                     {s.sessionDatetime && (
                       <span style={{ font: "500 10px/1 'JetBrains Mono',monospace", color: "var(--text-muted)", flexShrink: 0 }}>
                         {formatTime(s.sessionDatetime)}
+                      </span>
+                    )}
+                    {s.activityLogId !== null && !s.linkConfirmed && (
+                      <span style={{
+                        font: "600 8px/1 'Inter',sans-serif", letterSpacing: "0.5px", textTransform: "uppercase",
+                        padding: "3px 6px", borderRadius: 20,
+                        border: "1px solid rgba(143,168,200,0.30)",
+                        background: "rgba(143,168,200,0.08)",
+                        color: "#8fa8c8", flexShrink: 0,
+                      }}>
+                        ⚡ auto-linked
                       </span>
                     )}
                   </div>
