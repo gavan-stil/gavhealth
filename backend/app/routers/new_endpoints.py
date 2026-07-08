@@ -536,6 +536,7 @@ async def recent_strength_sessions(
         total_sets_all = 0
         total_reps_all = 0
         total_volume   = 0.0
+        bw_reps_total  = 0   # reps performed under bodyweight load (bw / bw+); volume added post-sort
         session_is_pb  = False
         ex_list: list[dict] = []
 
@@ -560,6 +561,8 @@ async def recent_strength_sessions(
                     if top_w is None or kg_f > top_w:
                         top_w = kg_f
                     total_volume += int(s.get("reps", 0) or 0) * kg_f
+                if lt in ("bw", "bw+"):
+                    bw_reps_total += int(s.get("reps", 0) or 0)
 
             atm_w = all_time_max_weight.get(n_lower)
             atm_r = all_time_max_reps.get(n_lower, 0)
@@ -606,13 +609,30 @@ async def recent_strength_sessions(
             "most_loaded":      is_most_loaded,
             "exercises":        ex_list,
             "raw_exercises":    exs,   # WorkoutExercise[] — passed to onLoad in SessionPickerSheet
+            "_bw_reps":         bw_reps_total,
+            "_local_date":      row["local_date"],
         })
 
     # Sort: PBs first (already newest-first), then most_loaded, then remaining chrono desc
     pb_sessions = [s for s in result_sessions if s["is_pb"]]
     ml_sessions = [s for s in result_sessions if s["most_loaded"] and not s["is_pb"]]
     rest        = [s for s in result_sessions if not s["is_pb"] and not s["most_loaded"]]
-    return (pb_sessions + ml_sessions + rest)[:limit]
+    selected    = (pb_sessions + ml_sessions + rest)[:limit]
+
+    # Add bodyweight load to volume (matches /api/strength/sessions:
+    # bw and bw+ sets credit bodyweight_at_session on top of any added kg).
+    # Looked up only for the returned sessions to keep query count bounded.
+    bw_by_date: dict = {}
+    for s in selected:
+        local_date = s.pop("_local_date")
+        bw_reps    = s.pop("_bw_reps")
+        if bw_reps and local_date is not None:
+            if local_date not in bw_by_date:
+                bw_by_date[local_date] = await _lookup_bodyweight(db, local_date)
+            bw = bw_by_date[local_date]
+            if bw:
+                s["total_volume_kg"] = round(s["total_volume_kg"] + bw_reps * bw)
+    return selected
 
 
 # ---------------------------------------------------------------------------
