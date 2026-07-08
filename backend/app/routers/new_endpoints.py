@@ -730,11 +730,15 @@ async def recent_strength_sessions(
             "raw_exercises":    exs,   # WorkoutExercise[] — passed to onLoad in SessionPickerSheet
         })
 
-    # Sort: PBs first (already newest-first), then most_loaded, then remaining chrono desc
-    pb_sessions = [s for s in result_sessions if s["is_pb"]]
-    ml_sessions = [s for s in result_sessions if s["most_loaded"] and not s["is_pb"]]
-    rest        = [s for s in result_sessions if not s["is_pb"] and not s["most_loaded"]]
-    return (pb_sessions + ml_sessions + rest)[:limit]
+    # Select the `limit` most RECENT sessions (it's a "Recent sessions" picker),
+    # then float PB / most_loaded to the top within that window. Selecting
+    # PBs-first across all history would surface months-old record sessions
+    # and push the actually-recent ones out.
+    recent = result_sessions[:limit]
+    pb_sessions = [s for s in recent if s["is_pb"]]
+    ml_sessions = [s for s in recent if s["most_loaded"] and not s["is_pb"]]
+    rest        = [s for s in recent if not s["is_pb"] and not s["most_loaded"]]
+    return pb_sessions + ml_sessions + rest
 
 
 # ---------------------------------------------------------------------------
