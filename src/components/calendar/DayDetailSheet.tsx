@@ -478,7 +478,7 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
                   }}
                 >
                   <div style={{ width: 3, alignSelf: "stretch", minHeight: 20, borderRadius: 2, background: SCOL, flexShrink: 0 }} />
-                  <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                  <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, minWidth: 0, flexWrap: "wrap" }}>
                     <span style={{ font: "700 10px/1 'Inter',sans-serif", letterSpacing: "1.2px", textTransform: "uppercase", color: SCOL, flexShrink: 0 }}>
                       Strength
                     </span>
