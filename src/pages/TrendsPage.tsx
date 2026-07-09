@@ -190,7 +190,10 @@ export default function TrendsPage() {
             refetch={strengthTrends.refetch}
             days={days}
           />
-          <ExerciseProgressSection days={days} />
+          {/* Cards need months of history: monthly volume bars span Mar→now and
+              the 4-week change compares 28 days back. days=30 starved them —
+              exercises untrained for a month vanished and past months read 0. */}
+          <ExerciseProgressSection days={180} />
         </>
       )}
     </div>
