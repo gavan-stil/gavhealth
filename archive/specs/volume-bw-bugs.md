@@ -135,6 +135,33 @@ Links now carry provenance via `manual_strength_logs.match_confirmed`:
 `/api/strength/sessions` exposes `link_confirmed`; DayDetailSheet shows a dawn-blue "⚡ auto-linked"
 chip on sessions whose link was made automatically. Unlink + relink by hand upgrades it to confirmed.
 
+## BUG 5 — Exercise Progress starved by 30-day window (found 2026-07-10 review)
+
+**Bug:** TrendsPage hardcodes `days=30` (no period selector exists). ExerciseProgressSection cards
+therefore: hid any exercise untrained for a month (8 of 41), undercounted SESSIONS (Bar pull ups
+showed 2 of 16), and fed the Mar→Jul monthly-volume bars only 30 days of data — earlier months always
+rendered zero despite real training. **Fixed:** section gets a dedicated `days={180}` window; the
+4-week-change badge is time-based so it's unaffected. WorkoutVolumeChart intentionally keeps 30.
+
+**Data integrity verified 2026-07-10:** per-exercise histories sum to 1,072 sets == sessions endpoint
+total. All 41 exercises return history. The pipeline is sound; the defects were window + classification.
+
+## DATA FIX NEEDED (blocked — needs Gav's go-ahead): miscategorised exercises
+
+`_infer_category` name-matching misfiled these; they appear under the wrong Exercise Progress tab
+(or none — `other` maps to no tab). Fix via the `/exercises` page UI, or approve API PATCHes.
+Muscle-group catalogue only contains `abs` — chest/back/quads/obliques need creating first
+(`POST /api/muscle-groups {name, macro_group}`).
+
+| Exercise (id) | Current | Should be |
+|---|---|---|
+| Pushup (55) | other → **no tab** | chest / push |
+| Bar scapula pulls (46) | other → **no tab** | back / pull |
+| Hollow body hold per sec (53) | other → **no tab** | abs |
+| Reverse Nordic quad curls (63) | arms → push tab | quads / legs |
+| Bar curled ab raisers (48) | arms → push tab | abs |
+| Bent knee lateral raisers - obliques (31) | shoulders → push tab | obliques / abs |
+
 ## Reviewed, working as intended (data gaps, not code)
 
 - **Energy Balance / Protein vs Weight / Nutrition weekly:** no food logs since the week of 11 May 2026 —
