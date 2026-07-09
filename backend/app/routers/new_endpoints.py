@@ -1093,6 +1093,106 @@ async def backfill_session_links(db: AsyncSession = Depends(get_db)):
 
 
 # ---------------------------------------------------------------------------
+# T24. GET /api/strength/sessions/{id}/detail
+# Full per-exercise breakdown for one session, in COMPLETION ORDER.
+# Sourced from strength_sets ordered by set_number (not the exercises
+# ARRAY_AGG, which is alphabetical, and not the msl JSONB, whose 'bw' sets
+# carry a stale kg). Volume is the canonical BW-inclusive formula using the
+# bodyweight_at_session snapshot — matches /api/strength/sessions totals.
+# Used by DayDetailSheet's strength card (mockup: archive/session-card-mockup.html).
+# ---------------------------------------------------------------------------
+@router.get("/strength/sessions/{id}/detail")
+async def strength_session_detail(id: int, db: AsyncSession = Depends(get_db)):
+    meta = (await db.execute(
+        text("""
+            SELECT ss.id,
+                   (ss.session_datetime AT TIME ZONE 'Australia/Brisbane')::date AS local_date,
+                   (ss.session_datetime AT TIME ZONE 'Australia/Brisbane')       AS local_dt,
+                   ss.session_label
+            FROM strength_sessions ss
+            WHERE ss.id = :id
+        """),
+        {"id": id},
+    )).mappings().first()
+    if not meta:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    set_rows = (await db.execute(
+        text("""
+            SELECT st.set_number, st.reps, st.weight_kg, st.is_bodyweight,
+                   st.bodyweight_at_session, e.name AS exercise_name
+            FROM strength_sets st
+            JOIN exercises e ON e.id = st.exercise_id
+            WHERE st.session_id = :id
+            ORDER BY st.set_number, st.id
+        """),
+        {"id": id},
+    )).mappings().all()
+
+    # Group by exercise in first-set order
+    exercises: list[dict] = []
+    by_name: dict[str, dict] = {}
+    for r in set_rows:
+        name = r["exercise_name"]
+        if name not in by_name:
+            entry = {"name": name, "_sets": []}
+            by_name[name] = entry
+            exercises.append(entry)
+        weight = float(r["weight_kg"]) if r["weight_kg"] is not None else None
+        is_bw  = bool(r["is_bodyweight"])
+        bw     = float(r["bodyweight_at_session"]) if r["bodyweight_at_session"] is not None else None
+        reps   = int(r["reps"] or 0)
+        effective = ((bw or 0.0) if is_bw else 0.0) + (weight or 0.0)
+        load_type = ("bw+" if (weight or 0) > 0 else "bw") if is_bw else "kg"
+        by_name[name]["_sets"].append({
+            "load_type": load_type,
+            "kg":        weight if load_type != "bw" else None,  # added/external weight
+            "reps":      reps,
+            "volume_kg": round(reps * effective),
+            "_effective": effective,
+        })
+
+    total_sets = total_reps = 0
+    total_volume = 0.0
+    out_exercises = []
+    for ex in exercises:
+        sets = ex["_sets"]
+        reps = sum(s["reps"] for s in sets)
+        vol  = sum(s["reps"] * s["_effective"] for s in sets)
+        top  = max(sets, key=lambda s: s["_effective"]) if sets else None
+        total_sets += len(sets)
+        total_reps += reps
+        total_volume += vol
+        out_exercises.append({
+            "name":      ex["name"],
+            "sets":      len(sets),
+            "reps":      reps,
+            "avg_reps":  round(reps / len(sets), 1) if sets else 0.0,
+            "volume_kg": round(vol),
+            "top":       {"type": top["load_type"], "kg": top["kg"]} if top else None,
+            "set_details": [
+                {k: v for k, v in s.items() if not k.startswith("_")} for s in sets
+            ],
+        })
+
+    start_time = None
+    local_dt = meta["local_dt"]
+    if local_dt is not None and hasattr(local_dt, "hour"):
+        start_time = f"{local_dt.hour:02d}:{local_dt.minute:02d}"
+
+    return {
+        "session_id":      meta["id"],
+        "date":            meta["local_date"].isoformat() if meta["local_date"] else None,
+        "start_time":      start_time,
+        "session_label":   meta["session_label"],
+        "total_sets":      total_sets,
+        "total_reps":      total_reps,
+        "total_volume_kg": round(total_volume),
+        "exercises":       out_exercises,
+    }
+
+
+# ---------------------------------------------------------------------------
 # A3b. PATCH /api/strength/sessions/{id}/unlink
 # Removes the activity_log link from a strength session.
 # ---------------------------------------------------------------------------
