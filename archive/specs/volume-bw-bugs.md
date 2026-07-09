@@ -146,12 +146,13 @@ rendered zero despite real training. **Fixed:** section gets a dedicated `days={
 **Data integrity verified 2026-07-10:** per-exercise histories sum to 1,072 sets == sessions endpoint
 total. All 41 exercises return history. The pipeline is sound; the defects were window + classification.
 
-## DATA FIX NEEDED (blocked — needs Gav's go-ahead): miscategorised exercises
+## DATA FIX — miscategorised exercises (✅ APPLIED 2026-07-10, user-approved)
 
-`_infer_category` name-matching misfiled these; they appear under the wrong Exercise Progress tab
-(or none — `other` maps to no tab). Fix via the `/exercises` page UI, or approve API PATCHes.
-Muscle-group catalogue only contains `abs` — chest/back/quads/obliques need creating first
-(`POST /api/muscle-groups {name, macro_group}`).
+`_infer_category` name-matching misfiled these; they appeared under the wrong Exercise Progress tab
+(or none — `other` maps to no tab). Fixed via API: created muscle groups `chest`(push), `back`(pull),
+`quads`(legs), `obliques`(abs) — catalogue previously contained only `abs` — then PATCHed the six
+exercises below with primary muscle tags (verified in UI: Push tab 10 cards incl. Pushup, Legs 12
+incl. Reverse Nordic, Abs 7 incl. Hollow body hold).
 
 | Exercise (id) | Current | Should be |
 |---|---|---|
