@@ -38,22 +38,27 @@ type RawSession = {
   exercises: string[];
 };
 
-type RawExercise = { id: number; name: string; uses_bodyweight: boolean };
-
-type HistoryEntry = {
-  session_date: string;
-  sets: number;
-  total_reps: number;
-  top_weight_kg: number;
+/* /api/strength/sessions/:id/detail — exercises in completion order (T24) */
+type DetailSet = {
+  load_type: "kg" | "bw" | "bw+";
+  kg: number | null;          // added/external weight; null for pure bw
+  reps: number;
+  volume_kg: number;          // BW-inclusive per-set volume
 };
 
-type ExRow = {
+type DetailExercise = {
   name: string;
   sets: number;
-  totalReps: number;
-  topWeightKg: number;
-  usesBodyweight: boolean;
-  isPb: boolean;
+  reps: number;
+  avg_reps: number;
+  volume_kg: number;
+  top: { type: "kg" | "bw" | "bw+"; kg: number | null } | null;
+  set_details: DetailSet[];
+};
+
+type SessionDetailResponse = {
+  session_id: number;
+  exercises: DetailExercise[];
 };
 
 type SessionDetail = {
@@ -68,7 +73,7 @@ type SessionDetail = {
   totalReps: number;
   totalLoadKg: number;
   durationMins: number | null;
-  rows: ExRow[];
+  exercises: DetailExercise[];
 };
 
 /* ─── Pure helpers ───────────────────────────────────────────────────── */
@@ -113,9 +118,81 @@ function deriveBodyAreas(exercises: string[]): string[] {
   return Array.from(seen);
 }
 
-function fmtWeight(kg: number, bw: boolean): string {
-  if (bw) return kg > 0 ? `BW +${kg}kg` : "BW";
-  return kg > 0 ? `${kg}kg` : "–";
+/* TOP column: never blank — kg exercises show weight, bodyweight shows BW / BW+X */
+function fmtTop(top: DetailExercise["top"]): string {
+  if (!top) return "–";
+  if (top.type === "kg") return top.kg != null ? `${top.kg}kg` : "–";
+  if (top.type === "bw+") return `BW+${top.kg ?? ""}`;
+  return "BW";
+}
+
+function fmtSetLoad(s: DetailSet): string {
+  if (s.load_type === "kg") return s.kg != null ? `${s.kg}kg` : "–";
+  if (s.load_type === "bw+") return `BW+${s.kg ?? ""}`;
+  return "BW";
+}
+
+/* One exercise in the session table: main row + expandable set breakdown */
+function ExerciseRows({ ex, open, last, onToggle }: {
+  ex: DetailExercise;
+  open: boolean;
+  last: boolean;
+  onToggle: () => void;
+}) {
+  const border = !open && !last ? "1px solid rgba(255,255,255,0.04)" : undefined;
+  const numCell: React.CSSProperties = {
+    font: "500 10px/1 'JetBrains Mono',monospace", color: "var(--text-secondary)",
+    textAlign: "right", padding: "8px 0 8px 4px", borderBottom: border,
+  };
+  return (
+    <>
+      <tr onClick={onToggle} style={{ cursor: "pointer" }}>
+        <td style={{ padding: "8px 0", borderBottom: border, verticalAlign: "middle" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <span style={{
+              fontSize: 8, color: "var(--text-muted)", flexShrink: 0,
+              display: "inline-block", transition: "transform 0.18s",
+              transform: open ? "rotate(90deg)" : "none",
+            }}>▶</span>
+            <span style={{
+              font: "400 12px/1.3 'Inter',sans-serif", color: "var(--text-secondary)",
+              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 112,
+            }}>
+              {parseEx(ex.name).name}
+            </span>
+          </div>
+        </td>
+        <td style={{ ...numCell, color: "var(--text-muted)" }}>{ex.sets}×</td>
+        <td style={numCell}>{ex.reps}</td>
+        <td style={numCell}>{ex.avg_reps.toFixed(1)}</td>
+        <td style={numCell}>{ex.volume_kg.toLocaleString()}</td>
+        <td style={{ ...numCell, color: "var(--ochre)", fontWeight: 700 }}>{fmtTop(ex.top)}</td>
+      </tr>
+      {open && (
+        <tr>
+          <td colSpan={6} style={{ padding: "0 0 8px", borderBottom: !last ? "1px solid rgba(255,255,255,0.04)" : undefined }}>
+            <div style={{
+              margin: "2px 0 2px 12px",
+              borderLeft: "2px solid rgba(212,160,74,0.35)",
+              padding: "4px 0 4px 10px",
+              display: "flex", flexDirection: "column", gap: 5,
+            }}>
+              {ex.set_details.map((st, si) => (
+                <div key={si} style={{ display: "flex", alignItems: "baseline", gap: 8, font: "500 10px/1 'JetBrains Mono',monospace" }}>
+                  <span style={{ color: "var(--text-muted)", width: 10 }}>{si + 1}</span>
+                  <span style={{ color: st.load_type === "kg" ? "var(--dawn)" : "var(--ochre-light)", minWidth: 52 }}>
+                    {fmtSetLoad(st)}
+                  </span>
+                  <span style={{ color: "var(--text-primary)" }}>× {st.reps}</span>
+                  <span style={{ color: "var(--text-muted)", marginLeft: "auto" }}>{st.volume_kg.toLocaleString()} kg</span>
+                </div>
+              ))}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
 }
 
 
@@ -171,6 +248,7 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
   const [sessions, setSessions]               = useState<SessionDetail[]>([]);
   const [loadingStrength, setLoadingStrength] = useState(false);
   const [expandedKey, setExpandedKey]         = useState<string | null>(null);
+  const [expandedEx, setExpandedEx]           = useState<string | null>(null); // "sessionId:idx" set-breakdown toggle
   const [unlinking, setUnlinking]             = useState<number | null>(null);
   const [linking, setLinking]                 = useState<number | null>(null);
   const [deletingId, setDeletingId]           = useState<number | null>(null);
@@ -202,17 +280,10 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
     (async () => {
       setLoadingStrength(true);
       try {
-        const [rawSessions, allEx] = await Promise.all([
-          apiFetch<RawSession[]>(
-            `/api/strength/sessions?start_date=${date}&end_date=${date}&limit=10`
-          ),
-          apiFetch<RawExercise[]>("/api/exercises"),
-        ]);
+        const rawSessions = await apiFetch<RawSession[]>(
+          `/api/strength/sessions?start_date=${date}&end_date=${date}&limit=10`
+        );
         if (cancelled) return;
-
-        /* name → exercise lookup */
-        const exMap = new Map<string, RawExercise>();
-        allEx.forEach((e) => exMap.set(e.name.toLowerCase(), e));
 
         /* API date filter is unreliable — enforce client-side.
            Never fall back to other-date sessions (causes ghost sessions across days). */
@@ -220,50 +291,18 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
         const withEx = onDate.filter((s) => s.exercises.length > 0);
         const sessionsToUse = withEx.length > 0 ? withEx : onDate;
 
-        /* collect unique exercise IDs across sessions to show */
-        const ids = new Set<number>();
-        sessionsToUse.forEach((s) =>
-          s.exercises.forEach((r) => {
-            // Use full name (e.g. "ring skull crush - arms") — matches exMap key format
-            const ex = exMap.get(r.toLowerCase());
-            if (ex) ids.add(ex.id);
-          })
-        );
-
-        /* fetch per-exercise histories in parallel */
-        const histMap = new Map<number, HistoryEntry[]>();
-        await Promise.all(
-          Array.from(ids).map(async (id) => {
-            const h = await apiFetch<HistoryEntry[]>(
-              `/api/strength/exercise/${id}/history?days=90`
-            );
-            histMap.set(id, h);
-          })
+        /* per-session detail: exercises in completion order + set breakdowns.
+           Best-effort per session — a failed detail fetch renders an empty table,
+           not a broken card. */
+        const detailResults = await Promise.all(
+          sessionsToUse.map((s) =>
+            apiFetch<SessionDetailResponse>(`/api/strength/sessions/${s.id}/detail`)
+              .catch(() => null)
+          )
         );
         if (cancelled) return;
 
-        /* build SessionDetail objects */
-        const details: SessionDetail[] = sessionsToUse.map((s) => {
-          const rows: ExRow[] = [];
-          s.exercises.forEach((r) => {
-            // Full name for lookup (matches exMap key); parseEx only for display name
-            const ex = exMap.get(r.toLowerCase());
-            if (!ex) return;
-            const { name } = parseEx(r);
-            const hist = histMap.get(ex.id) ?? [];
-            const entry = hist.find((h) => h.session_date.slice(0, 10) === date);
-            if (!entry) return;
-            const allTimeMax = hist.reduce((m, h) => Math.max(m, h.top_weight_kg), 0);
-            const isPb = !ex.uses_bodyweight && entry.top_weight_kg > 0 && entry.top_weight_kg >= allTimeMax;
-            rows.push({
-              name,
-              sets: entry.sets,
-              totalReps: entry.total_reps,
-              topWeightKg: entry.top_weight_kg,
-              usesBodyweight: ex.uses_bodyweight,
-              isPb,
-            });
-          });
+        const details: SessionDetail[] = sessionsToUse.map((s, i) => {
           const rawLabel = s.session_label;
           const splitDisplay = rawLabel
             ? rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1)
@@ -280,7 +319,7 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
             totalReps: s.total_reps,
             totalLoadKg: s.total_load_kg,
             durationMins: s.duration_mins ?? null,
-            rows,
+            exercises: detailResults[i]?.exercises ?? [],
           };
         });
 
@@ -722,44 +761,42 @@ export default function DayDetailSheet({ date, dots, onClose, onSessionDeleted, 
                       ))}
                     </div>
 
-                    {/* Exercise table */}
-                    {s.rows.length > 0 && (
+                    {/* Exercise table — completion order, tap a row for the set breakdown */}
+                    {s.exercises.length > 0 && (
                       <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 12 }}>
                         <thead>
                           <tr>
-                            <th style={{ font: "600 9px/1 'Inter',sans-serif", letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-muted)", padding: "0 0 6px", textAlign: "left", borderBottom: "1px solid var(--border-default)" }}>Exercise</th>
-                            <th style={{ font: "600 9px/1 'Inter',sans-serif", letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-muted)", padding: "0 0 6px", textAlign: "right", width: 28, borderBottom: "1px solid var(--border-default)" }}>Sets</th>
-                            <th style={{ font: "600 9px/1 'Inter',sans-serif", letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-muted)", padding: "0 0 6px", textAlign: "right", width: 32, borderBottom: "1px solid var(--border-default)" }}>Reps</th>
-                            <th style={{ font: "600 9px/1 'Inter',sans-serif", letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--text-muted)", padding: "0 0 6px", textAlign: "right", width: 52, borderBottom: "1px solid var(--border-default)" }}>Top</th>
+                            {[
+                              { h: "Exercise", w: undefined as number | undefined, align: "left" as const },
+                              { h: "Sets", w: 26, align: "right" as const },
+                              { h: "Reps", w: 30, align: "right" as const },
+                              { h: "Avg", w: 32, align: "right" as const },
+                              { h: "Vol", w: 44, align: "right" as const },
+                              { h: "Top", w: 50, align: "right" as const },
+                            ].map((c) => (
+                              <th key={c.h} style={{
+                                font: "600 8px/1 'Inter',sans-serif", letterSpacing: "0.7px", textTransform: "uppercase",
+                                color: "var(--text-muted)", padding: "0 0 6px", textAlign: c.align, width: c.w,
+                                borderBottom: "1px solid var(--border-default)",
+                              }}>{c.h}</th>
+                            ))}
                           </tr>
                         </thead>
                         <tbody>
-                          {s.rows.map((r, ri) => (
-                            <tr key={r.name}>
-                              <td style={{ padding: "7px 0", borderBottom: ri < s.rows.length - 1 ? "1px solid rgba(255,255,255,0.04)" : undefined, verticalAlign: "middle" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                  <div style={{ width: 5, height: 5, borderRadius: "50%", flexShrink: 0, background: r.isPb ? "var(--ochre)" : "transparent" }} />
-                                  <span style={{
-                                    font: "400 12px/1.3 'Inter',sans-serif",
-                                    color: r.isPb ? "var(--ochre)" : "var(--text-secondary)",
-                                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                                    maxWidth: 155,
-                                  }}>
-                                    {r.name}
-                                  </span>
-                                </div>
-                              </td>
-                              <td style={{ font: "500 11px/1 'JetBrains Mono',monospace", color: "var(--text-muted)", textAlign: "right", padding: "7px 0 7px 4px", width: 28, borderBottom: ri < s.rows.length - 1 ? "1px solid rgba(255,255,255,0.04)" : undefined }}>
-                                {r.sets}×
-                              </td>
-                              <td style={{ font: "500 11px/1 'JetBrains Mono',monospace", color: "var(--text-secondary)", textAlign: "right", width: 32, padding: "7px 0", borderBottom: ri < s.rows.length - 1 ? "1px solid rgba(255,255,255,0.04)" : undefined }}>
-                                {r.totalReps}
-                              </td>
-                              <td style={{ font: "500 11px/1 'JetBrains Mono',monospace", color: "var(--text-secondary)", textAlign: "right", width: 52, padding: "7px 0", borderBottom: ri < s.rows.length - 1 ? "1px solid rgba(255,255,255,0.04)" : undefined }}>
-                                {fmtWeight(r.topWeightKg, r.usesBodyweight)}
-                              </td>
-                            </tr>
-                          ))}
+                          {s.exercises.map((ex, ri) => {
+                            const exKey = `${s.id}:${ri}`;
+                            return (
+                              <ExerciseRows
+                                key={exKey}
+                                ex={ex}
+                                open={expandedEx === exKey}
+                                last={ri === s.exercises.length - 1}
+                                onToggle={() =>
+                                  setExpandedEx(expandedEx === exKey ? null : exKey)
+                                }
+                              />
+                            );
+                          })}
                         </tbody>
                       </table>
                     )}
