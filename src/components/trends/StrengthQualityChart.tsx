@@ -365,7 +365,8 @@ export default function StrengthQualityChart() {
 
       {/* Chart */}
       <ResponsiveContainer width="100%" height={200}>
-        <ScatterChart margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+        {/* bottom margin gives the "Load" axis label room — at 0 it clipped */}
+        <ScatterChart margin={{ top: 8, right: 16, bottom: 14, left: 0 }}>
           <XAxis
             dataKey="total_load_kg"
             type="number"
@@ -378,7 +379,7 @@ export default function StrengthQualityChart() {
             label={{
               value: "Load",
               position: "insideBottomRight",
-              offset: -4,
+              offset: -12,
               fill: "var(--text-muted)",
               fontSize: 10,
             }}

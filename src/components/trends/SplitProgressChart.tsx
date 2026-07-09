@@ -422,7 +422,10 @@ export default function SplitProgressChart() {
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
           <div style={{ minWidth: Math.max(data.length * 36, 280) }}>
             <ResponsiveContainer width="100%" height={180}>
-              <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -20 }}>
+              {/* left margin must not eat the 36px y-axis — -20 clipped the
+                  tick digits leaving bare "%" marks; the chart scrolls
+                  horizontally so the 20px of plot width is free */}
+              <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
                 <defs>
                   <linearGradient id="splitVolGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%"  stopColor="#d4a04a" stopOpacity={0.3} />

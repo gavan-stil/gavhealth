@@ -31,8 +31,26 @@ const DATA_START = new Date(2026, 2, 1); // month is 0-indexed
 /* ── Sparkline (SVG polyline) ── */
 
 function Sparkline({ values }: { values: number[] }) {
-  if (values.length < 2) return null;
   const w = 120, h = 36;
+  // Single session: show a labelled dot instead of leaving the area blank
+  if (values.length === 1) {
+    return (
+      <svg width={w + 28} height={h} style={{ overflow: "visible" }}>
+        <circle cx={12} cy={h / 2} r={3} fill="var(--ochre)" />
+        <text
+          x={20}
+          y={h / 2 + 4}
+          fontSize={9}
+          fill="var(--ochre)"
+          fontFamily="var(--font-mono, monospace)"
+          fontWeight={700}
+        >
+          {values[0] % 1 === 0 ? values[0] : values[0].toFixed(1)}kg
+        </text>
+      </svg>
+    );
+  }
+  if (values.length < 2) return null;
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = max - min || 1;
@@ -110,9 +128,13 @@ function MonthlyVolumeBars({ history }: { history: ExerciseSession[] }) {
         >
           <div
             style={{
+              // months with no volume get a 2px dim baseline — a 4px bar in
+              // the normal colour read as "trained a little" when it was zero
               width: 20,
-              height: Math.max(4, Math.round((values[i] / maxVal) * 48)),
-              background: i === months.length - 1 ? "var(--ochre)" : "var(--border-default)",
+              height: values[i] === 0 ? 2 : Math.max(4, Math.round((values[i] / maxVal) * 48)),
+              background: values[i] === 0
+                ? "rgba(255,255,255,0.08)"
+                : i === months.length - 1 ? "var(--ochre)" : "var(--border-default)",
               borderRadius: "2px 2px 0 0",
             }}
           />
@@ -231,7 +253,8 @@ export default function ExerciseProgressCard({ exercise, days }: Props) {
             {exercise.name}
           </span>
         </div>
-        {lastIdx > effectiveCompareIdx && (
+        {/* sub-1kg moves on effective load are bodyweight drift, not training signal */}
+        {lastIdx > effectiveCompareIdx && Math.abs(change4w) >= 1 && (
           <span
             style={{
               fontSize: 10,
