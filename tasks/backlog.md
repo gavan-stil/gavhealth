@@ -17,6 +17,8 @@
 
 ## High Priority
 
+- **T24 — Calendar strength card parity with session logging** — DayDetailSheet strength card should read like the builder: exercises in completion order (currently alphabetical from `ARRAY_AGG(DISTINCT)`), table columns EXERCISE / SETS / REPS / AVG (reps per set) / VOL (BW-inclusive) / TOP (`20kg` \| `BW` \| `BW+20` — currently blank for pure BW), plus per-exercise dropdown revealing the actual set breakdown. Mockup approved-pending: `archive/session-card-mockup.html`. Data source: `manual_strength_logs.exercises` JSONB via `bridged_session_id` (preserves order + per-set load types); needs a per-session detail endpoint or extend `/api/strength/sessions`. TOP semantics per `archive/specs/volume-bw-bugs.md`.
+
 - **Sleep dashboard** — Stage bars + consistency % + debt tracker + score trend. Original design reference: `archive/gavhealth[original-design].html` (sleep section). API: `GET /api/sleep?days=N`.
 - **T16 — Run HR Zones backend** — Populate `activity_logs.hr_zone_0/1/2/3/4` from Withings workout payload in `withings.py`. Columns already exist (always NULL). Unlocks T15-3 Run HR Zones chart.
 - **Deploy `GET /api/habits`** — Endpoint exists in `new_endpoints.py`, needs deploying to Railway. Unlocks habits history view in HabitsCard.

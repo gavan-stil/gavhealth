@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calendar Strength Card — Session-Log Parity Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #0d0d0a;
+    --bg-card: #14130f;
+    --bg-elevated: #1e1d18;
+    --border-default: #222018;
+    --border-subtle: #1a1914;
+    --text-primary: #f0ece4;
+    --text-secondary: #b0a890;
+    --text-muted: #7a7060;
+    --ochre: #d4a04a;
+    --ochre-light: #e8c47a;
+    --rust: #b47050;
+    --dawn: #7FAABC;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg-base);
+    color: var(--text-secondary);
+    font-family: 'Inter', sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 24px 0 80px;
+  }
+  .note {
+    width: 375px; padding: 0 16px 18px;
+    font: 400 11px/1.5 'Inter', sans-serif; color: var(--text-muted);
+  }
+  .note b { color: var(--text-secondary); }
+  .phone { width: 375px; padding: 0 12px; display: flex; flex-direction: column; gap: 10px; }
+  .day-title { font: 600 14px/1.3 'Inter', sans-serif; color: var(--text-primary); padding: 4px 2px 6px; }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .card-head {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 12px 14px 10px; cursor: pointer;
+  }
+  .accent { width: 3px; align-self: stretch; min-height: 20px; border-radius: 2px; background: var(--rust); }
+  .kicker { font: 700 10px/1 'Inter', sans-serif; letter-spacing: 1.2px; text-transform: uppercase; color: var(--rust); }
+  .split-chip {
+    font: 600 9px/1 'Inter', sans-serif; letter-spacing: .5px; text-transform: uppercase;
+    padding: 3px 7px; border-radius: 20px;
+    border: 1px solid var(--rust); color: var(--rust); opacity: .85;
+  }
+  .time { font: 500 10px/1 'JetBrains Mono', monospace; color: var(--text-muted); }
+  .auto-chip {
+    font: 600 8px/1 'Inter', sans-serif; letter-spacing: .5px; text-transform: uppercase;
+    padding: 3px 6px; border-radius: 20px;
+    border: 1px solid rgba(143,168,200,.3); background: rgba(143,168,200,.08); color: var(--dawn);
+  }
+  .body { padding: 0 14px 14px; }
+  .sep { height: 1px; background: var(--border-subtle); margin-bottom: 10px; }
+
+  .areas { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
+  .area {
+    font: 500 9px/1 'Inter', sans-serif; letter-spacing: .4px; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 100px;
+    background: rgba(180,112,80,.15); border: 1px solid rgba(180,112,80,.25); color: var(--rust);
+  }
+
+  .totals { display: flex; border: 1px solid var(--border-default); border-radius: 8px; overflow: hidden; margin-bottom: 12px; }
+  .totals > div { flex: 1; padding: 9px 10px; display: flex; flex-direction: column; gap: 3px; }
+  .totals > div + div { border-left: 1px solid var(--border-default); }
+  .totals .v { font: 700 15px/1 'JetBrains Mono', monospace; letter-spacing: -.5px; color: var(--text-primary); }
+  .totals .l { font: 500 9px/1 'Inter', sans-serif; letter-spacing: .5px; text-transform: uppercase; color: var(--text-muted); }
+
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    font: 600 8px/1 'Inter', sans-serif; letter-spacing: .7px; text-transform: uppercase;
+    color: var(--text-muted); padding: 0 0 6px; text-align: right;
+    border-bottom: 1px solid var(--border-default);
+  }
+  th:first-child { text-align: left; }
+  tr.ex { cursor: pointer; }
+  tr.ex td {
+    padding: 8px 0 8px 4px; text-align: right;
+    font: 500 11px/1 'JetBrains Mono', monospace; color: var(--text-secondary);
+    border-bottom: 1px solid rgba(255,255,255,.04);
+  }
+  tr.ex td.name {
+    text-align: left; padding-left: 0;
+    font: 400 12px/1.3 'Inter', sans-serif;
+    max-width: 118px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  tr.ex td.name .chev {
+    display: inline-block; font-size: 8px; color: var(--text-muted);
+    margin-right: 5px; transition: transform .18s; transform: rotate(0deg);
+  }
+  tr.ex.open td.name .chev { transform: rotate(90deg); }
+  tr.ex td.top { color: var(--ochre); font-weight: 700; }
+  tr.ex td.vol { color: var(--text-secondary); }
+  tr.ex:last-of-type td { border-bottom: none; }
+
+  /* Set breakdown */
+  tr.sets-row { display: none; }
+  tr.sets-row.open { display: table-row; }
+  tr.sets-row > td { padding: 0 0 8px; border-bottom: 1px solid rgba(255,255,255,.04); }
+  .sets-box {
+    margin: 2px 0 2px 12px;
+    border-left: 2px solid rgba(212,160,74,.35);
+    padding: 4px 0 4px 10px;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .set-line { display: flex; align-items: baseline; gap: 8px; font: 500 10px/1 'JetBrains Mono', monospace; }
+  .set-line .n { color: var(--text-muted); width: 10px; }
+  .set-line .load { color: var(--ochre-light); min-width: 52px; }
+  .set-line .load.plate { color: var(--dawn); }
+  .set-line .reps { color: var(--text-primary); }
+  .set-line .kg { color: var(--text-muted); margin-left: auto; }
+</style>
+</head>
+<body>
+
+<div class="note">
+  <b>Mockup — calendar strength card, session-log parity.</b><br>
+  Real data: your Fri 10 Jul push + Fri 26 Jun pull sessions.<br>
+  • Exercises in <b>completion order</b> (not alphabetical)<br>
+  • Columns: SETS · REPS · AVG (reps/set) · VOL (BW-inclusive) · TOP (<span style="color:var(--ochre)">BW / BW+20 / 20kg</span> — never blank)<br>
+  • <b>Tap a row</b> to expand the actual set breakdown as logged.
+</div>
+
+<div class="phone">
+  <div class="day-title">Friday, 10 July</div>
+
+  <!-- ══════════ CARD 1 — all-bodyweight push session ══════════ -->
+  <div class="card">
+    <div class="card-head">
+      <div class="accent"></div>
+      <span class="kicker">Strength</span>
+      <span class="split-chip">Push</span>
+      <span class="time">7:01am</span>
+      <span class="auto-chip">⚡ auto-linked</span>
+    </div>
+    <div class="body">
+      <div class="sep"></div>
+      <div class="areas"><span class="area">Chest</span><span class="area">Legs</span><span class="area">Arms</span></div>
+      <div class="totals">
+        <div><span class="v">13</span><span class="l">Sets</span></div>
+        <div><span class="v">142</span><span class="l">Reps</span></div>
+        <div><span class="v">9,893</span><span class="l">Volume</span></div>
+      </div>
+      <table>
+        <thead><tr><th>Exercise</th><th>Sets</th><th>Reps</th><th>Avg</th><th>Vol</th><th>Top</th></tr></thead>
+        <tbody>
+          <!-- completion order: chest dips → pistols → bar dips → nordic → skulls -->
+          <tr class="ex open" onclick="tog(this)">
+            <td class="name"><span class="chev">▶</span>Ring chest dips</td>
+            <td>4×</td><td>41</td><td>10.3</td><td class="vol">2,856</td><td class="top">BW</td>
+          </tr>
+          <tr class="sets-row open"><td colspan="6">
+            <div class="sets-box">
+              <div class="set-line"><span class="n">1</span><span class="load">BW</span><span class="reps">× 10</span><span class="kg">697 kg</span></div>
+              <div class="set-line"><span class="n">2</span><span class="load">BW</span><span class="reps">× 10</span><span class="kg">697 kg</span></div>
+              <div class="set-line"><span class="n">3</span><span class="load">BW</span><span class="reps">× 10</span><span class="kg">697 kg</span></div>
+              <div class="set-line"><span class="n">4</span><span class="load">BW</span><span class="reps">× 11</span><span class="kg">766 kg</span></div>
+            </div>
+          </td></tr>
+
+          <tr class="ex" onclick="tog(this)">
+            <td class="name"><span class="chev">▶</span>Pistol squats assisted</td>
+            <td>3×</td><td>30</td><td>10.0</td><td class="vol">2,090</td><td class="top">BW</td>
+          </tr>
+          <tr class="sets-row"><td colspan="6">
+            <div class="sets-box">
+              <div class="set-line"><span class="n">1</span><span class="load">BW</span><span class="reps">× 10</span><span class="kg">697 kg</span></div>
+              <div class="set-line"><span class="n">2</span><span class="load">BW</span><span class="reps">× 10</span><span class="kg">697 kg</span></div>
+              <div class="set-line"><span class="n">3</span><span class="load">BW</span><span class="reps">× 10</span><span class="kg">697 kg</span></div>
+            </div>
+          </td></tr>
+
+          <tr class="ex" onclick="tog(this)">
+            <td class="name"><span class="chev">▶</span>Bar dips</td>
+            <td>2×</td><td>25</td><td>12.5</td><td class="vol">1,742</td><td class="top">BW</td>
+          </tr>
+          <tr class="sets-row"><td colspan="6">
+            <div class="sets-box">
+              <div class="set-line"><span class="n">1</span><span class="load">BW</span><span class="reps">× 12</span><span class="kg">836 kg</span></div>
+              <div class="set-line"><span class="n">2</span><span class="load">BW</span><span class="reps">× 13</span><span class="kg">906 kg</span></div>
+            </div>
+          </td></tr>
+
+          <tr class="ex" onclick="tog(this)">
+            <td class="name"><span class="chev">▶</span>Reverse Nordic quad curls</td>
+            <td>2×</td><td>20</td><td>10.0</td><td class="vol">1,393</td><td class="top">BW</td>
+          </tr>
+          <tr class="sets-row"><td colspan="6">
+            <div class="sets-box">
+              <div class="set-line"><span class="n">1</span><span class="load">BW</span><span class="reps">× 10</span><span class="kg">697 kg</span></div>
+              <div class="set-line"><span class="n">2</span><span class="load">BW</span><span class="reps">× 10</span><span class="kg">697 kg</span></div>
+            </div>
+          </td></tr>
+
+          <tr class="ex" onclick="tog(this)">
+            <td class="name"><span class="chev">▶</span>Ring skull crushers</td>
+            <td>2×</td><td>26</td><td>13.0</td><td class="vol">1,811</td><td class="top">BW</td>
+          </tr>
+          <tr class="sets-row"><td colspan="6">
+            <div class="sets-box">
+              <div class="set-line"><span class="n">1</span><span class="load">BW</span><span class="reps">× 13</span><span class="kg">906 kg</span></div>
+              <div class="set-line"><span class="n">2</span><span class="load">BW</span><span class="reps">× 13</span><span class="kg">906 kg</span></div>
+            </div>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="day-title" style="margin-top:14px">Friday, 26 June <span style="color:var(--text-muted);font-weight:400;font-size:11px">— mixed-load example (BW / BW+ / kg)</span></div>
+
+  <!-- ══════════ CARD 2 — mixed loads pull session ══════════ -->
+  <div class="card">
+    <div class="card-head">
+      <div class="accent"></div>
+      <span class="kicker">Strength</span>
+      <span class="split-chip">Pull</span>
+      <span class="time">6:30am</span>
+      <span class="auto-chip">⚡ auto-linked</span>
+    </div>
+    <div class="body">
+      <div class="sep"></div>
+      <div class="areas"><span class="area">Back</span><span class="area">Biceps</span><span class="area">Legs</span></div>
+      <div class="totals">
+        <div><span class="v">24</span><span class="l">Sets</span></div>
+        <div><span class="v">232</span><span class="l">Reps</span></div>
+        <div><span class="v">14,499</span><span class="l">Volume</span></div>
+      </div>
+      <table>
+        <thead><tr><th>Exercise</th><th>Sets</th><th>Reps</th><th>Avg</th><th>Vol</th><th>Top</th></tr></thead>
+        <tbody>
+          <tr class="ex open" onclick="tog(this)">
+            <td class="name"><span class="chev">▶</span>Ring pull ups</td>
+            <td>6×</td><td>39</td><td>6.5</td><td class="vol">3,241</td><td class="top">BW+20</td>
+          </tr>
+          <tr class="sets-row open"><td colspan="6">
+            <div class="sets-box">
+              <div class="set-line"><span class="n">1</span><span class="load">BW</span><span class="reps">× 10</span><span class="kg">698 kg</span></div>
+              <div class="set-line"><span class="n">2</span><span class="load">BW+20</span><span class="reps">× 6</span><span class="kg">539 kg</span></div>
+              <div class="set-line"><span class="n">3</span><span class="load">BW+20</span><span class="reps">× 6</span><span class="kg">539 kg</span></div>
+              <div class="set-line"><span class="n">4</span><span class="load">BW+20</span><span class="reps">× 6</span><span class="kg">539 kg</span></div>
+              <div class="set-line"><span class="n">5</span><span class="load">BW+20</span><span class="reps">× 5</span><span class="kg">449 kg</span></div>
+              <div class="set-line"><span class="n">6</span><span class="load">BW+10</span><span class="reps">× 6</span><span class="kg">479 kg</span></div>
+            </div>
+          </td></tr>
+
+          <tr class="ex" onclick="tog(this)">
+            <td class="name"><span class="chev">▶</span>Seated calf raisers</td>
+            <td>3×</td><td>60</td><td>20.0</td><td class="vol">1,200</td><td class="top">20kg</td>
+          </tr>
+          <tr class="sets-row"><td colspan="6">
+            <div class="sets-box">
+              <div class="set-line"><span class="n">1</span><span class="load plate">20kg</span><span class="reps">× 20</span><span class="kg">400 kg</span></div>
+              <div class="set-line"><span class="n">2</span><span class="load plate">20kg</span><span class="reps">× 20</span><span class="kg">400 kg</span></div>
+              <div class="set-line"><span class="n">3</span><span class="load plate">20kg</span><span class="reps">× 20</span><span class="kg">400 kg</span></div>
+            </div>
+          </td></tr>
+
+          <tr class="ex" onclick="tog(this)">
+            <td class="name"><span class="chev">▶</span>Ring chin ups</td>
+            <td>5×</td><td>44</td><td>8.8</td><td class="vol">3,409</td><td class="top">BW+10</td>
+          </tr>
+          <tr class="sets-row"><td colspan="6">
+            <div class="sets-box">
+              <div class="set-line"><span class="n">1</span><span class="load">BW+10</span><span class="reps">× 9</span><span class="kg">718 kg</span></div>
+              <div class="set-line"><span class="n">2</span><span class="load">BW+10</span><span class="reps">× 10</span><span class="kg">798 kg</span></div>
+              <div class="set-line"><span class="n">3</span><span class="load">BW+10</span><span class="reps">× 8</span><span class="kg">638 kg</span></div>
+              <div class="set-line"><span class="n">4</span><span class="load">BW+10</span><span class="reps">× 7</span><span class="kg">558 kg</span></div>
+              <div class="set-line"><span class="n">5</span><span class="load">BW</span><span class="reps">× 10</span><span class="kg">698 kg</span></div>
+            </div>
+          </td></tr>
+
+          <tr class="ex" onclick="tog(this)">
+            <td class="name"><span class="chev">▶</span>Single arm ring rows</td>
+            <td>2×</td><td>17</td><td>8.5</td><td class="vol">1,186</td><td class="top">BW</td>
+          </tr>
+          <tr class="sets-row"><td colspan="6">
+            <div class="sets-box">
+              <div class="set-line"><span class="n">1</span><span class="load">BW</span><span class="reps">× 9</span><span class="kg">628 kg</span></div>
+              <div class="set-line"><span class="n">2</span><span class="load">BW</span><span class="reps">× 8</span><span class="kg">558 kg</span></div>
+            </div>
+          </td></tr>
+
+          <tr class="ex" onclick="tog(this)">
+            <td class="name"><span class="chev">▶</span>Single leg hip thrusts</td>
+            <td>4×</td><td>38</td><td>9.5</td><td class="vol">2,651</td><td class="top">BW</td>
+          </tr>
+          <tr class="sets-row"><td colspan="6">
+            <div class="sets-box">
+              <div class="set-line"><span class="n">1</span><span class="load">BW</span><span class="reps">× 8</span><span class="kg">558 kg</span></div>
+              <div class="set-line"><span class="n">2</span><span class="load">BW</span><span class="reps">× 10</span><span class="kg">698 kg</span></div>
+              <div class="set-line"><span class="n">3</span><span class="load">BW</span><span class="reps">× 10</span><span class="kg">698 kg</span></div>
+              <div class="set-line"><span class="n">4</span><span class="load">BW</span><span class="reps">× 10</span><span class="kg">698 kg</span></div>
+            </div>
+          </td></tr>
+
+          <tr class="ex" onclick="tog(this)">
+            <td class="name"><span class="chev">▶</span>Inverted ring rows</td>
+            <td>4×</td><td>34</td><td>8.5</td><td class="vol">2,812</td><td class="top">BW+20</td>
+          </tr>
+          <tr class="sets-row"><td colspan="6">
+            <div class="sets-box">
+              <div class="set-line"><span class="n">1</span><span class="load">BW+20</span><span class="reps">× 7</span><span class="kg">628 kg</span></div>
+              <div class="set-line"><span class="n">2</span><span class="load">BW+20</span><span class="reps">× 7</span><span class="kg">628 kg</span></div>
+              <div class="set-line"><span class="n">3</span><span class="load">BW+20</span><span class="reps">× 8</span><span class="kg">718 kg</span></div>
+              <div class="set-line"><span class="n">4</span><span class="load">BW</span><span class="reps">× 12</span><span class="kg">838 kg</span></div>
+            </div>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  function tog(row) {
+    row.classList.toggle('open');
+    row.nextElementSibling.classList.toggle('open');
+  }
+</script>
+</body>
+</html>
